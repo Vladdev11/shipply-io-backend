@@ -1,0 +1,400 @@
+query GetProductVariants($first: Int!, $cursor: String) {
+  productVariants(first: $first, after: $cursor) {
+    edges {
+      node {
+        id
+        image {
+          url
+        }
+        inventoryItem {
+          id
+          countryCodeOfOrigin
+          duplicateSkuCount
+          harmonizedSystemCode
+          inventoryHistoryUrl
+          locationsCount
+          provinceCodeOfOrigin
+          requiresShipping
+          sku
+          tracked
+          unitCost {
+            amount
+            currencyCode
+          }
+        }
+        inventoryPolicy
+        inventoryQuantity
+        price
+        product {
+          status
+          description
+          handle
+          id
+          priceRange {
+            maxVariantPrice {
+              currencyCode
+            }
+          }
+          productType
+          publishedAt
+          tags
+          title
+          updatedAt
+          vendor
+          onlineStoreUrl
+          images(first: 1) {
+            edges {
+              node {
+                id
+                src
+              }
+            }
+          }
+        }
+        barcode
+        sku
+        taxCode
+        taxable
+        title
+        updatedAt
+        weight
+        weightUnit
+        requiresShipping
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+query GetProductVariantsByProductID($productID: ID!, $first: Int!, $cursor: String) {
+  product(id: $productID) {
+    variants(first: $first, after: $cursor) {
+      edges {
+        node {
+          id
+          image {
+            url
+          }
+          inventoryItem {
+            id
+            countryCodeOfOrigin
+            duplicateSkuCount
+            harmonizedSystemCode
+            inventoryHistoryUrl
+            locationsCount
+            provinceCodeOfOrigin
+            requiresShipping
+            sku
+            tracked
+            unitCost {
+              amount
+              currencyCode
+            }
+          }
+          inventoryPolicy
+          inventoryQuantity
+          price
+          product {
+            status
+            description
+            handle
+            id
+            priceRange {
+              maxVariantPrice {
+                currencyCode
+              }
+            }
+            productType
+            publishedAt
+            tags
+            title
+            updatedAt
+            vendor
+            onlineStoreUrl
+            images(first: 1) {
+              edges {
+                node {
+                  id
+                  src
+                }
+              }
+            }
+          }
+          barcode
+          sku
+          taxCode
+          taxable
+          title
+          updatedAt
+          weight
+          weightUnit
+          requiresShipping
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+
+query GetOrders($first: Int!, $cursor: String) {
+  orders(first: $first, after: $cursor) {
+    edges {
+      node {
+        id
+        canNotifyCustomer
+        cancelReason
+        cancelledAt
+        clientIp
+        closed
+        closedAt
+        confirmed
+        currencyCode
+        customAttributes {
+          key
+          value
+        }
+        subtotalPriceSet {
+          shopMoney {
+            amount
+          }
+        }
+        totalDiscountsSet {
+          shopMoney {
+            amount
+          }
+        }
+        totalPriceSet {
+          shopMoney {
+            amount
+            currencyCode
+          }
+        }
+        totalShippingPriceSet {
+          shopMoney {
+            amount
+          }
+        }
+        totalTaxSet {
+          shopMoney {
+            amount
+          }
+        }
+        totalTipReceivedSet {
+          shopMoney {
+            amount
+          }
+        }
+        email
+        displayFinancialStatus
+        displayFulfillmentStatus
+        edited
+        fulfillable
+        name
+        note
+        phone
+        refundable
+        refunds {
+          id
+        }
+        requiresShipping
+        shippingLine {
+          custom
+          code
+          price
+          title
+          carrierIdentifier
+          phone
+          source
+          discountedPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+        }
+        riskLevel
+        tags
+        physicalLocation {
+          name
+        }
+        billingAddress {
+          ...AddressInfo
+        }
+        shippingAddress {
+          ...AddressInfo
+        }
+        createdAt
+        discountCodes
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+query GetOrderById($id: ID!) {
+  order(id: $id) {
+    id
+    canNotifyCustomer
+    cancelReason
+    cancelledAt
+    clientIp
+    closed
+    closedAt
+    confirmed
+    currencyCode
+    customAttributes {
+      key
+      value
+    }
+    subtotalPriceSet {
+      shopMoney {
+        amount
+      }
+    }
+    totalDiscountsSet {
+      shopMoney {
+        amount
+      }
+    }
+    totalPriceSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalShippingPriceSet {
+      shopMoney {
+        amount
+      }
+    }
+    totalTaxSet {
+      shopMoney {
+        amount
+      }
+    }
+    totalTipReceivedSet {
+      shopMoney {
+        amount
+      }
+    }
+    email
+    displayFinancialStatus
+    displayFulfillmentStatus
+    edited
+    fulfillable
+    name
+    note
+    phone
+    refundable
+    refunds {
+      id
+    }
+    requiresShipping
+    shippingLine {
+      custom
+      code
+      price
+      title
+      carrierIdentifier
+      phone
+      source
+      discountedPriceSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+    }
+    riskLevel
+    tags
+    physicalLocation {
+      name
+    }
+    billingAddress {
+      ...AddressInfo
+    }
+    shippingAddress {
+      ...AddressInfo
+    }
+    createdAt
+    discountCodes
+  }
+}
+
+query GetLineItemsByOrderID($orderID: ID!, $first: Int!, $cursor: String) {
+  order(id: $orderID) {
+    lineItems(first: $first, after: $cursor) {
+      edges {
+        node {
+          id
+          image {
+            url
+          }
+          quantity
+          currentQuantity
+          nonFulfillableQuantity
+          unfulfilledQuantity
+          fulfillmentStatus
+          name
+          originalTotalSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          originalUnitPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          requiresShipping
+          sku
+          title
+          variantTitle
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+
+query GetLocationsByName($name: String!) {
+  locations(first: 1, query: $name) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}
+
+# # START FRAGMENTS # #
+
+fragment AddressInfo on MailingAddress {
+  address1
+  address2
+  city
+  company
+  country
+  countryCodeV2
+  firstName
+  lastName
+  phone
+  province
+  provinceCode
+  zip
+}

@@ -1,0 +1,69 @@
+mutation SubscribeToAppUninstallWebhook($callbackUrl: URL!) {
+  webhookSubscriptionCreate(topic: APP_UNINSTALLED, webhookSubscription: { callbackUrl: $callbackUrl, format: JSON }) {
+    webhookSubscription {
+      id
+    }
+  }
+}
+
+mutation SubscribeToOrdersCreateWebhook($callbackUrl: URL!) {
+  webhookSubscriptionCreate(topic: ORDERS_CREATE, webhookSubscription: { callbackUrl: $callbackUrl, format: JSON }) {
+    webhookSubscription {
+      id
+    }
+  }
+}
+
+mutation SubscribeToOrdersUpdateWebhook($callbackUrl: URL!) {
+  webhookSubscriptionCreate(topic: ORDERS_UPDATED, webhookSubscription: { callbackUrl: $callbackUrl, format: JSON }) {
+    webhookSubscription {
+      id
+    }
+  }
+}
+
+mutation SubscribeToProductsCreateWebhook($callbackUrl: URL!) {
+  webhookSubscriptionCreate(topic: PRODUCTS_CREATE, webhookSubscription: { callbackUrl: $callbackUrl, format: JSON }) {
+    webhookSubscription {
+      id
+    }
+  }
+}
+
+mutation SubscribeToProductsUpdateWebhook($callbackUrl: URL!) {
+  webhookSubscriptionCreate(topic: PRODUCTS_UPDATE, webhookSubscription: { callbackUrl: $callbackUrl, format: JSON }) {
+    webhookSubscription {
+      id
+    }
+  }
+}
+
+mutation AddLocation($input: LocationAddInput!) {
+  locationAdd(input: $input) {
+    location {
+      id
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+mutation inventoryActivate($inventoryItemId: ID!, $locationId: ID!) {
+  # TODO set initial onHand quantity
+  inventoryActivate(inventoryItemId: $inventoryItemId, locationId: $locationId) {
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+mutation InventorySetOnHandQuantities($input: InventorySetOnHandQuantitiesInput!) {
+  inventorySetOnHandQuantities(input: $input) {
+    inventoryAdjustmentGroup {
+      id
+    }
+  }
+}

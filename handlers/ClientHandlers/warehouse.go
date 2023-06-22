@@ -1,0 +1,94 @@
+package ClientHandlers
+
+import (
+	"net/http"
+
+	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/util"
+)
+
+func WarehouseList(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient()
+	if err != nil {
+		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.Client.GetOrganization()
+	if err != nil {
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		return
+	}
+
+	request := models.WarehouseListRequest{}
+	errors := request.ParseAndValidateRequest(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		return
+	}
+
+	request.OrganizationID = user.Client.Organization.ID
+	warehouses, total, count, err := user.Client.Organization.GetWarehouses(request)
+
+	searchResults, err := models.ConvertWarehousesToSearchResults(warehouses, total, count)
+	if err != nil {
+		util.ErrorResponse(w, "failed to convert warehouses to search results", http.StatusBadRequest)
+		return
+	}
+
+	util.JSONResponse(w, searchResults, http.StatusOK)
+
+}
+
+func WarehouseGet(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient()
+	if err != nil {
+		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		return
+	}
+
+	warehouseID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "failed to get warehouse id", http.StatusBadRequest)
+		return
+	}
+
+	warehouse, err := models.GetWarehouseByID(warehouseID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get warehouse", http.StatusBadRequest)
+		return
+	}
+
+	err = warehouse.GetShipFromAddress()
+	if err != nil {
+		util.ErrorResponse(w, "failed to get ship from address", http.StatusBadRequest)
+		return
+	}
+
+	err = warehouse.GetReturnAddress()
+	if err != nil {
+		util.ErrorResponse(w, "failed to get return address", http.StatusBadRequest)
+		return
+	}
+
+	if user.Client.OrganizationID != warehouse.OrganizationID {
+		util.ErrorResponse(w, "user does not have access to warehouse", http.StatusForbidden)
+		return
+	}
+
+	util.JSONResponse(w, warehouse, http.StatusOK)
+}
