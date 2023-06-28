@@ -2175,3 +2175,90 @@ func ProductLotCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 //** END PRODUCT LOT ROUTES **//
+
+// ** PRODUCT ALIAS ROUTES **//
+func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.ProductAliasCreate(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.ProductAliasCreate(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.ProductAliasCreate(w, r)
+	case util.ClientUser:
+		ClientHandlers.ProductAliasCreate(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func ProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.ProductAliasGetByBarcode(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.ProductAliasGetByBarcode(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.ProductAliasGetByBarcode(w, r)
+	case util.ClientUser:
+		ClientHandlers.ProductAliasGetByBarcode(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.ProductAliasUpdateByBarcode(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.ProductAliasUpdateByBarcode(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.ProductAliasUpdateByBarcode(w, r)
+	case util.ClientUser:
+		ClientHandlers.ProductAliasUpdateByBarcode(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func ProductAliasDeleteByBarcode(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.ProductAliasDeleteByBarcode(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.ProductAliasDeleteByBarcode(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.ProductAliasDeleteByBarcode(w, r)
+	case util.ClientUser:
+		ClientHandlers.ProductAliasDeleteByBarcode(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+//** END PRODUCT ALIAS ROUTES **//

@@ -52,6 +52,7 @@ func PostgresInit() {
 		&OrderItem{},
 		&Inventory{},
 		&Product{},
+		&ProductAlias{},
 		&Kit{},
 		&ProductKit{},
 		&OrderTags{},

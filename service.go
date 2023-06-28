@@ -172,6 +172,13 @@ func main() {
 	protected.HandleFunc("/product-search", handlers.ProductSearch).Methods(http.MethodGet)
 	//** END PRODUCT ROUTES **//
 
+	//** PRODUCT ALIAS ROUTES **//
+	protected.HandleFunc("/product-aliases", handlers.ProductAliasCreate).Methods(http.MethodPost)
+	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasGetByBarcode).Methods(http.MethodGet)
+	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasUpdateByBarcode).Methods(http.MethodPatch)
+	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasDeleteByBarcode).Methods(http.MethodDelete)
+	//** END PRODUCT ALIAS ROUTES **//
+
 	//** VENDOR ROUTES **//
 	protected.HandleFunc("/vendor/list", handlers.VendorList).Methods(http.MethodGet)
 	protected.HandleFunc("/vendor/create", handlers.VendorCreate).Methods(http.MethodPost)
