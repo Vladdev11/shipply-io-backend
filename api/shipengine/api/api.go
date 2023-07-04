@@ -7,11 +7,15 @@ import (
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-var apiClient = NewAPIClient()
+var apiClient *APIClient
 
 type APIClient struct {
 	httpClient *http.Client
 	apiHost    string
+}
+
+func Init() {
+	apiClient = NewAPIClient()
 }
 
 func NewAPIClient() *APIClient {

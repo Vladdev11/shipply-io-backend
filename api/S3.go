@@ -20,18 +20,10 @@ func InitAWSS3() {
 	var s3Session *session.Session
 	var err error
 
-	if *util.DevelopmentMode {
-		s3Session, err = session.NewSession(&aws.Config{
-			Region:      aws.String(util.ConfigS3DevelopmentRegion),
-			Credentials: credentials.NewStaticCredentials(util.ConfigAWSDevelopmentAccessKeyID, util.ConfigAWSDevelopmentSecretAccessKey, ""),
-		})
-	} else {
-		s3Session, err = session.NewSession(&aws.Config{
-			Region:      aws.String(util.ConfigS3Region),
-			Credentials: credentials.NewStaticCredentials(util.ConfigAWSAccessKeyID, util.ConfigAWSDevelopmentSecretAccessKey, ""),
-		})
-	}
-
+	s3Session, err = session.NewSession(&aws.Config{
+		Region:      aws.String(util.ConfigS3Region),
+		Credentials: credentials.NewStaticCredentials(util.ConfigAWSAccessKeyID, util.ConfigAWSSecretAccessKey, ""),
+	})
 	if err != nil {
 		panic(errors.New("failed to connect to s3"))
 	}
@@ -45,11 +37,7 @@ func UploadAttachmentToS3(file multipart.File, uuid string, extension string) er
 		Body: file,
 	}
 
-	if *util.DevelopmentMode {
-		putObjectInput.Bucket = aws.String(util.ConfigS3DevelopmentAttachmentBucket)
-	} else {
-		putObjectInput.Bucket = aws.String(util.ConfigS3AttachmentBucket)
-	}
+	putObjectInput.Bucket = aws.String(util.ConfigS3AttachmentBucket)
 
 	_, err := S3.PutObject(putObjectInput)
 	if err != nil {
@@ -66,11 +54,7 @@ func UploadFileToCDN(file multipart.File, uuid string, extension string, fileTyp
 		ContentType: aws.String(fileType),
 	}
 
-	if *util.DevelopmentMode {
-		putObjectInput.Bucket = aws.String(util.ConfigS3DevelopmentCDNBucket)
-	} else {
-		putObjectInput.Bucket = aws.String(util.ConfigS3CDNBucket)
-	}
+	putObjectInput.Bucket = aws.String(util.ConfigS3CDNBucket)
 
 	_, err := S3.PutObject(putObjectInput)
 	if err != nil {
@@ -87,11 +71,7 @@ func GetAttachmentURL(uuid string, extension string, filename string) (string, e
 		ResponseContentDisposition: aws.String("attachment; filename=" + filename),
 	}
 
-	if *util.DevelopmentMode {
-		getObjectInput.Bucket = aws.String(util.ConfigS3DevelopmentAttachmentBucket)
-	} else {
-		getObjectInput.Bucket = aws.String(util.ConfigS3AttachmentBucket)
-	}
+	getObjectInput.Bucket = aws.String(util.ConfigS3AttachmentBucket)
 
 	req, _ := S3.GetObjectRequest(getObjectInput)
 	url, err := req.Presign(time.Hour * 24)
@@ -108,11 +88,7 @@ func DeleteAttachmentFromS3(uuid string, extension string) error {
 		Key: aws.String(uuid + extension),
 	}
 
-	if *util.DevelopmentMode {
-		deleteObjectInput.Bucket = aws.String(util.ConfigS3DevelopmentAttachmentBucket)
-	} else {
-		deleteObjectInput.Bucket = aws.String(util.ConfigS3AttachmentBucket)
-	}
+	deleteObjectInput.Bucket = aws.String(util.ConfigS3AttachmentBucket)
 
 	_, err := S3.DeleteObject(deleteObjectInput)
 	if err != nil {

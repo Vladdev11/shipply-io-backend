@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 
 	gorillaHandlers "github.com/gorilla/handlers"
@@ -11,12 +12,19 @@ import (
 
 	"github.com/shipply-io/shipply-io-backend/api"
 	SendgridAPI "github.com/shipply-io/shipply-io-backend/api/sendgrid"
+	ShipengineAPI "github.com/shipply-io/shipply-io-backend/api/shipengine/api"
 	"github.com/shipply-io/shipply-io-backend/handlers"
 	"github.com/shipply-io/shipply-io-backend/middlewares"
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/tasks"
 	"github.com/shipply-io/shipply-io-backend/util"
+
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 )
+
+var k = koanf.New(".")
 
 func main() {
 
@@ -27,12 +35,30 @@ func main() {
 
 	flag.Parse()
 
+	var configPath string
+	if *dev {
+		configPath = "config.dev.yml"
+	} else {
+		configPath = "config.prod.yml"
+	}
+
+	// TODO: Just gonna do yaml parsing from local file for now
+	// We should probably discuss what we want to do for this
+	// later with regards to proper CI/CD.
+	if err := k.Load(file.Provider(configPath), yaml.Parser()); err != nil {
+		log.Fatalf("error loading config: %v", err)
+	}
+
 	util.DevelopmentMode = dev
 	util.PrintSQL = printSQL
 
+	util.LoadConfig(k)
+	// TODO: Get rid of this as much as possible later...
+	// Especially the part with the database connection, they should be using context values instead...
 	models.PostgresInit()
 	api.InitAWSS3()
 	SendgridAPI.Init()
+	ShipengineAPI.Init()
 
 	// ** START UP FUNCTIONS ** //
 

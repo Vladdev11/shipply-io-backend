@@ -17,11 +17,7 @@ var PGDB *gorm.DB
 
 func PostgresInit() {
 	//set postgres dsn
-	//if development, use local postgres
 	dsn := "host=" + util.ConfigPgAddr + " user=" + util.ConfigPgUsername + " password=" + util.ConfigPgPassword + " dbname=" + util.ConfigPgDatabase + " port=5432 sslmode=disable TimeZone=UTC"
-	if *util.DevelopmentMode {
-		dsn = "host=" + util.ConfigPgDevelopmentAddr + " user=" + util.ConfigPgDevelopmentUsername + " password=" + util.ConfigPgDevelopmentPassword + " dbname=" + util.ConfigPgDevelopmentDatabase + " port=5432 sslmode=disable TimeZone=UTC"
-	}
 
 	newLogger := logger.Default
 	if *util.PrintSQL {
