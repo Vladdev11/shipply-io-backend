@@ -1,8 +1,11 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+
+	"github.com/shipply-io/shipply-io-backend/util"
 )
 
 // override table name for product aliases
@@ -17,12 +20,12 @@ type ProductAlias struct {
 	Quantity  int
 }
 
-func (pa *ProductAlias) Create() error {
-	return PGDB.Create(pa).Error
+func (pa *ProductAlias) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(pa).Error
 }
 
-func (pa *ProductAlias) Delete() error {
-	return PGDB.Delete(pa).Error
+func (pa *ProductAlias) Delete(ctx context.Context) error {
+	return util.DBFromContext(ctx).Delete(pa).Error
 }
 
 type ProductAliasCreateRequest struct {
@@ -63,7 +66,7 @@ func (pa *ProductAliasCreateRequest) ParseAndValidateRequest(r *http.Request) []
 	return nil
 }
 
-func (pa *ProductAlias) UpdateWithRequest(paur *ProductAliasUpdateRequest) error {
+func (pa *ProductAlias) UpdateWithRequest(ctx context.Context, paur *ProductAliasUpdateRequest) error {
 	if paur.ProductID != 0 {
 		pa.ProductID = paur.ProductID
 	}
@@ -71,27 +74,27 @@ func (pa *ProductAlias) UpdateWithRequest(paur *ProductAliasUpdateRequest) error
 		pa.Quantity = paur.Quantity
 	}
 
-	if err := PGDB.Save(pa).Error; err != nil {
+	if err := util.DBFromContext(ctx).Save(pa).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func IsProductAliasBarcodeUnique(clientID int, barcode string) bool {
+func IsProductAliasBarcodeUnique(ctx context.Context, clientID int, barcode string) bool {
 	var count int64
-	PGDB.Model(&ProductAlias{}).Where("barcode = ?", barcode).Count(&count)
+	util.DBFromContext(ctx).Model(&ProductAlias{}).Where("barcode = ?", barcode).Count(&count)
 
 	// Check if products with the same barcode and client exist in main product table
 	if count == 0 {
-		PGDB.Model(&Product{}).Where("client_id = ? AND barcode = ?", clientID, barcode).Count(&count)
+		util.DBFromContext(ctx).Model(&Product{}).Where("client_id = ? AND barcode = ?", clientID, barcode).Count(&count)
 	}
 
 	return count == 0
 }
 
-func GetProductAliasByBarcode(barcode string) (*ProductAlias, error) {
+func GetProductAliasByBarcode(ctx context.Context, barcode string) (*ProductAlias, error) {
 	productAlias := &ProductAlias{}
-	err := PGDB.Where("barcode = ?", barcode).First(productAlias).Error
+	err := util.DBFromContext(ctx).Where("barcode = ?", barcode).First(productAlias).Error
 	return productAlias, err
 }

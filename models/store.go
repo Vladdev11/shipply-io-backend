@@ -1,9 +1,10 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -108,7 +109,7 @@ func (s *StoreUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -137,13 +138,13 @@ func (s *StoreUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
 
 }
 
-func (s *Store) UpdateWithRequest(request *StoreUpdateRequest) error {
+func (s *Store) UpdateWithRequest(ctx context.Context, request *StoreUpdateRequest) error {
 
 	if request.Name != "" {
 		s.Name = request.Name
 	}
 
-	if err := PGDB.Save(s).Error; err != nil {
+	if err := util.DBFromContext(ctx).Save(s).Error; err != nil {
 		return err
 	}
 
@@ -219,7 +220,7 @@ type ShopifyCredentials struct {
 	ShopifyInstallNonce string `json:"shopify_install_nonce"`
 }
 
-func (s *Store) Create() error {
+func (s *Store) Create(ctx context.Context) error {
 	var err error
 	//init default settings
 	if s.Settings == nil {
@@ -231,42 +232,42 @@ func (s *Store) Create() error {
 			}
 		}
 	}
-	return PGDB.Create(s).Error
+	return util.DBFromContext(ctx).Create(s).Error
 }
 
-func (s *Store) Delete() error {
-	return PGDB.Delete(s).Error
+func (s *Store) Delete(ctx context.Context) error {
+	return util.DBFromContext(ctx).Delete(s).Error
 }
 
-func (s *Store) Activate() error {
+func (s *Store) Activate(ctx context.Context) error {
 	s.Active = true
-	return PGDB.Save(s).Error
+	return util.DBFromContext(ctx).Save(s).Error
 }
 
-func (s *Store) Deactivate() error {
+func (s *Store) Deactivate(ctx context.Context) error {
 	s.Active = false
-	return PGDB.Save(s).Error
+	return util.DBFromContext(ctx).Save(s).Error
 }
 
-func (s *Store) UpdateAPICredentials(newCredentials interface{}) error {
+func (s *Store) UpdateAPICredentials(ctx context.Context, newCredentials interface{}) error {
 	credentialsJSON, err := json.Marshal(newCredentials)
 	if err != nil {
 		return err
 	}
 	s.APICredentials = json.RawMessage(credentialsJSON)
-	return PGDB.Save(s).Error
+	return util.DBFromContext(ctx).Save(s).Error
 }
 
-func (s *Store) UpdateSettings(newSettings interface{}) error {
+func (s *Store) UpdateSettings(ctx context.Context, newSettings interface{}) error {
 	settingsJSON, err := json.Marshal(newSettings)
 	if err != nil {
 		return err
 	}
 	s.Settings = json.RawMessage(settingsJSON)
-	return PGDB.Save(s).Error
+	return util.DBFromContext(ctx).Save(s).Error
 }
 
-func (s *Store) GetShopifySettings() (*ShopifyStoreSettings, error) {
+func (s *Store) GetShopifySettings(ctx context.Context) (*ShopifyStoreSettings, error) {
 
 	if s.MarketplaceID != util.ShopifyMarketplaceID {
 		return nil, errors.New("Store is not a Shopify store")
@@ -281,7 +282,7 @@ func (s *Store) GetShopifySettings() (*ShopifyStoreSettings, error) {
 	return &settings, nil
 }
 
-func (s *Store) GetShopifyCredentials() (*ShopifyCredentials, error) {
+func (s *Store) GetShopifyCredentials(ctx context.Context) (*ShopifyCredentials, error) {
 
 	if s.MarketplaceID != util.ShopifyMarketplaceID {
 		return nil, errors.New("Store is not a Shopify store")
@@ -322,46 +323,46 @@ func (s *Store) GetShopifyCredentials() (*ShopifyCredentials, error) {
 	return &credentials, nil
 }
 
-func (s *Store) DeleteAccessToken() error {
+func (s *Store) DeleteAccessToken(ctx context.Context) error {
 
-	credentials, err := s.GetShopifyCredentials()
+	credentials, err := s.GetShopifyCredentials(ctx)
 	if err != nil {
 		return err
 	}
 
 	credentials.AccessToken = ""
-	return s.UpdateAPICredentials(credentials)
+	return s.UpdateAPICredentials(ctx, credentials)
 
 }
 
-func (s *Store) DeleteShopifyLocations() error {
-	return PGDB.Where("store_id = ?", s.ID).Delete(&ShopifyLocation{}).Error
+func (s *Store) DeleteShopifyLocations(ctx context.Context) error {
+	return util.DBFromContext(ctx).Where("store_id = ?", s.ID).Delete(&ShopifyLocation{}).Error
 }
 
-func GetShopifyStoreByShopName(shopName string) (*Store, error) {
+func GetShopifyStoreByShopName(ctx context.Context, shopName string) (*Store, error) {
 	var store Store
-	err := PGDB.Where("api_credentials ->> 'shop_name' = ?", shopName).First(&store).Error
+	err := util.DBFromContext(ctx).Where("api_credentials ->> 'shop_name' = ?", shopName).First(&store).Error
 	if err != nil {
 		return nil, err
 	}
 	return &store, nil
 }
 
-func (s *Store) ShopifyShopName() string {
+func (s *Store) ShopifyShopName(ctx context.Context) string {
 	var shopName string
-	PGDB.Raw("SELECT api_credentials ->> 'shop_name' FROM stores WHERE id = ?", s.ID).Scan(&shopName)
+	util.DBFromContext(ctx).Raw("SELECT api_credentials ->> 'shop_name' FROM stores WHERE id = ?", s.ID).Scan(&shopName)
 	return shopName
 }
 
-func (s *Store) ShopifyAccessToken() string {
+func (s *Store) ShopifyAccessToken(ctx context.Context) string {
 	var accessToken string
-	PGDB.Raw("SELECT api_credentials ->> 'access_token' FROM stores WHERE id = ?", s.ID).Scan(&accessToken)
+	util.DBFromContext(ctx).Raw("SELECT api_credentials ->> 'access_token' FROM stores WHERE id = ?", s.ID).Scan(&accessToken)
 	return accessToken
 }
 
-func GetStoreByID(id int) (*Store, error) {
+func GetStoreByID(ctx context.Context, id int) (*Store, error) {
 	var store Store
-	err := PGDB.First(&store, id).Error
+	err := util.DBFromContext(ctx).First(&store, id).Error
 	if err != nil {
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import (
 )
 
 func ListOrders(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -15,7 +16,7 @@ func ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -28,13 +29,13 @@ func ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, count, total, err := user.Client.GetOrders(request)
+	orders, count, total, err := user.Client.GetOrders(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get orders", http.StatusInternalServerError)
 		return
 	}
 
-	searchResults, err := models.ConvertOrdersToSearchResults(orders, total, count)
+	searchResults, err := models.ConvertOrdersToSearchResults(ctx, orders, total, count)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert orders to search results", http.StatusBadRequest)
 		return
@@ -45,6 +46,7 @@ func ListOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetOrder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -58,13 +60,13 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := models.GetOrderByID(orderID)
+	order, err := models.GetOrderByID(ctx, orderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get order", http.StatusBadRequest)
 		return
 	}
 
-	err = order.GetStore()
+	err = order.GetStore(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return
@@ -75,6 +77,6 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, order.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, order.ConvertToReturnJSON(ctx), http.StatusOK)
 
 }

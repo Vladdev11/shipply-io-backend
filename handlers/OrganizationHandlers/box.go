@@ -13,19 +13,21 @@ import (
 )
 
 func BoxList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
 	}
 
-	boxes, err := user.Organization.GetBoxes()
+	boxes, err := user.Organization.GetBoxes(ctx)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		util.ErrorResponse(w, "failed to get boxes", http.StatusBadRequest)
 		return
@@ -44,13 +46,15 @@ func BoxList(w http.ResponseWriter, r *http.Request) {
 }
 
 func BoxCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -83,7 +87,7 @@ func BoxCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shipenginePackage, err := shipengineHandlers.CreatePackage(ShipengineModels.Package{
+	shipenginePackage, err := shipengineHandlers.CreatePackage(ctx, ShipengineModels.Package{
 		PackageCode: fmt.Sprintf("custom_%s", uuid),
 		Name:        box.Name,
 		Dimensions: &ShipengineModels.Dimensions{
@@ -102,7 +106,7 @@ func BoxCreate(w http.ResponseWriter, r *http.Request) {
 	box.ShipenginePackageID = shipenginePackage.PackageID
 	box.ShipenginePackageCode = shipenginePackage.PackageCode
 
-	err = box.Create()
+	err = box.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create box", http.StatusBadRequest)
 		return
@@ -112,13 +116,15 @@ func BoxCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetBox(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -130,7 +136,7 @@ func GetBox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	box, err := models.GetBoxByID(boxID)
+	box, err := models.GetBoxByID(ctx, boxID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get box", http.StatusBadRequest)
 		return
@@ -147,13 +153,15 @@ func GetBox(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteBox(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -165,7 +173,7 @@ func DeleteBox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	box, err := models.GetBoxByID(boxID)
+	box, err := models.GetBoxByID(ctx, boxID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get box", http.StatusBadRequest)
 		return
@@ -178,7 +186,7 @@ func DeleteBox(w http.ResponseWriter, r *http.Request) {
 
 	//TODO logic around when we prevent a box from being deleted
 
-	err = box.Delete()
+	err = box.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete box", http.StatusBadRequest)
 		return
@@ -188,13 +196,15 @@ func DeleteBox(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateBox(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -206,7 +216,7 @@ func UpdateBox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	box, err := models.GetBoxByID(boxID)
+	box, err := models.GetBoxByID(ctx, boxID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get box", http.StatusBadRequest)
 		return
@@ -227,7 +237,7 @@ func UpdateBox(w http.ResponseWriter, r *http.Request) {
 
 	box.UpdateWithRequest(request)
 
-	err = box.Update()
+	err = box.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update box", http.StatusBadRequest)
 		return

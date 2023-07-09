@@ -1,5 +1,11 @@
 package models
 
+import (
+	"context"
+
+	"github.com/shipply-io/shipply-io-backend/util"
+)
+
 type PickSessionOrderItem struct {
 	ID                 int `json:"id" gorm:"primary_key"`
 	PickSessionID      int `json:"pick_session_id"`
@@ -28,26 +34,26 @@ type PickSessionOrderItemReturnJSON struct {
 	Product   *ProductReturnJSON  `json:"product"`
 }
 
-func (psoi *PickSessionOrderItem) Create() error {
-	err := PGDB.Create(psoi).Error
+func (psoi *PickSessionOrderItem) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(psoi).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (psoi *PickSessionOrderItem) Pick() error {
+func (psoi *PickSessionOrderItem) Pick(ctx context.Context) error {
 	psoi.QuantityPicked++
-	err := PGDB.Save(psoi).Error
+	err := util.DBFromContext(ctx).Save(psoi).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (psoi *PickSessionOrderItem) GetPickSessionOrder() error {
+func (psoi *PickSessionOrderItem) GetPickSessionOrder(ctx context.Context) error {
 
-	err := PGDB.Where("id = ?", psoi.PickSessionOrderID).First(&psoi.PickSessionOrder).Error
+	err := util.DBFromContext(ctx).Where("id = ?", psoi.PickSessionOrderID).First(&psoi.PickSessionOrder).Error
 	if err != nil {
 		return err
 	}
@@ -55,30 +61,30 @@ func (psoi *PickSessionOrderItem) GetPickSessionOrder() error {
 	return nil
 }
 
-func (psoi *PickSessionOrderItem) GetOrderItem() error {
-	err := PGDB.Where("id = ?", psoi.OrderItemID).First(&psoi.OrderItem).Error
+func (psoi *PickSessionOrderItem) GetOrderItem(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Where("id = ?", psoi.OrderItemID).First(&psoi.OrderItem).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (psoi *PickSessionOrderItem) GetProduct() error {
-	err := PGDB.Where("id = ?", psoi.ProductID).First(&psoi.Product).Error
+func (psoi *PickSessionOrderItem) GetProduct(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Where("id = ?", psoi.ProductID).First(&psoi.Product).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (psoi *PickSessionOrderItem) ConvertToReturnJSON() PickSessionOrderItemReturnJSON {
+func (psoi *PickSessionOrderItem) ConvertToReturnJSON(ctx context.Context) PickSessionOrderItemReturnJSON {
 
-	err := psoi.GetOrderItem()
+	err := psoi.GetOrderItem(ctx)
 	if err != nil {
 		return PickSessionOrderItemReturnJSON{}
 	}
 
-	err = psoi.GetProduct()
+	err = psoi.GetProduct(ctx)
 	if err != nil {
 		return PickSessionOrderItemReturnJSON{}
 	}
@@ -89,16 +95,16 @@ func (psoi *PickSessionOrderItem) ConvertToReturnJSON() PickSessionOrderItemRetu
 		QuantityToPick: psoi.QuantityToPick,
 		QuantityPicked: psoi.QuantityPicked,
 		ProductID:      psoi.ProductID,
-		OrderItem:      psoi.OrderItem.ConvertToReturnJSON(),
+		OrderItem:      psoi.OrderItem.ConvertToReturnJSON(ctx),
 		Product:        psoi.Product.ConvertToReturnJSON(),
 	}
 
 	return returnJSON
 }
 
-func GetPickSessionOrderItemsByPickSessionID(pickSessionID int) ([]PickSessionOrderItem, error) {
+func GetPickSessionOrderItemsByPickSessionID(ctx context.Context, pickSessionID int) ([]PickSessionOrderItem, error) {
 	var pickSessionOrderItems []PickSessionOrderItem
-	err := PGDB.Where("pick_session_id = ?", pickSessionID).Find(&pickSessionOrderItems).Error
+	err := util.DBFromContext(ctx).Where("pick_session_id = ?", pickSessionID).Find(&pickSessionOrderItems).Error
 	if err != nil {
 		return nil, err
 	}

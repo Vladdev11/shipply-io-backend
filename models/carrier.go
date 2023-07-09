@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"time"
 
 	"github.com/shipply-io/shipply-io-backend/util"
@@ -49,9 +50,9 @@ func (c *Carrier) ConvertToReturnJSON() CarrierReturnJSON {
 	}
 }
 
-func GetCarriers() ([]Carrier, error) {
+func GetCarriers(ctx context.Context) ([]Carrier, error) {
 	var carriers []Carrier
-	err := PGDB.Find(&carriers).Error
+	err := util.DBFromContext(ctx).Find(&carriers).Error
 	if err != nil {
 		return nil, err
 	}
@@ -59,9 +60,9 @@ func GetCarriers() ([]Carrier, error) {
 	return carriers, nil
 }
 
-func GetCarrierByID(id int) (Carrier, error) {
+func GetCarrierByID(ctx context.Context, id int) (Carrier, error) {
 	var carrier Carrier
-	err := PGDB.First(&carrier, id).Error
+	err := util.DBFromContext(ctx).First(&carrier, id).Error
 	if err != nil {
 		return Carrier{}, err
 	}
@@ -69,8 +70,8 @@ func GetCarrierByID(id int) (Carrier, error) {
 	return carrier, nil
 }
 
-func (carrier *Carrier) Create() error {
-	return PGDB.Create(&carrier).Error
+func (carrier *Carrier) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(&carrier).Error
 }
 
 func GetCarrierRequiredFields(carriers []Carrier) []Carrier {

@@ -1,28 +1,29 @@
 package tasks
 
 import (
+	"context"
 	"errors"
 
 	"github.com/shipply-io/shipply-io-backend/models"
 	"gorm.io/gorm"
 )
 
-func AllocateInventoryByProduct(productID int) error {
+func AllocateInventoryByProduct(ctx context.Context, productID int) error {
 
 	//get product
-	product, err := models.GetProductByID(productID)
+	product, err := models.GetProductByID(ctx, productID)
 	if err != nil {
 		return errors.New("failed to find product")
 	}
 
 	//get inventory by product
-	inventory, err := models.GetInventoryByProductID(product.ID)
+	inventory, err := models.GetInventoryByProductID(ctx, product.ID)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return errors.New("failed to find inventory")
 	}
 
 	//get order items by product that are not shipped
-	orderItems, err := models.GetOrderItemsToShipByProductID(product.ID)
+	orderItems, err := models.GetOrderItemsToShipByProductID(ctx, product.ID)
 	if err != nil {
 		return errors.New("failed to find order items")
 	}
@@ -30,7 +31,7 @@ func AllocateInventoryByProduct(productID int) error {
 	//skip if no order items
 	if len(orderItems) == 0 {
 		//update order item inventory levels
-		models.UpdateProductInventoryLevelsByProductID(product.ID)
+		models.UpdateProductInventoryLevelsByProductID(ctx, product.ID)
 		return nil
 	}
 
@@ -61,13 +62,13 @@ func AllocateInventoryByProduct(productID int) error {
 	}
 
 	//batch update order items
-	err = models.BatchUpdateOrderItemsAllocationCount(orderItems)
+	err = models.BatchUpdateOrderItemsAllocationCount(ctx, orderItems)
 	if err != nil {
 		return errors.New("failed to update order items")
 	}
 
 	//update order item inventory levels
-	models.UpdateProductInventoryLevelsByProductID(product.ID)
+	models.UpdateProductInventoryLevelsByProductID(ctx, product.ID)
 
 	return nil
 }

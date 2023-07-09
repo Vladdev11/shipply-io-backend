@@ -16,6 +16,7 @@ import (
 // TODO add logging through whole file
 
 func ShippingScanTote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -23,7 +24,7 @@ func ShippingScanTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -42,7 +43,7 @@ func ShippingScanTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tote, err := models.GetLocationByID(toteLocationID)
+	tote, err := models.GetLocationByID(ctx, toteLocationID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get tote", http.StatusBadRequest)
 		return
@@ -53,12 +54,12 @@ func ShippingScanTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !user.Organization.IsWarehouseOwner(tote.WarehouseID) {
+	if !user.Organization.IsWarehouseOwner(ctx, tote.WarehouseID) {
 		util.ErrorResponse(w, "user does not have access to warehouse", http.StatusForbidden)
 		return
 	}
 
-	pickSessionOrder, err := tote.GetActivePickSessionOrder()
+	pickSessionOrder, err := tote.GetActivePickSessionOrder(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order", http.StatusBadRequest)
 		return
@@ -69,13 +70,13 @@ func ShippingScanTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := pickSessionOrder.GetOrder()
+	order, err := pickSessionOrder.GetOrder(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get order", http.StatusBadRequest)
 		return
 	}
 
-	err = order.GetShippingMethod()
+	err = order.GetShippingMethod(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get shipping method", http.StatusBadRequest)
 		return
@@ -93,6 +94,7 @@ func ShippingScanTote(w http.ResponseWriter, r *http.Request) {
 }
 
 func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -100,7 +102,7 @@ func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -112,19 +114,19 @@ func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSessionOrder, err := models.GetPickSessionOrderByID(pickSessionOrderID)
+	pickSessionOrder, err := models.GetPickSessionOrderByID(ctx, pickSessionOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order", http.StatusBadRequest)
 		return
 	}
 
-	err = pickSessionOrder.GetPickSession()
+	err = pickSessionOrder.GetPickSession(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsWarehouseOwner(pickSessionOrder.PickSession.WarehouseID) {
+	if !user.Organization.IsWarehouseOwner(ctx, pickSessionOrder.PickSession.WarehouseID) {
 		util.ErrorResponse(w, "user does not have access to warehouse", http.StatusForbidden)
 		return
 	}
@@ -144,13 +146,13 @@ func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := pickSessionOrder.GetOrder()
+	order, err := pickSessionOrder.GetOrder(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get order", http.StatusBadRequest)
 		return
 	}
 
-	err = order.GetShippingMethod()
+	err = order.GetShippingMethod(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get shipping method", http.StatusBadRequest)
 		return
@@ -161,14 +163,14 @@ func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = pickSessionOrder.GetPickSessionOrderItems()
+	err = pickSessionOrder.GetPickSessionOrderItems(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order items", http.StatusBadRequest)
 		return
 	}
 
 	// TODO suggested boxes (Brennan)
-	boxes, err := user.Organization.GetBoxes()
+	boxes, err := user.Organization.GetBoxes(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get boxes", http.StatusBadRequest)
 		return
@@ -180,11 +182,11 @@ func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
 		ToteID:                  *pickSessionOrder.LocationID,
 		HasError:                pickSessionOrder.HasError,
 		PickSessionOrderErrorID: pickSessionOrder.PickSessionOrderErrorID,
-		Order:                   *order.ConvertToReturnJSON(),
+		Order:                   *order.ConvertToReturnJSON(ctx),
 	}
 
 	if pickSessionOrder.ShippingRateID != 0 {
-		err := pickSessionOrder.GetShippingRate()
+		err := pickSessionOrder.GetShippingRate(ctx)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get rate", http.StatusBadRequest)
 			return
@@ -194,7 +196,7 @@ func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, pickSessionOrderItem := range pickSessionOrder.PickSessionOrderItems {
-		pickSessionOrderItemJSON := pickSessionOrderItem.ConvertToReturnJSON()
+		pickSessionOrderItemJSON := pickSessionOrderItem.ConvertToReturnJSON(ctx)
 		response.PickSessionOrderItems = append(response.PickSessionOrderItems, pickSessionOrderItemJSON)
 	}
 
@@ -208,6 +210,7 @@ func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func ShippingShopRates(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -215,7 +218,7 @@ func ShippingShopRates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -227,19 +230,19 @@ func ShippingShopRates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSessionOrder, err := models.GetPickSessionOrderByID(pickSessionOrderID)
+	pickSessionOrder, err := models.GetPickSessionOrderByID(ctx, pickSessionOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order", http.StatusBadRequest)
 		return
 	}
 
-	err = pickSessionOrder.GetPickSession()
+	err = pickSessionOrder.GetPickSession(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsWarehouseOwner(pickSessionOrder.PickSession.WarehouseID) {
+	if !user.Organization.IsWarehouseOwner(ctx, pickSessionOrder.PickSession.WarehouseID) {
 		util.ErrorResponse(w, "user does not have access to warehouse", http.StatusForbidden)
 		return
 	}
@@ -256,13 +259,13 @@ func ShippingShopRates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shipengineRateShopRequest, err := ShipengineModels.ConstructRateShopRequest(pickSessionOrder, request.BoxID, request.Weight, true)
+	shipengineRateShopRequest, err := ShipengineModels.ConstructRateShopRequest(ctx, pickSessionOrder, request.BoxID, request.Weight, true)
 	if err != nil {
 		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	shipEngineRateShopResponse, err := ShipengineHandlers.ShopRates(*shipengineRateShopRequest)
+	shipEngineRateShopResponse, err := ShipengineHandlers.ShopRates(ctx, *shipengineRateShopRequest)
 	if err != nil {
 		fmt.Println(err)
 		util.ErrorResponse(w, "failed to shop rates", http.StatusBadRequest)
@@ -274,12 +277,12 @@ func ShippingShopRates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get a list of carrier connections that are active for response structure
-	order, err := pickSessionOrder.GetOrder()
+	order, err := pickSessionOrder.GetOrder(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get order", http.StatusBadRequest)
 	}
 
-	err = order.GetShippingMethod()
+	err = order.GetShippingMethod(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get shipping method", http.StatusBadRequest)
 	}
@@ -298,7 +301,7 @@ func ShippingShopRates(w http.ResponseWriter, r *http.Request) {
 
 	carrierConnections := []models.CarrierConnection{}
 	for _, carrier := range shippingMethodCarriers {
-		carrierConnection, err := models.GetCarrierConnectionByID(carrier.CarrierConnectionID)
+		carrierConnection, err := models.GetCarrierConnectionByID(ctx, carrier.CarrierConnectionID)
 		if err != nil {
 			// TODO error log
 			continue
@@ -360,7 +363,7 @@ func ShippingShopRates(w http.ResponseWriter, r *http.Request) {
 				PickSessionOrderID:        pickSessionOrder.ID,
 				DeliveryDays:              shipengineRate.DeliveryDays,
 			}
-			err = shippingRate.Create()
+			err = shippingRate.Create(ctx)
 			if err != nil {
 				util.ErrorResponse(w, "failed to create shipping rate", http.StatusBadRequest)
 				return
@@ -384,6 +387,7 @@ func ShippingShopRates(w http.ResponseWriter, r *http.Request) {
 
 // TODO store selected box so that we can display it on the frontend so packers know which box the selected rate is for
 func ShippingSelectRate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -391,7 +395,7 @@ func ShippingSelectRate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
@@ -403,19 +407,19 @@ func ShippingSelectRate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSessionOrder, err := models.GetPickSessionOrderByID(pickSessionOrderID)
+	pickSessionOrder, err := models.GetPickSessionOrderByID(ctx, pickSessionOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order", http.StatusBadRequest)
 		return
 	}
 
-	err = pickSessionOrder.GetPickSession()
+	err = pickSessionOrder.GetPickSession(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsWarehouseOwner(pickSessionOrder.PickSession.WarehouseID) {
+	if !user.Organization.IsWarehouseOwner(ctx, pickSessionOrder.PickSession.WarehouseID) {
 		util.ErrorResponse(w, "cannot access pick session order", http.StatusForbidden)
 		return
 	}
@@ -427,7 +431,7 @@ func ShippingSelectRate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shippingRate, err := models.GetShippingRateByID(request.ShippingRateID)
+	shippingRate, err := models.GetShippingRateByID(ctx, request.ShippingRateID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get shipping rate", http.StatusBadRequest)
 		return
@@ -438,7 +442,7 @@ func ShippingSelectRate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	carrierConnection, err := models.GetCarrierConnectionByID(shippingRate.CarrierConnectionID)
+	carrierConnection, err := models.GetCarrierConnectionByID(ctx, shippingRate.CarrierConnectionID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get carrier connection", http.StatusBadRequest)
 		return
@@ -450,7 +454,7 @@ func ShippingSelectRate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pickSessionOrder.ShippingRateID = shippingRate.ID
-	err = pickSessionOrder.Update()
+	err = pickSessionOrder.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update pick session order", http.StatusBadRequest)
 		return
@@ -460,6 +464,7 @@ func ShippingSelectRate(w http.ResponseWriter, r *http.Request) {
 }
 
 func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -467,7 +472,7 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
@@ -479,19 +484,19 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSessionOrder, err := models.GetPickSessionOrderByID(pickSessionOrderID)
+	pickSessionOrder, err := models.GetPickSessionOrderByID(ctx, pickSessionOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order", http.StatusBadRequest)
 		return
 	}
 
-	err = pickSessionOrder.GetPickSession()
+	err = pickSessionOrder.GetPickSession(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsWarehouseOwner(pickSessionOrder.PickSession.WarehouseID) {
+	if !user.Organization.IsWarehouseOwner(ctx, pickSessionOrder.PickSession.WarehouseID) {
 		util.ErrorResponse(w, "cannot access pick session order", http.StatusForbidden)
 		return
 	}
@@ -511,13 +516,13 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := pickSessionOrder.GetOrder()
+	order, err := pickSessionOrder.GetOrder(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get order", http.StatusBadRequest)
 		return
 	}
 
-	err = order.GetShippingMethod()
+	err = order.GetShippingMethod(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get shipping method", http.StatusBadRequest)
 		return
@@ -528,7 +533,7 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = pickSessionOrder.GetPickSessionOrderItems()
+	err = pickSessionOrder.GetPickSessionOrderItems(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order items", http.StatusBadRequest)
 		return
@@ -546,7 +551,7 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 	if pickSessionOrder.ShippingRateID == 0 {
 		purchaseLabelFromPreviousRate = false
 	} else {
-		err = pickSessionOrder.GetShippingRate()
+		err = pickSessionOrder.GetShippingRate(ctx)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get shipping rate", http.StatusBadRequest)
 			return
@@ -564,7 +569,7 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 	if purchaseLabelFromPreviousRate {
 
 		// TODO add settings for label format and layout
-		shipenginePurchaseLabelFromRateResponse, err := ShipengineHandlers.PurchaseLabelFromRate(ShipengineModels.PurchaseLabelFromRateRequest{
+		shipenginePurchaseLabelFromRateResponse, err := ShipengineHandlers.PurchaseLabelFromRate(ctx, ShipengineModels.PurchaseLabelFromRateRequest{
 			LabelFormat: "pdf",
 			LabelLayout: "4x6",
 		}, pickSessionOrder.ShippingRate.ShipengineRateID)
@@ -587,14 +592,14 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 			// TODO change to s3 url
 			LabelPDFURL: shipenginePurchaseLabelFromRateResponse.LabelDownload.PDF,
 		}
-		err = shipment.Create()
+		err = shipment.Create(ctx)
 		if err != nil {
 			util.ErrorResponse(w, "failed to create shipment", http.StatusBadRequest)
 			return
 		}
 
 		pickSessionOrder.Shipped = true
-		err = pickSessionOrder.Update()
+		err = pickSessionOrder.Update(ctx)
 		if err != nil {
 			util.ErrorResponse(w, "failed to update pick session order", http.StatusBadRequest)
 			return
@@ -618,7 +623,7 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 
 	carrierConnections := []models.CarrierConnection{}
 	for _, carrier := range shippingMethodCarriers {
-		carrierConnection, err := models.GetCarrierConnectionByID(carrier.CarrierConnectionID)
+		carrierConnection, err := models.GetCarrierConnectionByID(ctx, carrier.CarrierConnectionID)
 		if err != nil {
 			// TODO error log
 			continue
@@ -643,13 +648,13 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Rate shop and select rate based on mapping (if cheapest, shop all rates -- determined based on if cheapestServiceCode is an empty string)
-	shipengineRateShopRequest, err := ShipengineModels.ConstructRateShopRequest(pickSessionOrder, request.BoxID, request.Weight, cheapestServiceCode != "")
+	shipengineRateShopRequest, err := ShipengineModels.ConstructRateShopRequest(ctx, pickSessionOrder, request.BoxID, request.Weight, cheapestServiceCode != "")
 	if err != nil {
 		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	shipEngineRateShopResponse, err := ShipengineHandlers.ShopRates(*shipengineRateShopRequest)
+	shipEngineRateShopResponse, err := ShipengineHandlers.ShopRates(ctx, *shipengineRateShopRequest)
 	if err != nil {
 		util.ErrorResponse(w, "failed to shop rates", http.StatusBadRequest)
 		return
@@ -696,7 +701,7 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 				PickSessionOrderID:        pickSessionOrder.ID,
 				DeliveryDays:              shipengineRate.DeliveryDays,
 			}
-			err = shippingRate.Create()
+			err = shippingRate.Create(ctx)
 			if err != nil {
 				util.ErrorResponse(w, "failed to create shipping rate", http.StatusBadRequest)
 				return
@@ -753,7 +758,7 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO add settings for label format and layout
-	shipenginePurchaseLabelFromRateResponse, err := ShipengineHandlers.PurchaseLabelFromRate(ShipengineModels.PurchaseLabelFromRateRequest{
+	shipenginePurchaseLabelFromRateResponse, err := ShipengineHandlers.PurchaseLabelFromRate(ctx, ShipengineModels.PurchaseLabelFromRateRequest{
 		LabelFormat: "pdf",
 		LabelLayout: "4x6",
 	}, shipengineRateForLabelPurchase.ShipengineRateID)
@@ -776,14 +781,14 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 		// TODO change to s3 url
 		LabelPDFURL: shipenginePurchaseLabelFromRateResponse.LabelDownload.PDF,
 	}
-	err = shipment.Create()
+	err = shipment.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create shipment", http.StatusBadRequest)
 		return
 	}
 
 	pickSessionOrder.Shipped = true
-	err = pickSessionOrder.Update()
+	err = pickSessionOrder.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update pick session order", http.StatusBadRequest)
 		return

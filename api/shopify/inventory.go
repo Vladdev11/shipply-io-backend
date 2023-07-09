@@ -7,7 +7,7 @@ import (
 	"github.com/shipply-io/shipply-io-backend/models"
 )
 
-func ActivateInventoryItem(shopName string, accessToken string, inventoryItemID string, locationID string) error {
+func ActivateInventoryItem(ctx context.Context, shopName string, accessToken string, inventoryItemID string, locationID string) error {
 
 	client := NewClient(shopName, accessToken)
 
@@ -16,7 +16,7 @@ func ActivateInventoryItem(shopName string, accessToken string, inventoryItemID 
 		return err
 	}
 
-	models.LogShopifyAPIEvent(&models.ShopifyApiLog{
+	models.LogShopifyAPIEvent(ctx, &models.ShopifyApiLog{
 		ShopDomain: shopName,
 		EventType:  "api_response",
 		Endpoint:   "activate_inventory_item",
@@ -27,7 +27,7 @@ func ActivateInventoryItem(shopName string, accessToken string, inventoryItemID 
 
 }
 
-func SetOnHandInventoryInShopify(shopName string, accessToken string, shopifyLocationID string, shopifyInventoryItemID string, quantity int) error {
+func SetOnHandInventoryInShopify(ctx context.Context, shopName string, accessToken string, shopifyLocationID string, shopifyInventoryItemID string, quantity int) error {
 
 	client := NewClient(shopName, accessToken)
 
@@ -46,7 +46,7 @@ func SetOnHandInventoryInShopify(shopName string, accessToken string, shopifyLoc
 		return err
 	}
 
-	models.LogShopifyAPIEvent(&models.ShopifyApiLog{
+	models.LogShopifyAPIEvent(ctx, &models.ShopifyApiLog{
 		ShopDomain: shopName,
 		EventType:  "api_response",
 		Endpoint:   "set_on_hand_inventory",

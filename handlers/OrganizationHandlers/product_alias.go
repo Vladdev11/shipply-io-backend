@@ -9,13 +9,15 @@ import (
 )
 
 func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -28,13 +30,13 @@ func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := models.GetProductByID(productAliasCreateReq.ProductID)
+	product, err := models.GetProductByID(ctx, productAliasCreateReq.ProductID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
 		return
 	}
 
-	err = product.GetClient()
+	err = product.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 		return
@@ -45,7 +47,7 @@ func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !models.IsProductAliasBarcodeUnique(product.Client.ID, productAliasCreateReq.Barcode) {
+	if !models.IsProductAliasBarcodeUnique(ctx, product.Client.ID, productAliasCreateReq.Barcode) {
 		util.ErrorResponse(w, "barcode already exists", http.StatusBadRequest)
 		return
 	}
@@ -56,7 +58,7 @@ func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
 		Quantity:  productAliasCreateReq.Quantity,
 	}
 
-	if err = productAlias.Create(); err != nil {
+	if err = productAlias.Create(ctx); err != nil {
 		util.ErrorResponse(w, "failed to create product alias", http.StatusBadRequest)
 		return
 	}
@@ -65,13 +67,15 @@ func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -89,19 +93,19 @@ func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productAlias, err := models.GetProductAliasByBarcode(barcode)
+	productAlias, err := models.GetProductAliasByBarcode(ctx, barcode)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find product alias", http.StatusNotFound)
 		return
 	}
 
-	product, err := models.GetProductByID(productAlias.ProductID)
+	product, err := models.GetProductByID(ctx, productAlias.ProductID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get associated product", http.StatusBadRequest)
 		return
 	}
 
-	err = product.GetClient()
+	err = product.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 		return
@@ -113,13 +117,13 @@ func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if request.ProductID != 0 {
-		productNew, err := models.GetProductByID(request.ProductID)
+		productNew, err := models.GetProductByID(ctx, request.ProductID)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get new associated product", http.StatusBadRequest)
 			return
 		}
 
-		err = productNew.GetClient()
+		err = productNew.GetClient(ctx)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 			return
@@ -131,7 +135,7 @@ func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := productAlias.UpdateWithRequest(request); err != nil {
+	if err := productAlias.UpdateWithRequest(ctx, request); err != nil {
 		util.ErrorResponse(w, "failed to update product alias", http.StatusBadRequest)
 		return
 	}
@@ -140,13 +144,15 @@ func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
 }
 
 func ProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -158,19 +164,19 @@ func ProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productAlias, err := models.GetProductAliasByBarcode(barcode)
+	productAlias, err := models.GetProductAliasByBarcode(ctx, barcode)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find product alias", http.StatusNotFound)
 		return
 	}
 
-	product, err := models.GetProductByID(productAlias.ProductID)
+	product, err := models.GetProductByID(ctx, productAlias.ProductID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get associated product", http.StatusBadRequest)
 		return
 	}
 
-	err = product.GetClient()
+	err = product.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 		return
@@ -185,13 +191,15 @@ func ProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
 }
 
 func ProductAliasDeleteByBarcode(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -203,19 +211,19 @@ func ProductAliasDeleteByBarcode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productAlias, err := models.GetProductAliasByBarcode(barcode)
+	productAlias, err := models.GetProductAliasByBarcode(ctx, barcode)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find product alias", http.StatusNotFound)
 		return
 	}
 
-	product, err := models.GetProductByID(productAlias.ProductID)
+	product, err := models.GetProductByID(ctx, productAlias.ProductID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get associated product", http.StatusBadRequest)
 		return
 	}
 
-	err = product.GetClient()
+	err = product.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 		return
@@ -226,7 +234,7 @@ func ProductAliasDeleteByBarcode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := productAlias.Delete(); err != nil {
+	if err := productAlias.Delete(ctx); err != nil {
 		util.ErrorResponse(w, "failed to delete product alias", http.StatusBadRequest)
 		return
 	}

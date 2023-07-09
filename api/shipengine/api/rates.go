@@ -2,6 +2,7 @@ package ShipengineAPI
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -10,18 +11,18 @@ import (
 	"github.com/shipply-io/shipply-io-backend/models"
 )
 
-func ShopRates(rsr ShipengineModels.RateShopRequest) (*ShipengineModels.RateShopResponse, *ShipengineModels.ShipengineError, error) {
+func ShopRates(ctx context.Context, rsr ShipengineModels.RateShopRequest) (*ShipengineModels.RateShopResponse, *ShipengineModels.ShipengineError, error) {
 	body, err := json.Marshal(rsr)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", apiClient.GetApiHost()+"/rates", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "/v1/rates", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -32,11 +33,11 @@ func ShopRates(rsr ShipengineModels.RateShopRequest) (*ShipengineModels.RateShop
 		Body:       string(body),
 		Endpoint:   "/rates",
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + "/rates",
+		RequestURL: resp.Request.URL.String(),
 		Method:     "POST",
 		CreatedAt:  time.Now(),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	defer resp.Body.Close()
 

@@ -1,8 +1,10 @@
 package models
 
 import (
+	"context"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -20,6 +22,6 @@ type PickSessionHistory struct {
 	PickSessionOrder PickSessionOrder `json:"pick_session_order"`
 }
 
-func (psh *PickSessionHistory) Create() error {
-	return PGDB.Create(psh).Error
+func (psh *PickSessionHistory) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(psh).Error
 }

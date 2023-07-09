@@ -2,6 +2,7 @@ package ShipengineAPI
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,18 +18,18 @@ import (
 // Unverified: Unable to verify the address
 // Warning - The address is valid, but there is a warning about the address.
 // Error - The address is invalid.
-func ValidateAddress(addresses []ShipengineModels.Address) ([]*ShipengineModels.AddressResponse, *ShipengineModels.ShipengineError, error) {
+func ValidateAddress(ctx context.Context, addresses []ShipengineModels.Address) ([]*ShipengineModels.AddressResponse, *ShipengineModels.ShipengineError, error) {
 	body, err := json.Marshal(addresses)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", apiClient.GetApiHost()+"/addresses/validate", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "/v1/addresses/validate", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -45,12 +46,12 @@ func ValidateAddress(addresses []ShipengineModels.Address) ([]*ShipengineModels.
 		Headers:    resp.Header,
 		Endpoint:   "/addresses/validate",
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + "/addresses/validate",
+		RequestURL: resp.Request.URL.String(),
 		Method:     "POST",
 		CreatedAt:  time.Now(),
 		Body:       string(bodyBytes),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	if resp.StatusCode != 200 {
 		var errorResponse ShipengineModels.ShipengineError
@@ -70,18 +71,18 @@ func ValidateAddress(addresses []ShipengineModels.Address) ([]*ShipengineModels.
 	return result, nil, nil
 }
 
-func ParseAddress(toParse ShipengineModels.AddressParseRequest) (*ShipengineModels.AddressParseResponse, *ShipengineModels.ShipengineError, error) {
+func ParseAddress(ctx context.Context, toParse ShipengineModels.AddressParseRequest) (*ShipengineModels.AddressParseResponse, *ShipengineModels.ShipengineError, error) {
 	body, err := json.Marshal(toParse)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("PUT", apiClient.GetApiHost()+"/addresses/recognize", bytes.NewBuffer(body))
+	req, err := http.NewRequest("PUT", "/v1/addresses/recognize", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -92,11 +93,11 @@ func ParseAddress(toParse ShipengineModels.AddressParseRequest) (*ShipengineMode
 		Body:       string(body),
 		Endpoint:   "/addresses/recognize",
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + "/addresses/recognize",
+		RequestURL: resp.Request.URL.String(),
 		Method:     "PUT",
 		CreatedAt:  time.Now(),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	defer resp.Body.Close()
 

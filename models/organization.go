@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -23,8 +24,8 @@ type OrganizationReturnJSON struct {
 	Clients []ClientReturnJSON `json:"clients"`
 }
 
-func (o *Organization) GetClients() error {
-	clients, err := GetClientsByOrganizationID(o.ID)
+func (o *Organization) GetClients(ctx context.Context) error {
+	clients, err := GetClientsByOrganizationID(ctx, o.ID)
 	if err != nil {
 		return err
 	}
@@ -32,15 +33,14 @@ func (o *Organization) GetClients() error {
 	return nil
 }
 
-func (o *Organization) ConvertToReturnJSON() *OrganizationReturnJSON {
-
+func (o *Organization) ConvertToReturnJSON(ctx context.Context) *OrganizationReturnJSON {
 	if o == nil {
 		return nil
 	}
 
 	clients := make([]ClientReturnJSON, len(o.Clients))
 	for i := range o.Clients {
-		clients[i] = *o.Clients[i].ConvertToReturnJSON()
+		clients[i] = *o.Clients[i].ConvertToReturnJSON(ctx)
 	}
 
 	return &OrganizationReturnJSON{
@@ -51,10 +51,10 @@ func (o *Organization) ConvertToReturnJSON() *OrganizationReturnJSON {
 	}
 }
 
-func (o *Organization) IsClientOwner(clientID int) bool {
+func (o *Organization) IsClientOwner(ctx context.Context, clientID int) bool {
 
 	if o.Clients == nil {
-		o.GetClients()
+		o.GetClients(ctx)
 	}
 
 	for _, client := range o.Clients {
@@ -65,14 +65,14 @@ func (o *Organization) IsClientOwner(clientID int) bool {
 	return false
 }
 
-func (o *Organization) IsWarehouseOwner(warehouseID int) bool {
+func (o *Organization) IsWarehouseOwner(ctx context.Context, warehouseID int) bool {
 
 	if o.Clients == nil {
-		o.GetClients()
+		o.GetClients(ctx)
 	}
 
 	var warehouse Warehouse
-	err := PGDB.Where("id = ?", warehouseID).Where("organization_id = ?", o.ID).First(&warehouse).Error
+	err := util.DBFromContext(ctx).Where("id = ?", warehouseID).Where("organization_id = ?", o.ID).First(&warehouse).Error
 	if err != nil {
 		return false
 	}
@@ -80,18 +80,18 @@ func (o *Organization) IsWarehouseOwner(warehouseID int) bool {
 	return true
 }
 
-func GetOrganizationByID(id int) (Organization, error) {
+func GetOrganizationByID(ctx context.Context, id int) (Organization, error) {
 	var organization Organization
-	err := PGDB.Where("id = ?", id).First(&organization).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(&organization).Error
 	return organization, err
 }
 
-func (organization *Organization) GetPurchaseOrders(polr PurchaseOrderListRequest) ([]PurchaseOrder, int, int, error) {
+func (organization *Organization) GetPurchaseOrders(ctx context.Context, polr PurchaseOrderListRequest) ([]PurchaseOrder, int, int, error) {
 
-	query := polr.ConvertToOrganizationQuery()
-	countQuery := polr.ConvertToOrganizationQuery()
+	query := polr.ConvertToOrganizationQuery(ctx)
+	countQuery := polr.ConvertToOrganizationQuery(ctx)
 
-	totalQuery := PGDB.Model(&PurchaseOrder{}).
+	totalQuery := util.DBFromContext(ctx).Model(&PurchaseOrder{}).
 		Joins("LEFT JOIN clients ON clients.id = purchase_orders.client_id").
 		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
 	query = query.Where("organizations.id = ?", organization.ID)
@@ -114,12 +114,12 @@ func (organization *Organization) GetPurchaseOrders(polr PurchaseOrderListReques
 	return purchaseOrders, int(count), int(total), nil
 }
 
-func (organization *Organization) GetOrders(olr OrdersListRequest) ([]Order, int, int, error) {
+func (organization *Organization) GetOrders(ctx context.Context, olr OrdersListRequest) ([]Order, int, int, error) {
 
-	query := olr.ConvertToOrganizationQuery()
-	countQuery := olr.ConvertToOrganizationQuery()
+	query := olr.ConvertToOrganizationQuery(ctx)
+	countQuery := olr.ConvertToOrganizationQuery(ctx)
 
-	totalQuery := PGDB.Model(&Order{}).
+	totalQuery := util.DBFromContext(ctx).Model(&Order{}).
 		Joins("LEFT JOIN stores ON stores.id = orders.store_id").
 		Joins("LEFT JOIN clients ON clients.id = stores.client_id").
 		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
@@ -143,11 +143,11 @@ func (organization *Organization) GetOrders(olr OrdersListRequest) ([]Order, int
 	return orders, int(count), int(total), nil
 }
 
-func (organization *Organization) SearchProducts(spr ProductSearchRequest) ([]Product, error) {
+func (organization *Organization) SearchProducts(ctx context.Context, spr ProductSearchRequest) ([]Product, error) {
 
 	var products []Product
 
-	query := PGDB.Model(&Product{})
+	query := util.DBFromContext(ctx).Model(&Product{})
 
 	query = query.Joins("LEFT JOIN clients ON clients.id = products.client_id").
 		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
@@ -159,7 +159,7 @@ func (organization *Organization) SearchProducts(spr ProductSearchRequest) ([]Pr
 	query = query.Where("organizations.id = ?", organization.ID)
 
 	if spr.SearchValue != "" {
-		query = query.Where(PGDB.Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", spr.SearchValue)).
+		query = query.Where(util.DBFromContext(ctx).Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", spr.SearchValue)).
 			Or("to_tsvector('english', products.sku) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", spr.SearchValue)).
 			Or("to_tsvector('english', products.barcode) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", spr.SearchValue)))
 	}
@@ -173,12 +173,12 @@ func (organization *Organization) SearchProducts(spr ProductSearchRequest) ([]Pr
 
 }
 
-func (organization *Organization) GetVendors(vlr VendorListRequest) ([]Vendor, int, int, error) {
+func (organization *Organization) GetVendors(ctx context.Context, vlr VendorListRequest) ([]Vendor, int, int, error) {
 
-	query := vlr.ConvertToOrganizationQuery()
-	countQuery := vlr.ConvertToOrganizationQuery()
+	query := vlr.ConvertToOrganizationQuery(ctx)
+	countQuery := vlr.ConvertToOrganizationQuery(ctx)
 
-	totalQuery := PGDB.Model(&Vendor{}).
+	totalQuery := util.DBFromContext(ctx).Model(&Vendor{}).
 		Joins("LEFT JOIN clients ON clients.id = vendors.client_id").
 		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id").
 		Where("organizations.id = ?", organization.ID)
@@ -202,12 +202,12 @@ func (organization *Organization) GetVendors(vlr VendorListRequest) ([]Vendor, i
 
 }
 
-func (organization *Organization) GetPurchaseOrderStatuses(poslr PurchaseOrderStatusListRequest) ([]PurchaseOrderStatus, int, int, error) {
+func (organization *Organization) GetPurchaseOrderStatuses(ctx context.Context, poslr PurchaseOrderStatusListRequest) ([]PurchaseOrderStatus, int, int, error) {
 
-	query := poslr.ConvertToOrganizationQuery()
-	countQuery := poslr.ConvertToOrganizationQuery()
+	query := poslr.ConvertToOrganizationQuery(ctx)
+	countQuery := poslr.ConvertToOrganizationQuery(ctx)
 
-	totalQuery := PGDB.Model(&PurchaseOrderStatus{}).
+	totalQuery := util.DBFromContext(ctx).Model(&PurchaseOrderStatus{}).
 		Joins("LEFT JOIN clients ON clients.id = purchase_order_statuses.client_id").
 		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id").
 		Where("organizations.id = ?", organization.ID)
@@ -231,12 +231,12 @@ func (organization *Organization) GetPurchaseOrderStatuses(poslr PurchaseOrderSt
 
 }
 
-func (organization *Organization) GetWarehouses(wlr WarehouseListRequest) ([]Warehouse, int, int, error) {
+func (organization *Organization) GetWarehouses(ctx context.Context, wlr WarehouseListRequest) ([]Warehouse, int, int, error) {
 
-	query := wlr.ConvertToOrganizationQuery()
-	countQuery := wlr.ConvertToOrganizationQuery()
+	query := wlr.ConvertToOrganizationQuery(ctx)
+	countQuery := wlr.ConvertToOrganizationQuery(ctx)
 
-	totalQuery := PGDB.Model(&Warehouse{}).Where("organization_id = ?", organization.ID)
+	totalQuery := util.DBFromContext(ctx).Model(&Warehouse{}).Where("organization_id = ?", organization.ID)
 
 	var warehouses []Warehouse
 	if err := query.Offset(wlr.Offset).Limit(wlr.Limit).Find(&warehouses).Error; err != nil {
@@ -257,10 +257,10 @@ func (organization *Organization) GetWarehouses(wlr WarehouseListRequest) ([]War
 
 }
 
-func (organization *Organization) GetLocationTypes() ([]LocationType, error) {
+func (organization *Organization) GetLocationTypes(ctx context.Context) ([]LocationType, error) {
 
 	var locationTypes []LocationType
-	if err := PGDB.Model(&LocationType{}).Where("organization_id = ?", organization.ID).Find(&locationTypes).Error; err != nil {
+	if err := util.DBFromContext(ctx).Model(&LocationType{}).Where("organization_id = ?", organization.ID).Find(&locationTypes).Error; err != nil {
 		return nil, err
 	}
 
@@ -268,8 +268,8 @@ func (organization *Organization) GetLocationTypes() ([]LocationType, error) {
 
 }
 
-func (organization *Organization) GetCarrierConnections() ([]CarrierConnection, error) {
-	err := organization.GetClients()
+func (organization *Organization) GetCarrierConnections(ctx context.Context) ([]CarrierConnection, error) {
+	err := organization.GetClients(ctx)
 	if err != nil {
 		return nil, errors.New("failed to get clients for organization")
 	}
@@ -280,29 +280,29 @@ func (organization *Organization) GetCarrierConnections() ([]CarrierConnection, 
 	}
 
 	var carrierConnections []CarrierConnection
-	if err := PGDB.Where("(owner_id = ? AND owner_type = 1) OR (owner_id IN (?) AND owner_type = 2)", organization.ID, clientIDs).Find(&carrierConnections).Error; err != nil {
+	if err := util.DBFromContext(ctx).Where("(owner_id = ? AND owner_type = 1) OR (owner_id IN (?) AND owner_type = 2)", organization.ID, clientIDs).Find(&carrierConnections).Error; err != nil {
 		return nil, err
 	}
 
 	return carrierConnections, nil
 }
 
-func (organization *Organization) GetBoxes() ([]Box, error) {
+func (organization *Organization) GetBoxes(ctx context.Context) ([]Box, error) {
 	var boxes []Box
-	if err := PGDB.Model(&Box{}).Where("organization_id = ?", organization.ID).Find(&boxes).Error; err != nil {
+	if err := util.DBFromContext(ctx).Model(&Box{}).Where("organization_id = ?", organization.ID).Find(&boxes).Error; err != nil {
 		return nil, err
 	}
 
 	return boxes, nil
 }
 
-func (o *Organization) GetLocations(llr LocationListRequest) ([]Location, int, int, error) {
+func (o *Organization) GetLocations(ctx context.Context, llr LocationListRequest) ([]Location, int, int, error) {
 
 	llr.OrganizationID = o.ID
-	query := llr.ConvertToOrganizationQuery()
-	countQuery := llr.ConvertToOrganizationQuery()
+	query := llr.ConvertToOrganizationQuery(ctx)
+	countQuery := llr.ConvertToOrganizationQuery(ctx)
 
-	totalQuery := PGDB.Model(&Location{}).
+	totalQuery := util.DBFromContext(ctx).Model(&Location{}).
 		Joins("LEFT JOIN warehouses ON warehouses.id = locations.warehouse_id").
 		Where("warehouses.organization_id = ?", o.ID)
 
@@ -325,20 +325,20 @@ func (o *Organization) GetLocations(llr LocationListRequest) ([]Location, int, i
 
 }
 
-func (organization *Organization) GetShippingMethods(request ShippingMethodListRequest) ([]ShippingMethod, error) {
+func (organization *Organization) GetShippingMethods(ctx context.Context, request ShippingMethodListRequest) ([]ShippingMethod, error) {
 
 	var shippingMethods []ShippingMethod
 
 	stores := []int{}
 
 	//get organization clients
-	err := organization.GetClients()
+	err := organization.GetClients(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, client := range organization.Clients {
-		err := client.GetStores()
+		err := client.GetStores(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -356,7 +356,7 @@ func (organization *Organization) GetShippingMethods(request ShippingMethodListR
 
 	}
 
-	query := PGDB.Model(&ShippingMethod{})
+	query := util.DBFromContext(ctx).Model(&ShippingMethod{})
 	query = query.Where("store_id IN (?)", stores)
 
 	if request.Mapped != nil {
@@ -376,11 +376,11 @@ func (organization *Organization) GetShippingMethods(request ShippingMethodListR
 
 }
 
-func (organization *Organization) GetStores(request StoreListRequest) ([]Store, error) {
+func (organization *Organization) GetStores(ctx context.Context, request StoreListRequest) ([]Store, error) {
 
 	var stores []Store
 
-	err := PGDB.Joins("inner join clients on stores.client_id = clients.id").Where("clients.organization_id = ?", request.OrganizationID).Find(&stores).Error
+	err := util.DBFromContext(ctx).Joins("inner join clients on stores.client_id = clients.id").Where("clients.organization_id = ?", request.OrganizationID).Find(&stores).Error
 	if err != nil {
 		return nil, err
 	}

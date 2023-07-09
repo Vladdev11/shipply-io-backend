@@ -1,8 +1,9 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -60,9 +61,9 @@ type WarehouseReturnJSON struct {
 	ReturnAddress   *AddressReturnJSON `json:"return_address"`
 }
 
-func (w *Warehouse) Create() error {
+func (w *Warehouse) Create(ctx context.Context) error {
 
-	err := PGDB.Create(w).Error
+	err := util.DBFromContext(ctx).Create(w).Error
 	if err != nil {
 		return err
 	}
@@ -70,9 +71,9 @@ func (w *Warehouse) Create() error {
 	return nil
 }
 
-func (w *Warehouse) Delete() error {
+func (w *Warehouse) Delete(ctx context.Context) error {
 
-	err := PGDB.Delete(w).Error
+	err := util.DBFromContext(ctx).Delete(w).Error
 	if err != nil {
 		return err
 	}
@@ -80,18 +81,18 @@ func (w *Warehouse) Delete() error {
 	return nil
 }
 
-func (w *Warehouse) UpdateWithRequest(request *WarehouseUpdateRequest) error {
+func (w *Warehouse) UpdateWithRequest(ctx context.Context, request *WarehouseUpdateRequest) error {
 
 	if request.Name != "" {
 		w.Name = request.Name
 	}
 
-	err := request.ShipFromAddress.Create()
+	err := request.ShipFromAddress.Create(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = request.ReturnAddress.Create()
+	err = request.ReturnAddress.Create(ctx)
 	if err != nil {
 		return err
 	}
@@ -100,18 +101,18 @@ func (w *Warehouse) UpdateWithRequest(request *WarehouseUpdateRequest) error {
 		w.ShipFromAddressID = request.ShipFromAddress.ID
 	}
 
-	if err := PGDB.Save(w).Error; err != nil {
+	if err := util.DBFromContext(ctx).Save(w).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (w *Warehouse) GetShipFromAddress() error {
+func (w *Warehouse) GetShipFromAddress(ctx context.Context) error {
 
 	var address Address
 
-	err := PGDB.Where("id = ?", w.ShipFromAddressID).First(&address).Error
+	err := util.DBFromContext(ctx).Where("id = ?", w.ShipFromAddressID).First(&address).Error
 	if err != nil {
 		return err
 	}
@@ -121,10 +122,10 @@ func (w *Warehouse) GetShipFromAddress() error {
 	return nil
 }
 
-func (w *Warehouse) GetReturnAddress() error {
+func (w *Warehouse) GetReturnAddress(ctx context.Context) error {
 	var address Address
 
-	err := PGDB.Where("id = ?", w.ReturnAddressID).First(&address).Error
+	err := util.DBFromContext(ctx).Where("id = ?", w.ReturnAddressID).First(&address).Error
 	if err != nil {
 		return err
 	}
@@ -215,9 +216,9 @@ func (wlr *WarehouseListRequest) ParseAndValidateRequest(r *http.Request) []stri
 	return nil
 }
 
-func (wlr *WarehouseListRequest) ConvertToOrganizationQuery() *gorm.DB {
+func (wlr *WarehouseListRequest) ConvertToOrganizationQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&Warehouse{}).
+	query := util.DBFromContext(ctx).Model(&Warehouse{}).
 		Select("DISTINCT warehouses.*").
 		Where("warehouses.organization_id = ?", wlr.OrganizationID)
 
@@ -235,10 +236,11 @@ func (wlr *WarehouseListRequest) ConvertToOrganizationQuery() *gorm.DB {
 }
 
 func (wcr *WarehouseCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -264,11 +266,11 @@ func (wcr *WarehouseCreateRequest) ParseAndValidateRequest(r *http.Request) []st
 		if err != nil {
 			return []string{"invalid user"}
 		}
-		err = user.GetOrganization()
+		err = user.GetOrganization(ctx)
 		if err != nil {
 			return []string{"invalid organization"}
 		}
-		warehouses, err := GetWarehousesByOrganizationID(user.Organization.ID)
+		warehouses, err := GetWarehousesByOrganizationID(ctx, user.Organization.ID)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return []string{"invalid warehouses for organization"}
 		}
@@ -313,6 +315,7 @@ func (wcr *WarehouseCreateRequest) ParseAndValidateRequest(r *http.Request) []st
 }
 
 func (wur *WarehouseUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	var errs []string
 
@@ -321,7 +324,7 @@ func (wur *WarehouseUpdateRequest) ParseAndValidateRequest(r *http.Request) []st
 		return []string{"invalid warehouse_id"}
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -345,12 +348,12 @@ func (wur *WarehouseUpdateRequest) ParseAndValidateRequest(r *http.Request) []st
 		if err != nil {
 			return []string{"invalid user"}
 		}
-		err = user.GetOrganization()
+		err = user.GetOrganization(ctx)
 		if err != nil {
 			return []string{"invalid organization"}
 		}
 
-		warehouses, err := GetWarehousesByOrganizationID(user.Organization.ID)
+		warehouses, err := GetWarehousesByOrganizationID(ctx, user.Organization.ID)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return []string{"invalid warehouses for organization"}
 		}
@@ -413,10 +416,10 @@ func ConvertWarehousesToSearchResults(matchingWarehouses []Warehouse, total int,
 
 }
 
-func GetWarehouseByID(id int) (*Warehouse, error) {
+func GetWarehouseByID(ctx context.Context, id int) (*Warehouse, error) {
 	warehouse := &Warehouse{}
 
-	err := PGDB.First(warehouse, id).Error
+	err := util.DBFromContext(ctx).First(warehouse, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -424,10 +427,10 @@ func GetWarehouseByID(id int) (*Warehouse, error) {
 	return warehouse, nil
 }
 
-func GetWarehousesByOrganizationID(organizationID int) ([]Warehouse, error) {
+func GetWarehousesByOrganizationID(ctx context.Context, organizationID int) ([]Warehouse, error) {
 	warehouses := []Warehouse{}
 
-	err := PGDB.Where("organization_id = ?", organizationID).Find(&warehouses).Error
+	err := util.DBFromContext(ctx).Where("organization_id = ?", organizationID).Find(&warehouses).Error
 	if err != nil {
 		return nil, err
 	}

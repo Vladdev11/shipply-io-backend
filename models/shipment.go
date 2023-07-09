@@ -1,8 +1,10 @@
 package models
 
 import (
+	"context"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -32,6 +34,6 @@ type Shipment struct {
 	PickSessionOrder PickSessionOrder `json:"pick_session_order"`
 }
 
-func (s *Shipment) Create() error {
-	return PGDB.Create(s).Error
+func (s *Shipment) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(s).Error
 }

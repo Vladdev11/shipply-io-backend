@@ -2,6 +2,7 @@ package ShipengineAPI
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -10,19 +11,19 @@ import (
 	"github.com/shipply-io/shipply-io-backend/models"
 )
 
-func ConnectCarrier(carrier ShipengineModels.CarrierConnect, carrierName string) (*ShipengineModels.CarrierConnectResponse, *ShipengineModels.ShipengineError, error) {
+func ConnectCarrier(ctx context.Context, carrier ShipengineModels.CarrierConnect, carrierName string) (*ShipengineModels.CarrierConnectResponse, *ShipengineModels.ShipengineError, error) {
 
 	body, err := json.Marshal(carrier.Carrier)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", apiClient.GetApiHost()+"/connections/carriers/"+carrierName, bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "/v1/connections/carriers/"+carrierName, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -33,11 +34,11 @@ func ConnectCarrier(carrier ShipengineModels.CarrierConnect, carrierName string)
 		Body:       string(body),
 		Endpoint:   "/connections/carriers/" + carrierName,
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + "/connections/carriers/" + carrierName,
+		RequestURL: resp.Request.URL.String(),
 		Method:     "POST",
 		CreatedAt:  time.Now(),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	defer resp.Body.Close()
 
@@ -59,14 +60,14 @@ func ConnectCarrier(carrier ShipengineModels.CarrierConnect, carrierName string)
 	return result, nil, nil
 }
 
-func DeleteCarrier(carrierName string, carrierId string) (bool, *ShipengineModels.ShipengineError, error) {
+func DeleteCarrier(ctx context.Context, carrierName string, carrierId string) (bool, *ShipengineModels.ShipengineError, error) {
 
-	req, err := http.NewRequest("DELETE", apiClient.GetApiHost()+"/connections/carriers/"+carrierName+"/"+carrierId, nil)
+	req, err := http.NewRequest("DELETE", "/v1/connections/carriers/"+carrierName+"/"+carrierId, nil)
 	if err != nil {
 		return false, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return false, nil, err
 	}
@@ -76,11 +77,11 @@ func DeleteCarrier(carrierName string, carrierId string) (bool, *ShipengineModel
 		Headers:    resp.Header,
 		Endpoint:   "/connections/carriers/" + carrierName + "/" + carrierId,
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + "/connections/carriers/" + carrierName + "/" + carrierId,
+		RequestURL: resp.Request.URL.String(),
 		Method:     "DELETE",
 		CreatedAt:  time.Now(),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	defer resp.Body.Close()
 
@@ -96,14 +97,14 @@ func DeleteCarrier(carrierName string, carrierId string) (bool, *ShipengineModel
 	return true, nil, nil
 }
 
-func GetCarrierConnectionOptions(carrier_id string) (*ShipengineModels.CarrierOptionsResponse, *ShipengineModels.ShipengineError, error) {
+func GetCarrierConnectionOptions(ctx context.Context, carrier_id string) (*ShipengineModels.CarrierOptionsResponse, *ShipengineModels.ShipengineError, error) {
 
-	req, err := http.NewRequest("GET", apiClient.GetApiHost()+"/carriers/"+carrier_id+"/options", nil)
+	req, err := http.NewRequest("GET", "/v1/carriers/"+carrier_id+"/options", nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -113,11 +114,11 @@ func GetCarrierConnectionOptions(carrier_id string) (*ShipengineModels.CarrierOp
 		Headers:    resp.Header,
 		Endpoint:   "/carriers/" + carrier_id + "/options",
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + "/carriers/" + carrier_id + "/options",
+		RequestURL: resp.Request.URL.String(),
 		Method:     "GET",
 		CreatedAt:  time.Now(),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	defer resp.Body.Close()
 
@@ -139,14 +140,14 @@ func GetCarrierConnectionOptions(carrier_id string) (*ShipengineModels.CarrierOp
 	return result, nil, nil
 }
 
-func GetCarrierConnectionPackageTypes(carrier_id string) (*ShipengineModels.CarrierPackageTypesResponse, *ShipengineModels.ShipengineError, error) {
+func GetCarrierConnectionPackageTypes(ctx context.Context, carrier_id string) (*ShipengineModels.CarrierPackageTypesResponse, *ShipengineModels.ShipengineError, error) {
 
-	req, err := http.NewRequest("GET", apiClient.GetApiHost()+"/carriers/"+carrier_id+"/packages", nil)
+	req, err := http.NewRequest("GET", "/v1/carriers/"+carrier_id+"/packages", nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -156,11 +157,11 @@ func GetCarrierConnectionPackageTypes(carrier_id string) (*ShipengineModels.Carr
 		Headers:    resp.Header,
 		Endpoint:   "/carriers/" + carrier_id + "/packages",
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + "/carriers/" + carrier_id + "/packages",
+		RequestURL: resp.Request.URL.String(),
 		Method:     "GET",
 		CreatedAt:  time.Now(),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	defer resp.Body.Close()
 
@@ -182,14 +183,14 @@ func GetCarrierConnectionPackageTypes(carrier_id string) (*ShipengineModels.Carr
 	return result, nil, nil
 }
 
-func GetCarrierConnectionServices(carrier_id string) (*ShipengineModels.CarrierServicesResponse, *ShipengineModels.ShipengineError, error) {
+func GetCarrierConnectionServices(ctx context.Context, carrier_id string) (*ShipengineModels.CarrierServicesResponse, *ShipengineModels.ShipengineError, error) {
 
-	req, err := http.NewRequest("GET", apiClient.GetApiHost()+"/carriers/"+carrier_id+"/services", nil)
+	req, err := http.NewRequest("GET", "/v1/carriers/"+carrier_id+"/services", nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -199,11 +200,11 @@ func GetCarrierConnectionServices(carrier_id string) (*ShipengineModels.CarrierS
 		Headers:    resp.Header,
 		Endpoint:   "/carriers/" + carrier_id + "/services",
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + "/carriers/" + carrier_id + "/services",
+		RequestURL: resp.Request.URL.String(),
 		Method:     "GET",
 		CreatedAt:  time.Now(),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	defer resp.Body.Close()
 

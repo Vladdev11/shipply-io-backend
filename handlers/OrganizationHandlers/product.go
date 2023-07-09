@@ -8,6 +8,7 @@ import (
 )
 
 func ProductSearch(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -15,7 +16,7 @@ func ProductSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
@@ -29,14 +30,14 @@ func ProductSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if productSearch.ClientID != 0 {
-		if !user.Organization.IsClientOwner(productSearch.ClientID) {
+		if !user.Organization.IsClientOwner(ctx, productSearch.ClientID) {
 			util.ErrorResponse(w, "client does not belong to organization", http.StatusForbidden)
 			return
 		}
 	}
 
 	productSearch.OrganizationID = user.OwnerID
-	products, err := user.Organization.SearchProducts(productSearch)
+	products, err := user.Organization.SearchProducts(ctx, productSearch)
 	if err != nil {
 		util.ErrorResponse(w, "failed to search products", http.StatusBadRequest)
 		return

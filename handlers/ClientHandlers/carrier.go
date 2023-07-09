@@ -13,6 +13,7 @@ import (
 )
 
 func ListCarriers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -20,13 +21,13 @@ func ListCarriers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
 	}
 
-	carriers, err := models.GetCarriers()
+	carriers, err := models.GetCarriers(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get carriers", http.StatusInternalServerError)
 		return
@@ -44,6 +45,7 @@ func ListCarriers(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateCarrierConnection(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -51,7 +53,7 @@ func CreateCarrierConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -63,7 +65,7 @@ func CreateCarrierConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	carrier, err := models.GetCarrierByID(carrierID)
+	carrier, err := models.GetCarrierByID(ctx, carrierID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get carrier", http.StatusBadRequest)
 		return
@@ -77,7 +79,7 @@ func CreateCarrierConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	carrierConnect = *createCarrierConnection
 
-	response, err := shipengineHandlers.ConnectCarrier(carrierConnect, carrier.ShipEngineID)
+	response, err := shipengineHandlers.ConnectCarrier(ctx, carrierConnect, carrier.ShipEngineID)
 	if err != nil {
 		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
@@ -104,32 +106,32 @@ func CreateCarrierConnection(w http.ResponseWriter, r *http.Request) {
 		Credentials:         carrierConnectJSON,
 	}
 
-	err = carrierConnection.Create()
+	err = carrierConnection.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to add carrier connection to database", http.StatusInternalServerError)
 		return
 	}
 
 	//get carrier connection options
-	shipengineCarrierConnectionOptions, err := shipengineHandlers.GetCarrierConnectionOptions(carrierConnection.ShipengineCarrierID)
+	shipengineCarrierConnectionOptions, err := shipengineHandlers.GetCarrierConnectionOptions(ctx, carrierConnection.ShipengineCarrierID)
 	if err != nil {
-		models.CreateSystemError(fmt.Sprintf("failed to get carrier connection options(%s): %s", carrierConnection.ShipengineCarrierID, err.Error()))
+		models.CreateSystemError(ctx, fmt.Sprintf("failed to get carrier connection options(%s): %s", carrierConnection.ShipengineCarrierID, err.Error()))
 	}
 
 	//convert shipengine carrier options to shippi carrier options
 	carrierConnectionOptions := shipengineCarrierConnectionOptions.ConvertToCarrierConnectionOptions()
 
 	//save carrier connection options
-	err = carrierConnection.SaveCarrierOptions(carrierConnectionOptions)
+	err = carrierConnection.SaveCarrierOptions(ctx, carrierConnectionOptions)
 	if err != nil {
-		models.CreateSystemError(fmt.Sprintf("failed to save carrier options(%s): %s", carrierConnection.ShipengineCarrierID, err.Error()))
+		models.CreateSystemError(ctx, fmt.Sprintf("failed to save carrier options(%s): %s", carrierConnection.ShipengineCarrierID, err.Error()))
 	}
 
 	//sync carrier connection services
-	tasks.SyncCarrierConnectionServicesByCarrierConnection(carrierConnection)
+	tasks.SyncCarrierConnectionServicesByCarrierConnection(ctx, carrierConnection)
 
 	//get updated carrier connection with the services
-	carrierConnectionUpdated, err := models.GetCarrierConnectionByID(carrierConnection.ID)
+	carrierConnectionUpdated, err := models.GetCarrierConnectionByID(ctx, carrierConnection.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get carrier connection", http.StatusInternalServerError)
 		return
@@ -137,7 +139,7 @@ func CreateCarrierConnection(w http.ResponseWriter, r *http.Request) {
 	carrierConnection = *carrierConnectionUpdated
 
 	//get carrier info
-	carrierConnection.GetCarrier()
+	carrierConnection.GetCarrier(ctx)
 
 	//get carrier connection settings
 	carrierConnection.GetSettings()
@@ -149,6 +151,7 @@ func CreateCarrierConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func DisconnectCarrierConnection(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -156,7 +159,7 @@ func DisconnectCarrierConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -168,7 +171,7 @@ func DisconnectCarrierConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	carrierConnection, err := models.GetCarrierConnectionByID(carrierID)
+	carrierConnection, err := models.GetCarrierConnectionByID(ctx, carrierID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get carrier", http.StatusBadRequest)
 		return
@@ -185,7 +188,7 @@ func DisconnectCarrierConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	carrier, err := models.GetCarrierByID(carrierConnection.CarrierID)
+	carrier, err := models.GetCarrierByID(ctx, carrierConnection.CarrierID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get carrier", http.StatusBadRequest)
 		return
@@ -193,13 +196,13 @@ func DisconnectCarrierConnection(w http.ResponseWriter, r *http.Request) {
 
 	//TODO make sure there are no shipments waiting to use this carrier for manifests
 
-	err = shipengineHandlers.DeleteCarrier(carrier.ShipEngineID, carrierConnection.ShipengineCarrierID)
+	err = shipengineHandlers.DeleteCarrier(ctx, carrier.ShipEngineID, carrierConnection.ShipengineCarrierID)
 	if err != nil {
 		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = carrierConnection.Delete()
+	err = carrierConnection.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete carrier connection from database", http.StatusInternalServerError)
 		return
@@ -210,6 +213,7 @@ func DisconnectCarrierConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListCarrierConnections(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -217,13 +221,13 @@ func ListCarrierConnections(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
 	}
 
-	carrierConnections, err := user.Client.GetCarrierConnections()
+	carrierConnections, err := user.Client.GetCarrierConnections(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get carrier connections", http.StatusInternalServerError)
 		return
@@ -231,7 +235,7 @@ func ListCarrierConnections(w http.ResponseWriter, r *http.Request) {
 
 	carrierConnectionsJSON := []models.CarrierConnectionReturnJSON{}
 	for _, carrierConnection := range carrierConnections {
-		carrierConnection.GetCarrier()
+		carrierConnection.GetCarrier(ctx)
 		carrierConnectionsJSON = append(carrierConnectionsJSON, carrierConnection.ConvertToReturnJSON())
 	}
 
@@ -240,6 +244,7 @@ func ListCarrierConnections(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetCarrierConnection(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -247,7 +252,7 @@ func GetCarrierConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -259,7 +264,7 @@ func GetCarrierConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	carrierConnection, err := models.GetCarrierConnectionByID(carrierConnectionID)
+	carrierConnection, err := models.GetCarrierConnectionByID(ctx, carrierConnectionID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get carrier connection", http.StatusBadRequest)
 		return

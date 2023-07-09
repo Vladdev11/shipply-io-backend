@@ -1,25 +1,25 @@
 package ShipengineAPI
 
 import (
+	"context"
 	"net/http"
 	"time"
-
-	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-var apiClient *APIClient
+type contextKey int
+
+const (
+	shipengineKey contextKey = iota
+)
 
 type APIClient struct {
 	httpClient *http.Client
 	apiHost    string
+	apiKey     string
 }
 
-func Init() {
-	apiClient = NewAPIClient()
-}
-
-func NewAPIClient() *APIClient {
-	return &APIClient{
+func ContextWithShipengineClient(ctx context.Context, host string, key string) context.Context {
+	client := &APIClient{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 			Transport: &http.Transport{
@@ -29,12 +29,17 @@ func NewAPIClient() *APIClient {
 				ResponseHeaderTimeout: time.Second * 10,
 			},
 		},
-		apiHost: util.ConfigShipengineAPIHost,
+		apiHost: host,
+		apiKey:  key,
 	}
+	return context.WithValue(ctx, shipengineKey, client)
 }
 
 func (c *APIClient) Do(req *http.Request) (*http.Response, error) {
-	req.Header.Set("API-Key", util.ConfigShipengineAPIKey)
+	// We use the API host and key from the client instead of the request
+	// Request only has the path and body
+	req.URL.Host = c.apiHost
+	req.Header.Set("API-Key", c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Accept-Language", "en-us")
@@ -42,6 +47,9 @@ func (c *APIClient) Do(req *http.Request) (*http.Response, error) {
 	return c.httpClient.Do(req)
 }
 
-func (c *APIClient) GetApiHost() string {
-	return c.apiHost
+func ShipengineClientFromContext(ctx context.Context) *APIClient {
+	if rv := ctx.Value(shipengineKey); rv != nil {
+		return rv.(*APIClient)
+	}
+	return nil
 }

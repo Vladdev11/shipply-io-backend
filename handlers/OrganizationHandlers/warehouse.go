@@ -11,6 +11,7 @@ import (
 )
 
 func WarehouseList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -18,7 +19,7 @@ func WarehouseList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -32,7 +33,7 @@ func WarehouseList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	request.OrganizationID = user.Organization.ID
-	warehouses, total, count, err := user.Organization.GetWarehouses(request)
+	warehouses, total, count, err := user.Organization.GetWarehouses(ctx, request)
 
 	searchResults, err := models.ConvertWarehousesToSearchResults(warehouses, total, count)
 	if err != nil {
@@ -45,6 +46,7 @@ func WarehouseList(w http.ResponseWriter, r *http.Request) {
 }
 
 func WarehouseCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -52,7 +54,7 @@ func WarehouseCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -65,7 +67,7 @@ func WarehouseCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = request.ShipFromAddress.Create()
+	err = request.ShipFromAddress.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create ship from address", http.StatusBadRequest)
 		return
@@ -81,7 +83,7 @@ func WarehouseCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shipengineWarehouseCreateRequest := ShipengineModels.ConvertWarehouseToShipengineWarehouse(warehouse)
-	shipengineWarehouse, err := ShipengineHandlers.CreateWarehouse(shipengineWarehouseCreateRequest)
+	shipengineWarehouse, err := ShipengineHandlers.CreateWarehouse(ctx, shipengineWarehouseCreateRequest)
 	if err != nil {
 		fmt.Println(err)
 		util.ErrorResponse(w, "error registering warehouse", http.StatusBadRequest)
@@ -90,7 +92,7 @@ func WarehouseCreate(w http.ResponseWriter, r *http.Request) {
 
 	warehouse.ShipengineWarehouseID = shipengineWarehouse.WarehouseID
 
-	err = warehouse.Create()
+	err = warehouse.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create warehouse", http.StatusBadRequest)
 		return
@@ -102,6 +104,7 @@ func WarehouseCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func WarehouseGet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -115,19 +118,19 @@ func WarehouseGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	warehouse, err := models.GetWarehouseByID(warehouseID)
+	warehouse, err := models.GetWarehouseByID(ctx, warehouseID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get warehouse", http.StatusBadRequest)
 		return
 	}
 
-	err = warehouse.GetShipFromAddress()
+	err = warehouse.GetShipFromAddress(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get ship from address", http.StatusBadRequest)
 		return
 	}
 
-	err = warehouse.GetReturnAddress()
+	err = warehouse.GetReturnAddress(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get return address", http.StatusBadRequest)
 		return
@@ -144,6 +147,7 @@ func WarehouseGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func WarehouseUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -157,7 +161,7 @@ func WarehouseUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	warehouse, err := models.GetWarehouseByID(warehouseID)
+	warehouse, err := models.GetWarehouseByID(ctx, warehouseID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find warehouse", http.StatusBadRequest)
 		return
@@ -175,20 +179,20 @@ func WarehouseUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = warehouse.UpdateWithRequest(request)
+	err = warehouse.UpdateWithRequest(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update warehouse", http.StatusInternalServerError)
 		return
 	}
 
-	err = warehouse.GetShipFromAddress()
+	err = warehouse.GetShipFromAddress(ctx)
 	if err != nil {
 		fmt.Print(err)
 		util.ErrorResponse(w, "failed to get ship from address", http.StatusInternalServerError)
 		return
 	}
 
-	err = warehouse.GetReturnAddress()
+	err = warehouse.GetReturnAddress(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get return address", http.StatusBadRequest)
 		return
@@ -199,6 +203,7 @@ func WarehouseUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func WarehouseDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -212,7 +217,7 @@ func WarehouseDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	warehouse, err := models.GetWarehouseByID(warehouseID)
+	warehouse, err := models.GetWarehouseByID(ctx, warehouseID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find warehouse", http.StatusBadRequest)
 		return
@@ -223,7 +228,7 @@ func WarehouseDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	locations, err := models.GetLocationsByWarehouseID(warehouse.ID)
+	locations, err := models.GetLocationsByWarehouseID(ctx, warehouse.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get locations", http.StatusInternalServerError)
 		return
@@ -234,7 +239,7 @@ func WarehouseDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = warehouse.Delete()
+	err = warehouse.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete warehouse", http.StatusInternalServerError)
 		return

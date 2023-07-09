@@ -8,6 +8,7 @@ import (
 )
 
 func ProductSearch(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -24,7 +25,7 @@ func ProductSearch(w http.ResponseWriter, r *http.Request) {
 
 	productSearch.ClientID = user.OwnerID
 
-	products, err := user.Client.SearchProducts(productSearch)
+	products, err := user.Client.SearchProducts(ctx, productSearch)
 	if err != nil {
 		util.ErrorResponse(w, "failed to search products", http.StatusBadRequest)
 		return

@@ -1,9 +1,10 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/util"
@@ -51,9 +52,9 @@ type PurchaseOrderStatusUpdateRequest struct {
 	TextColor   string `json:"text_color"`
 }
 
-func (pos *PurchaseOrderStatus) IsInUse() bool {
+func (pos *PurchaseOrderStatus) IsInUse(ctx context.Context) bool {
 	var count int64
-	err := PGDB.Model(&PurchaseOrder{}).Where("status = ?", pos.ID).Count(&count).Error
+	err := util.DBFromContext(ctx).Model(&PurchaseOrder{}).Where("status = ?", pos.ID).Count(&count).Error
 	if err != nil {
 		fmt.Println(err)
 		return false
@@ -61,17 +62,17 @@ func (pos *PurchaseOrderStatus) IsInUse() bool {
 	return count > 0
 }
 
-func GetPurchaseOrderStatusByClientAndName(clientID int, name string) (*PurchaseOrderStatus, error) {
+func GetPurchaseOrderStatusByClientAndName(ctx context.Context, clientID int, name string) (*PurchaseOrderStatus, error) {
 	var purchaseOrderStatus PurchaseOrderStatus
-	err := PGDB.Where("client_id = ?", clientID).Where("name = ?", name).Find(&purchaseOrderStatus).Error
+	err := util.DBFromContext(ctx).Where("client_id = ?", clientID).Where("name = ?", name).Find(&purchaseOrderStatus).Error
 	if err != nil {
 		return nil, err
 	}
 	return &purchaseOrderStatus, nil
 }
 
-func CreatePurchaseOrderStatus(pot *PurchaseOrderStatus) (*PurchaseOrderStatus, error) {
-	err := PGDB.Create(pot).Error
+func CreatePurchaseOrderStatus(ctx context.Context, pot *PurchaseOrderStatus) (*PurchaseOrderStatus, error) {
+	err := util.DBFromContext(ctx).Create(pot).Error
 	if err != nil {
 		return nil, err
 	}
@@ -80,17 +81,17 @@ func CreatePurchaseOrderStatus(pot *PurchaseOrderStatus) (*PurchaseOrderStatus, 
 	return pot, nil
 }
 
-func GetPurchaseOrderStatusByID(id int) (*PurchaseOrderStatus, error) {
+func GetPurchaseOrderStatusByID(ctx context.Context, id int) (*PurchaseOrderStatus, error) {
 	var purchaseOrderStatus PurchaseOrderStatus
-	err := PGDB.Where("id = ?", id).First(&purchaseOrderStatus).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(&purchaseOrderStatus).Error
 	if err != nil {
 		return nil, err
 	}
 	return &purchaseOrderStatus, nil
 }
 
-func (poscr *PurchaseOrderStatus) Create() error {
-	err := PGDB.Create(poscr).Error
+func (poscr *PurchaseOrderStatus) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(poscr).Error
 	if err != nil {
 		return err
 	}
@@ -101,7 +102,7 @@ func (potcr *PurchaseOrderStatusCreateRequest) ParseAndValidateRequest(r *http.R
 
 	errs := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -121,7 +122,7 @@ func (potcr *PurchaseOrderStatusCreateRequest) ParseAndValidateRequest(r *http.R
 		if err := json.Unmarshal(aux.ClientID, &potcr.ClientID); err != nil {
 			errs = append(errs, ("client_id must be int"))
 		} else {
-			if _, err := GetClientByID(potcr.ClientID); err != nil {
+			if _, err := GetClientByID(r.Context(), potcr.ClientID); err != nil {
 				errs = append(errs, ("client_id does not exist"))
 			}
 		}
@@ -259,9 +260,9 @@ func (r *PurchaseOrderStatusListRequest) ParseAndValidateRequest(req *http.Reque
 	return nil
 }
 
-func (poslr *PurchaseOrderStatusListRequest) ConvertToOrganizationQuery() *gorm.DB {
+func (poslr *PurchaseOrderStatusListRequest) ConvertToOrganizationQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&PurchaseOrderStatus{}).
+	query := util.DBFromContext(ctx).Model(&PurchaseOrderStatus{}).
 		Select("DISTINCT purchase_order_statuses.*").
 		Joins("LEFT JOIN clients ON clients.id = purchase_order_statuses.client_id").
 		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
@@ -285,9 +286,9 @@ func (poslr *PurchaseOrderStatusListRequest) ConvertToOrganizationQuery() *gorm.
 	return query
 }
 
-func (poslr *PurchaseOrderStatusListRequest) ConvertToClientQuery() *gorm.DB {
+func (poslr *PurchaseOrderStatusListRequest) ConvertToClientQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&PurchaseOrderStatus{}).
+	query := util.DBFromContext(ctx).Model(&PurchaseOrderStatus{}).
 		Select("DISTINCT purchase_order_statuses.*")
 
 	query = query.Where("purchase_order_statuses.client_id = ?", poslr.ClientID)
@@ -327,7 +328,7 @@ func ConvertPurchaseOrderStatusesToSearchResults(matchingStatuses []PurchaseOrde
 }
 
 func (posur *PurchaseOrderStatusUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
-
+	ctx := r.Context()
 	var errs []string
 
 	poStatusID, err := util.GetIntFromPath(r, "id")
@@ -335,12 +336,12 @@ func (posur *PurchaseOrderStatusUpdateRequest) ParseAndValidateRequest(r *http.R
 		return []string{"id must be an integer"}
 	}
 
-	poStatus, err := GetPurchaseOrderStatusByID(poStatusID)
+	poStatus, err := GetPurchaseOrderStatusByID(ctx, poStatusID)
 	if err != nil {
 		return []string{"id must be a valid purchase order status id"}
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -362,7 +363,7 @@ func (posur *PurchaseOrderStatusUpdateRequest) ParseAndValidateRequest(r *http.R
 			errs = append(errs, "name must be less than 255 characters")
 		} else {
 			if poStatus.Name != posur.Name {
-				poStatuses, err := GetPurchaseOrderStatusesByClientID(poStatus.ClientID)
+				poStatuses, err := GetPurchaseOrderStatusesByClientID(ctx, poStatus.ClientID)
 				if err != nil {
 					errs = append(errs, "error getting purchase order statuses")
 				}
@@ -400,17 +401,17 @@ func (posur *PurchaseOrderStatusUpdateRequest) ParseAndValidateRequest(r *http.R
 	return nil
 }
 
-func GetPurchaseOrderStatusesByClientID(clientID int) ([]PurchaseOrderStatus, error) {
+func GetPurchaseOrderStatusesByClientID(ctx context.Context, clientID int) ([]PurchaseOrderStatus, error) {
 	var purchaseOrderStatuses []PurchaseOrderStatus
 
-	if err := PGDB.Where("client_id = ?", clientID).Find(&purchaseOrderStatuses).Error; err != nil {
+	if err := util.DBFromContext(ctx).Where("client_id = ?", clientID).Find(&purchaseOrderStatuses).Error; err != nil {
 		return nil, err
 	}
 
 	return purchaseOrderStatuses, nil
 }
 
-func (pos *PurchaseOrderStatus) UpdateWithRequest(request *PurchaseOrderStatusUpdateRequest) error {
+func (pos *PurchaseOrderStatus) UpdateWithRequest(ctx context.Context, request *PurchaseOrderStatusUpdateRequest) error {
 
 	if request.Name != "" {
 		pos.Name = request.Name
@@ -424,7 +425,7 @@ func (pos *PurchaseOrderStatus) UpdateWithRequest(request *PurchaseOrderStatusUp
 		pos.TextColor = request.TextColor
 	}
 
-	if err := PGDB.Save(pos).Error; err != nil {
+	if err := util.DBFromContext(ctx).Save(pos).Error; err != nil {
 		return err
 	}
 
@@ -432,8 +433,8 @@ func (pos *PurchaseOrderStatus) UpdateWithRequest(request *PurchaseOrderStatusUp
 
 }
 
-func (pos *PurchaseOrderStatus) Delete() error {
-	if err := PGDB.Delete(pos).Error; err != nil {
+func (pos *PurchaseOrderStatus) Delete(ctx context.Context) error {
+	if err := util.DBFromContext(ctx).Delete(pos).Error; err != nil {
 		return err
 	}
 

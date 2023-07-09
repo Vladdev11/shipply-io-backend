@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -27,17 +28,17 @@ type SystemTask struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at"`
 }
 
-func (st *SystemTask) Create() error {
-	return PGDB.Create(st).Error
+func (st *SystemTask) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(st).Error
 }
 
-func (st *SystemTask) Update() error {
-	return PGDB.Save(st).Error
+func (st *SystemTask) Update(ctx context.Context) error {
+	return util.DBFromContext(ctx).Save(st).Error
 }
 
-func GetAllTasksForProcessing() ([]SystemTask, error) {
+func GetAllTasksForProcessing(ctx context.Context) ([]SystemTask, error) {
 	var tasks []SystemTask
-	err := PGDB.Where("processing IS NOT TRUE").Find(&tasks).Error
+	err := util.DBFromContext(ctx).Where("processing IS NOT TRUE").Find(&tasks).Error
 	return tasks, err
 }
 

@@ -1,13 +1,14 @@
 package ShipengineHandlers
 
 import (
+	"context"
 	"fmt"
 
 	ShipengineAPI "github.com/shipply-io/shipply-io-backend/api/shipengine/api"
 	ShipengineModels "github.com/shipply-io/shipply-io-backend/api/shipengine/models"
 )
 
-func ConnectCarrier(carrier interface{}, carrierName string) (*ShipengineModels.CarrierConnectResponse, error) {
+func ConnectCarrier(ctx context.Context, carrier interface{}, carrierName string) (*ShipengineModels.CarrierConnectResponse, error) {
 
 	if carrier == nil {
 		return nil, fmt.Errorf("carrier information is empty")
@@ -17,7 +18,7 @@ func ConnectCarrier(carrier interface{}, carrierName string) (*ShipengineModels.
 		Carrier: carrier,
 	}
 
-	connectCarrierResponse, errorResponse, err := ShipengineAPI.ConnectCarrier(carrierConnect, carrierName)
+	connectCarrierResponse, errorResponse, err := ShipengineAPI.ConnectCarrier(ctx, carrierConnect, carrierName)
 
 	if err != nil {
 		return nil, err
@@ -35,9 +36,9 @@ func ConnectCarrier(carrier interface{}, carrierName string) (*ShipengineModels.
 
 }
 
-func DeleteCarrier(carrierName string, carrierId string) error {
+func DeleteCarrier(ctx context.Context, carrierName string, carrierId string) error {
 
-	_, errorResponse, err := ShipengineAPI.DeleteCarrier(carrierName, carrierId)
+	_, errorResponse, err := ShipengineAPI.DeleteCarrier(ctx, carrierName, carrierId)
 
 	if err != nil {
 		return err
@@ -51,9 +52,9 @@ func DeleteCarrier(carrierName string, carrierId string) error {
 
 }
 
-func GetCarrierConnectionOptions(carrier_id string) (*ShipengineModels.CarrierOptionsResponse, error) {
+func GetCarrierConnectionOptions(ctx context.Context, carrier_id string) (*ShipengineModels.CarrierOptionsResponse, error) {
 
-	carrierOptionsResponse, errorResponse, err := ShipengineAPI.GetCarrierConnectionOptions(carrier_id)
+	carrierOptionsResponse, errorResponse, err := ShipengineAPI.GetCarrierConnectionOptions(ctx, carrier_id)
 	if err != nil {
 		return nil, err
 	}
@@ -66,9 +67,9 @@ func GetCarrierConnectionOptions(carrier_id string) (*ShipengineModels.CarrierOp
 
 }
 
-func GetCarrierConnectionPackageTypes(carrier_id string) (*ShipengineModels.CarrierPackageTypesResponse, error) {
+func GetCarrierConnectionPackageTypes(ctx context.Context, carrier_id string) (*ShipengineModels.CarrierPackageTypesResponse, error) {
 
-	carrierPackageTypesResponse, errorResponse, err := ShipengineAPI.GetCarrierConnectionPackageTypes(carrier_id)
+	carrierPackageTypesResponse, errorResponse, err := ShipengineAPI.GetCarrierConnectionPackageTypes(ctx, carrier_id)
 	if err != nil {
 		return nil, err
 	}
@@ -81,9 +82,9 @@ func GetCarrierConnectionPackageTypes(carrier_id string) (*ShipengineModels.Carr
 
 }
 
-func GetCarrierConnectionServices(carrier_id string) (*ShipengineModels.CarrierServicesResponse, error) {
+func GetCarrierConnectionServices(ctx context.Context, carrier_id string) (*ShipengineModels.CarrierServicesResponse, error) {
 
-	carrierServicesResponse, errorResponse, err := ShipengineAPI.GetCarrierConnectionServices(carrier_id)
+	carrierServicesResponse, errorResponse, err := ShipengineAPI.GetCarrierConnectionServices(ctx, carrier_id)
 	if err != nil {
 		return nil, err
 	}

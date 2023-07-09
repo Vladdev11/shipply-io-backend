@@ -13,57 +13,57 @@ import (
 	"github.com/shipply-io/shipply-io-backend/util"
 
 	"github.com/shipply-io/shipply-io-backend/api/shopify"
-	Shopify "github.com/shipply-io/shipply-io-backend/api/shopify"
 )
 
 // ** START INSTALLATION HANDLERS ** //
 
 func ShopifyOAuth(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	// TODO add error messages that are friendly to the user
 
 	err := models.LogShopifyInstallRequest(r)
 	if err != nil {
-		models.CreateSystemError(err.Error())
+		models.CreateSystemError(ctx, err.Error())
 	}
 
 	shop, err := util.GetStringQueryParam(r, "shop")
 	if err != nil {
-		models.CreateSystemError("shopify install failed: missing shop parameter")
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s", util.FrontEndBaseURL, url.QueryEscape("shop parameter is required")), http.StatusFound)
+		models.CreateSystemError(ctx, "shopify install failed: missing shop parameter")
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s", util.FrontendBaseURLFromContext(ctx), url.QueryEscape("shop parameter is required")), http.StatusFound)
 		return
 	}
 
 	clientID, err := util.GetIntQueryParam(r, "client_id")
 	if err != nil {
-		models.CreateSystemError("shopify install failed: missing client_id parameter")
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontEndBaseURL, url.QueryEscape("client_id parameter is required"), shop), http.StatusFound)
+		models.CreateSystemError(ctx, "shopify install failed: missing client_id parameter")
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), url.QueryEscape("client_id parameter is required"), shop), http.StatusFound)
 		return
 	}
 
 	nonce := uuid.New()
 
-	existingStore, _ := models.GetShopifyStoreByShopName(shop)
+	existingStore, _ := models.GetShopifyStoreByShopName(ctx, shop)
 	if existingStore != nil {
 
-		shopifyCredentials, err := existingStore.GetShopifyCredentials()
+		shopifyCredentials, err := existingStore.GetShopifyCredentials(ctx)
 		if err != nil {
 
 			models.SystemError{
 				Message:  err.Error(),
 				ClientID: clientID,
-			}.Create()
+			}.Create(ctx)
 
-			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontEndBaseURL, url.QueryEscape("failed to get shopify credentials"), shop), http.StatusFound)
+			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), url.QueryEscape("failed to get shopify credentials"), shop), http.StatusFound)
 			return
 		}
 
 		if shopifyCredentials.AccessToken != "" {
-			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontEndBaseURL, url.QueryEscape("shopify store "+shop+" already associated with a client"), shop), http.StatusFound)
+			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), url.QueryEscape("shopify store "+shop+" already associated with a client"), shop), http.StatusFound)
 			return
 		}
 
-		err = existingStore.UpdateAPICredentials(&models.ShopifyCredentials{
+		err = existingStore.UpdateAPICredentials(ctx, &models.ShopifyCredentials{
 			ShopName:            shop,
 			ShopifyInstallNonce: nonce.String(),
 		})
@@ -72,21 +72,21 @@ func ShopifyOAuth(w http.ResponseWriter, r *http.Request) {
 			models.SystemError{
 				Message:  err.Error(),
 				ClientID: clientID,
-			}.Create()
+			}.Create(ctx)
 
-			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontEndBaseURL, url.QueryEscape("failed to update API Credentials"), shop), http.StatusFound)
+			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), url.QueryEscape("failed to update API Credentials"), shop), http.StatusFound)
 			return
 		}
 
-		err = existingStore.Activate()
+		err = existingStore.Activate(ctx)
 		if err != nil {
 
 			models.SystemError{
 				Message:  err.Error(),
 				ClientID: clientID,
-			}.Create()
+			}.Create(ctx)
 
-			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontEndBaseURL, url.QueryEscape("failed to activate store"), shop), http.StatusFound)
+			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), url.QueryEscape("failed to activate store"), shop), http.StatusFound)
 			return
 		}
 
@@ -103,9 +103,9 @@ func ShopifyOAuth(w http.ResponseWriter, r *http.Request) {
 			models.SystemError{
 				Message:  err.Error(),
 				ClientID: clientID,
-			}.Create()
+			}.Create(ctx)
 
-			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontEndBaseURL, url.QueryEscape("failed to marshal credentials"), shop), http.StatusFound)
+			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), url.QueryEscape("failed to marshal credentials"), shop), http.StatusFound)
 			return
 		}
 
@@ -115,7 +115,7 @@ func ShopifyOAuth(w http.ResponseWriter, r *http.Request) {
 			models.SystemError{
 				Message:  "Invalid store_name parameter",
 				ClientID: clientID,
-			}.Create()
+			}.Create(ctx)
 
 		}
 
@@ -131,165 +131,166 @@ func ShopifyOAuth(w http.ResponseWriter, r *http.Request) {
 			Active:         true,
 		}
 
-		err = store.Create()
+		err = store.Create(ctx)
 		if err != nil {
 
 			models.SystemError{
 				Message:  err.Error(),
 				ClientID: clientID,
-			}.Create()
+			}.Create(ctx)
 
-			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontEndBaseURL, url.QueryEscape("failed to create store"), shop), http.StatusFound)
+			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), url.QueryEscape("failed to create store"), shop), http.StatusFound)
 			return
 		}
 
 	}
 
-	url := Shopify.AuthorizeUrl(shop, nonce.String())
+	url := shopify.FromContext(ctx).AuthorizeUrl(shop, nonce.String())
 
 	util.RedirectResponse(w, r, url, http.StatusFound)
 
 }
 
 func ShopifyOAuthConfirmation(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	err := models.LogShopifyInstallRequest(r)
 	if err != nil {
-		models.CreateSystemError(err.Error())
+		models.CreateSystemError(ctx, err.Error())
 	}
 
 	// TODO add error messages that are friendly to the user
 
 	URL, err := url.ParseRequestURI(r.RequestURI)
 	if err != nil {
-		models.CreateSystemError(err.Error())
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s", util.FrontEndBaseURL, err.Error()), http.StatusPermanentRedirect)
+		models.CreateSystemError(ctx, err.Error())
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s", util.FrontendBaseURLFromContext(ctx), err.Error()), http.StatusPermanentRedirect)
 		return
 	}
 
-	if ok, err := Shopify.VerifyAuthorizationURL(URL); !ok {
-		models.CreateSystemError(err.Error())
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s", util.FrontEndBaseURL, err.Error()), http.StatusPermanentRedirect)
+	if ok, err := shopify.FromContext(ctx).VerifyAuthorizationURL(URL); !ok {
+		models.CreateSystemError(ctx, err.Error())
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s", util.FrontendBaseURLFromContext(ctx), err.Error()), http.StatusPermanentRedirect)
 		return
 	}
 
 	shopName, err := util.GetStringQueryParam(r, "shop")
 	if err != nil {
-		models.CreateSystemError(err.Error())
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s", util.FrontEndBaseURL, "invalid shop"), http.StatusPermanentRedirect)
+		models.CreateSystemError(ctx, err.Error())
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s", util.FrontendBaseURLFromContext(ctx), "invalid shop"), http.StatusPermanentRedirect)
 		return
 	}
 
 	code, err := util.GetStringQueryParam(r, "code")
 	if err != nil {
-		models.CreateSystemError(err.Error())
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "invalid code", shopName), http.StatusPermanentRedirect)
+		models.CreateSystemError(ctx, err.Error())
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "invalid code", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
-	store, err := models.GetShopifyStoreByShopName(shopName)
+	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
-		models.CreateSystemError(err.Error())
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to find store with that shop name", shopName), http.StatusPermanentRedirect)
+		models.CreateSystemError(ctx, err.Error())
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to find store with that shop name", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
-	shopifyCredentials, err := store.GetShopifyCredentials()
+	shopifyCredentials, err := store.GetShopifyCredentials(ctx)
 	if err != nil {
 
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: store.ClientID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to get API credentials", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to get API credentials", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
 	// Verify the security checks
-	err = Shopify.VerifyOAuthCallback(r.URL, shopifyCredentials.ShopifyInstallNonce)
+	err = shopify.FromContext(ctx).VerifyOAuthCallback(r.URL, shopifyCredentials.ShopifyInstallNonce)
 	if err != nil {
 
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: store.ClientID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, err.Error(), shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), err.Error(), shopName), http.StatusPermanentRedirect)
 		return
 	}
 
-	accessToken, err := Shopify.GetAccessToken(shopName, code)
+	accessToken, err := shopify.FromContext(ctx).GetAccessToken(ctx, shopName, code)
 	if err != nil {
 
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: store.ClientID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to get access token", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to get access token", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
 	shopifyCredentials.AccessToken = accessToken
-	err = store.UpdateAPICredentials(shopifyCredentials)
+	err = store.UpdateAPICredentials(ctx, shopifyCredentials)
 	if err != nil {
 
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: store.ClientID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to update store with access token", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to update store with access token", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
-	client, err := models.GetClientByID(store.ClientID)
+	client, err := models.GetClientByID(ctx, store.ClientID)
 	if err != nil {
 
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: store.ClientID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to get client", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to get client", shopName), http.StatusPermanentRedirect)
 		return
 	}
-	warehouses, err := models.GetWarehousesByOrganizationID(client.OrganizationID)
+	warehouses, err := models.GetWarehousesByOrganizationID(ctx, client.OrganizationID)
 	if err != nil {
 
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to get warehouses", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to get warehouses", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
 	// Create Locations in Shopify (Can't do in task because they must complete before we can activate inventory items)
 	for _, warehouse := range warehouses {
-		err = warehouse.GetShipFromAddress()
+		err = warehouse.GetShipFromAddress(ctx)
 		if err != nil {
 
 			models.SystemError{
 				Message:  err.Error(),
 				ClientID: client.ID,
-			}.Create()
+			}.Create(ctx)
 
-			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to get warehouse address", shopName), http.StatusPermanentRedirect)
+			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to get warehouse address", shopName), http.StatusPermanentRedirect)
 			return
 		}
 
-		locationGraphqlID, err := shopify.AddLocation(shopName, accessToken, warehouse)
+		locationGraphqlID, err := shopify.AddLocation(ctx, shopName, accessToken, warehouse)
 		if err != nil {
 
 			models.SystemError{
 				Message:  "failed to create location: " + err.Error(),
 				ClientID: client.ID,
-			}.Create()
+			}.Create(ctx)
 
-			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to create location", shopName), http.StatusPermanentRedirect)
+			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to create location", shopName), http.StatusPermanentRedirect)
 			return
 		}
 
@@ -298,15 +299,15 @@ func ShopifyOAuthConfirmation(w http.ResponseWriter, r *http.Request) {
 			ShopifyLocationID: locationGraphqlID,
 			WarehouseID:       warehouse.ID,
 		}
-		err = shopifyLocation.Create()
+		err = shopifyLocation.Create(ctx)
 		if err != nil {
 
 			models.SystemError{
 				Message:  "failed to create shopify location: " + err.Error(),
 				ClientID: client.ID,
-			}.Create()
+			}.Create(ctx)
 
-			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to create shopify location", shopName), http.StatusPermanentRedirect)
+			util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to create shopify location", shopName), http.StatusPermanentRedirect)
 			return
 		}
 	}
@@ -322,9 +323,9 @@ func ShopifyOAuthConfirmation(w http.ResponseWriter, r *http.Request) {
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "An error occured while importing products", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "An error occured while importing products", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
@@ -332,15 +333,15 @@ func ShopifyOAuthConfirmation(w http.ResponseWriter, r *http.Request) {
 		TaskType: util.PullShopifyProductsTaskType,
 		Payload:  json.RawMessage(productsTaskParameters),
 	}
-	err = retrieveProductsTask.Create()
+	err = retrieveProductsTask.Create(ctx)
 	if err != nil {
 
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "An error occured while importing products", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "An error occured while importing products", shopName), http.StatusPermanentRedirect)
 		return
 	}
 	tasks.TaskChannel <- retrieveProductsTask
@@ -356,9 +357,9 @@ func ShopifyOAuthConfirmation(w http.ResponseWriter, r *http.Request) {
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "An error occured while importing orders", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "An error occured while importing orders", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
@@ -366,88 +367,89 @@ func ShopifyOAuthConfirmation(w http.ResponseWriter, r *http.Request) {
 		TaskType: util.PullShopifyOrdersTaskType,
 		Payload:  json.RawMessage(ordersTaskParameters),
 	}
-	err = retrieveOrdersTask.Create()
+	err = retrieveOrdersTask.Create(ctx)
 	if err != nil {
 
 		models.SystemError{
 			Message:  err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "An error occured while importing orders", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "An error occured while importing orders", shopName), http.StatusPermanentRedirect)
 		return
 	}
 	tasks.TaskChannel <- retrieveOrdersTask
 
-	err = shopify.SubscribeToAppUninstalledWebhook(shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
+	err = shopify.SubscribeToAppUninstalledWebhook(ctx, shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
 	if err != nil {
 
 		models.SystemError{
 			Message:  "failed to subscribe to app uninstalled webhook: " + err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to subscribe to app uninstalled webhook", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to subscribe to app uninstalled webhook", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
-	err = shopify.SubscribeToOrdersCreateWebhook(shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
+	err = shopify.SubscribeToOrdersCreateWebhook(ctx, shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
 	if err != nil {
 
 		models.SystemError{
 			Message:  "failed to subscribe to orders create webhook: " + err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to subscribe to orders create webhook", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to subscribe to orders create webhook", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
-	err = shopify.SubscribeToOrdersUpdateWebhook(shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
+	err = shopify.SubscribeToOrdersUpdateWebhook(ctx, shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
 	if err != nil {
 
 		models.SystemError{
 			Message:  "failed to subscribe to orders update webhook: " + err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to subscribe to orders update webhook", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to subscribe to orders update webhook", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
 	// Product create webhook is for a new product with new variants
-	err = shopify.SubscribeToProductsCreateWebhook(shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
+	err = shopify.SubscribeToProductsCreateWebhook(ctx, shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
 	if err != nil {
 
 		models.SystemError{
 			Message:  "failed to subscribe to products create webhook: " + err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to subscribe to products create webhook", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to subscribe to products create webhook", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
 	// Product update webhook is for an existing product with new variants
-	err = shopify.SubscribeToProductsUpdateWebhook(shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
+	err = shopify.SubscribeToProductsUpdateWebhook(ctx, shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
 	if err != nil {
 
 		models.SystemError{
 			Message:  "failed to subscribe to products update webhook: " + err.Error(),
 			ClientID: client.ID,
-		}.Create()
+		}.Create(ctx)
 
-		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontEndBaseURL, "failed to subscribe to products update webhook", shopName), http.StatusPermanentRedirect)
+		util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/connect/shopify/error?error=%s&shop_name=%s", util.FrontendBaseURLFromContext(ctx), "failed to subscribe to products update webhook", shopName), http.StatusPermanentRedirect)
 		return
 	}
 
-	util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/%d", util.FrontEndBaseURL, store.ID), http.StatusPermanentRedirect)
+	util.RedirectResponse(w, r, fmt.Sprintf("%s/stores/%d", util.FrontendBaseURLFromContext(ctx), store.ID), http.StatusPermanentRedirect)
 }
 
 // ** END INSTALLATION HANDLERS ** //
 
 // ** BEGIN WEBHOOK HANDLERS ** //
 func ShopifyAppUninstalledWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
@@ -455,25 +457,25 @@ func ShopifyAppUninstalledWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetShopifyStoreByShopName(shopName)
+	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
 		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
 		return
 	}
 
-	err = store.DeleteAccessToken()
+	err = store.DeleteAccessToken(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete access token", http.StatusInternalServerError)
 		return
 	}
 
-	err = store.DeleteShopifyLocations()
+	err = store.DeleteShopifyLocations(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete shopify locations", http.StatusInternalServerError)
 		return
 	}
 
-	err = store.Deactivate()
+	err = store.Deactivate(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to deactivate store", http.StatusInternalServerError)
 		return
@@ -483,6 +485,7 @@ func ShopifyAppUninstalledWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func ShopifyOrderCreatedWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
@@ -490,7 +493,7 @@ func ShopifyOrderCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetShopifyStoreByShopName(shopName)
+	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
 		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
 		return
@@ -502,7 +505,7 @@ func ShopifyOrderCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := shopify.RetrieveOrder(store.ShopifyShopName(), store.ShopifyAccessToken(), *orderID)
+	order, err := shopify.RetrieveOrder(store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *orderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to retrieve order", http.StatusInternalServerError)
 		return
@@ -514,7 +517,7 @@ func ShopifyOrderCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tasks.SyncShopifyGraphqlOrder(store.ID, store.ShopifyShopName(), store.ShopifyAccessToken(), gqlOrder)
+	err = tasks.SyncShopifyGraphqlOrder(ctx, store.ID, store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), gqlOrder)
 	if err != nil {
 		util.ErrorResponse(w, "failed to sync order", http.StatusInternalServerError)
 		return
@@ -524,6 +527,7 @@ func ShopifyOrderCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func ShopifyOrderUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
@@ -531,7 +535,7 @@ func ShopifyOrderUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetShopifyStoreByShopName(shopName)
+	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
 		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
 		return
@@ -543,7 +547,7 @@ func ShopifyOrderUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := shopify.RetrieveOrder(store.ShopifyShopName(), store.ShopifyAccessToken(), *orderID)
+	order, err := shopify.RetrieveOrder(store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *orderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to retrieve order", http.StatusInternalServerError)
 		return
@@ -555,7 +559,7 @@ func ShopifyOrderUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tasks.SyncShopifyGraphqlOrder(store.ID, store.ShopifyShopName(), store.ShopifyAccessToken(), gqlOrder)
+	err = tasks.SyncShopifyGraphqlOrder(ctx, store.ID, store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), gqlOrder)
 	if err != nil {
 		util.ErrorResponse(w, "failed to sync order", http.StatusInternalServerError)
 		return
@@ -565,6 +569,7 @@ func ShopifyOrderUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func ShopifyProductCreatedWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
@@ -572,7 +577,7 @@ func ShopifyProductCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetShopifyStoreByShopName(shopName)
+	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
 		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
 		return
@@ -589,7 +594,7 @@ func ShopifyProductCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productVariants, err := shopify.RetrieveProductVariantsByProductID(store.ShopifyShopName(), store.ShopifyAccessToken(), *productID)
+	productVariants, err := shopify.RetrieveProductVariantsByProductID(store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *productID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to retrieve product", http.StatusInternalServerError)
 		return
@@ -601,15 +606,15 @@ func ShopifyProductCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 			models.SystemError{
 				Message:  "failed to convert shopify product to model product: " + err.Error(),
 				ClientID: store.ClientID,
-			}.Create()
+			}.Create(ctx)
 			continue
 		}
-		err = tasks.SyncShopifyGraphqlProduct(store.ID, store.ShopifyShopName(), store.ShopifyAccessToken(), *gqlProduct)
+		err = tasks.SyncShopifyGraphqlProduct(ctx, store.ID, store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *gqlProduct)
 		if err != nil {
 			models.SystemError{
 				Message:  "failed to sync shopify product: " + err.Error(),
 				ClientID: store.ClientID,
-			}.Create()
+			}.Create(ctx)
 			continue
 		}
 
@@ -620,6 +625,7 @@ func ShopifyProductCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func ShopifyProductUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
@@ -627,7 +633,7 @@ func ShopifyProductUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetShopifyStoreByShopName(shopName)
+	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
 		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
 		return
@@ -644,7 +650,7 @@ func ShopifyProductUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productVariants, err := shopify.RetrieveProductVariantsByProductID(store.ShopifyShopName(), store.ShopifyAccessToken(), *productID)
+	productVariants, err := shopify.RetrieveProductVariantsByProductID(store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *productID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to retrieve product", http.StatusInternalServerError)
 		return
@@ -656,15 +662,15 @@ func ShopifyProductUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 			models.SystemError{
 				Message:  "failed to convert shopify product to model product: " + err.Error(),
 				ClientID: store.ClientID,
-			}.Create()
+			}.Create(ctx)
 			continue
 		}
-		err = tasks.SyncShopifyGraphqlProduct(store.ID, store.ShopifyShopName(), store.ShopifyAccessToken(), *gqlProduct)
+		err = tasks.SyncShopifyGraphqlProduct(ctx, store.ID, store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *gqlProduct)
 		if err != nil {
 			models.SystemError{
 				Message:  "failed to sync shopify product: " + err.Error(),
 				ClientID: store.ClientID,
-			}.Create()
+			}.Create(ctx)
 			continue
 		}
 

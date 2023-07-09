@@ -8,6 +8,7 @@ import (
 )
 
 func ReceivingListItems(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -15,7 +16,7 @@ func ReceivingListItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -27,18 +28,18 @@ func ReceivingListItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrder.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
 
-	err = purchaseOrder.GetItems()
+	err = purchaseOrder.GetItems(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order items", http.StatusBadRequest)
 		return
@@ -48,7 +49,7 @@ func ReceivingListItems(w http.ResponseWriter, r *http.Request) {
 	for _, item := range purchaseOrder.Items {
 
 		//get locations levels for item
-		err = item.GetLocationsAndLevels()
+		err = item.GetLocationsAndLevels(ctx)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get locations and levels", http.StatusBadRequest)
 			return
@@ -57,7 +58,7 @@ func ReceivingListItems(w http.ResponseWriter, r *http.Request) {
 		//set to 0 to omit from json response
 		item.ProductID = 0
 		item.PurchaseOrderID = 0
-		purchaseOrderItems = append(purchaseOrderItems, item.ConvertToReturnJSON())
+		purchaseOrderItems = append(purchaseOrderItems, item.ConvertToReturnJSON(ctx))
 	}
 
 	util.JSONResponse(w, purchaseOrderItems, http.StatusOK)
@@ -65,6 +66,7 @@ func ReceivingListItems(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderItemGetReceivingDetails(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -72,7 +74,7 @@ func PurchaseOrderItemGetReceivingDetails(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -84,7 +86,7 @@ func PurchaseOrderItemGetReceivingDetails(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
@@ -96,40 +98,40 @@ func PurchaseOrderItemGetReceivingDetails(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(purchaseOrderItemID)
+	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(ctx, purchaseOrderItemID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order item", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrder.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
 
 	//get product for item
-	err = purchaseOrderItem.GetProduct()
+	err = purchaseOrderItem.GetProduct(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
 		return
 	}
 
 	//get locations levels for item
-	err = purchaseOrderItem.GetLocationsAndLevels()
+	err = purchaseOrderItem.GetLocationsAndLevels(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get locations and levels", http.StatusBadRequest)
 		return
 	}
 
 	//get rejections for item
-	err = purchaseOrderItem.GetRejections()
+	err = purchaseOrderItem.GetRejections(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get rejections", http.StatusBadRequest)
 		return
 	}
 
 	//get item history
-	err = purchaseOrderItem.GetHistory()
+	err = purchaseOrderItem.GetHistory(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get item history", http.StatusBadRequest)
 		return
@@ -139,6 +141,6 @@ func PurchaseOrderItemGetReceivingDetails(w http.ResponseWriter, r *http.Request
 	purchaseOrderItem.ProductID = 0
 	purchaseOrderItem.PurchaseOrderID = 0
 
-	util.JSONResponse(w, purchaseOrderItem.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, purchaseOrderItem.ConvertToReturnJSON(ctx), http.StatusOK)
 
 }

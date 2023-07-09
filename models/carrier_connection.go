@@ -1,8 +1,9 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -98,7 +99,7 @@ func (cc *CarrierConnection) ConvertToReturnJSON() CarrierConnectionReturnJSON {
 	}
 }
 
-func (cc *CarrierConnection) SaveCarrierOptions(carrierOptions []CarrierOption) error {
+func (cc *CarrierConnection) SaveCarrierOptions(ctx context.Context, carrierOptions []CarrierOption) error {
 
 	var err error
 	cc.CarrierOptions, err = util.ConvertToJSONRawMessage(carrierOptions)
@@ -106,16 +107,16 @@ func (cc *CarrierConnection) SaveCarrierOptions(carrierOptions []CarrierOption) 
 		return err
 	}
 	//save only the carrier options field in the database
-	err = PGDB.Model(cc).Update("carrier_options", cc.CarrierOptions).Error
+	err = util.DBFromContext(ctx).Model(cc).Update("carrier_options", cc.CarrierOptions).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (cc *CarrierConnection) GetCarrier() error {
+func (cc *CarrierConnection) GetCarrier(ctx context.Context) error {
 	var carrier Carrier
-	err := PGDB.First(&carrier, cc.CarrierID).Error
+	err := util.DBFromContext(ctx).First(&carrier, cc.CarrierID).Error
 	if err != nil {
 		return err
 	}
@@ -123,7 +124,7 @@ func (cc *CarrierConnection) GetCarrier() error {
 	return nil
 }
 
-func (cc *CarrierConnection) SaveCarrierPackageTypes(carrierPackageTypes []CarrierPackageType) error {
+func (cc *CarrierConnection) SaveCarrierPackageTypes(ctx context.Context, carrierPackageTypes []CarrierPackageType) error {
 	var err error
 	cc.CarrierPackageTypes, err = util.ConvertToJSONRawMessage(carrierPackageTypes)
 	if err != nil {
@@ -131,14 +132,14 @@ func (cc *CarrierConnection) SaveCarrierPackageTypes(carrierPackageTypes []Carri
 	}
 
 	//save only the carrier package types field in the database
-	err = PGDB.Model(cc).Update("carrier_package_types", cc.CarrierPackageTypes).Error
+	err = util.DBFromContext(ctx).Model(cc).Update("carrier_package_types", cc.CarrierPackageTypes).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (cc *CarrierConnection) SaveCarrierServices(carrierServices []CarrierService) error {
+func (cc *CarrierConnection) SaveCarrierServices(ctx context.Context, carrierServices []CarrierService) error {
 	var err error
 	cc.CarrierServices, err = util.ConvertToJSONRawMessage(carrierServices)
 	if err != nil {
@@ -146,7 +147,7 @@ func (cc *CarrierConnection) SaveCarrierServices(carrierServices []CarrierServic
 	}
 
 	//save only the carrier services field in the database
-	err = PGDB.Model(cc).Update("carrier_services", cc.CarrierServices).Error
+	err = util.DBFromContext(ctx).Model(cc).Update("carrier_services", cc.CarrierServices).Error
 	if err != nil {
 		return err
 	}
@@ -154,10 +155,10 @@ func (cc *CarrierConnection) SaveCarrierServices(carrierServices []CarrierServic
 	return nil
 }
 
-func GetCarrierConnectionByID(id int) (*CarrierConnection, error) {
+func GetCarrierConnectionByID(ctx context.Context, id int) (*CarrierConnection, error) {
 	var carrierConnection CarrierConnection
 
-	err := PGDB.Preload("Carrier").First(&carrierConnection, id).Error
+	err := util.DBFromContext(ctx).Preload("Carrier").First(&carrierConnection, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -209,8 +210,8 @@ func CreateCarrierConnection(carrier *Carrier, r *http.Request) (*CarrierConnect
 
 }
 
-func (cc *CarrierConnection) Create() error {
-	err := PGDB.Create(cc).Error
+func (cc *CarrierConnection) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(cc).Error
 	if err != nil {
 		return err
 	}
@@ -219,8 +220,8 @@ func (cc *CarrierConnection) Create() error {
 
 }
 
-func (cc *CarrierConnection) Update() error {
-	err := PGDB.Save(cc).Error
+func (cc *CarrierConnection) Update(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Save(cc).Error
 	if err != nil {
 		return err
 	}
@@ -229,8 +230,8 @@ func (cc *CarrierConnection) Update() error {
 
 }
 
-func (cc *CarrierConnection) Delete() error {
-	err := PGDB.Delete(cc).Error
+func (cc *CarrierConnection) Delete(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Delete(cc).Error
 	if err != nil {
 		return err
 	}
@@ -254,7 +255,7 @@ func (ccar *CarrierConnectAsendia) ParseAndValidateRequest(r *http.Request) []st
 
 	errs := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -324,7 +325,7 @@ func (cceu *CarrierConnectEndicia) ParseAndValidateRequest(r *http.Request) []st
 
 	errs := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -388,7 +389,7 @@ func (ccdhl *CarrierConnectDHLeCommerce) ParseAndValidateRequest(r *http.Request
 
 	errs := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -478,7 +479,7 @@ func (ccde *CarrierConnectDHLExpress) ParseAndValidateRequest(r *http.Request) [
 
 	errs := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -551,7 +552,7 @@ func (ccot *CarrierConnectOnTrac) ParseAndValidateRequest(r *http.Request) []str
 
 	errs := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -612,7 +613,7 @@ func (ccsc *CarrierConnectStampsCom) ParseAndValidateRequest(r *http.Request) []
 
 	errs := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -720,7 +721,7 @@ func (ccups *CarrierConnectUPS) ParseAndValidateRequest(r *http.Request) []strin
 
 	errs := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -921,9 +922,9 @@ func (ccsc *CarrierConnectUPS) GetNickname() (string, error) {
 	return ccsc.Nickname, nil
 }
 
-func GetAllCarrierConnections() ([]CarrierConnection, error) {
+func GetAllCarrierConnections(ctx context.Context) ([]CarrierConnection, error) {
 	var carrierConnections []CarrierConnection
-	err := PGDB.Find(&carrierConnections).Error
+	err := util.DBFromContext(ctx).Find(&carrierConnections).Error
 	if err != nil {
 		return nil, err
 	}
@@ -997,10 +998,10 @@ func (cc *CarrierConnection) GetSettings() error {
 	return nil
 }
 
-func GetCarrierConnectionsByClientID(clientID int, orgID int) ([]CarrierConnection, error) {
+func GetCarrierConnectionsByClientID(ctx context.Context, clientID int, orgID int) ([]CarrierConnection, error) {
 	var carrierConnections []CarrierConnection
 
-	err := PGDB.Where("owner_id = ? AND owner_type = ?", clientID, 2).Or("owner_id = ? AND owner_type = ?", orgID, 1).Find(&carrierConnections).Error
+	err := util.DBFromContext(ctx).Where("owner_id = ? AND owner_type = ?", clientID, 2).Or("owner_id = ? AND owner_type = ?", orgID, 1).Find(&carrierConnections).Error
 	if err != nil {
 		return nil, err
 	}
@@ -1009,11 +1010,11 @@ func GetCarrierConnectionsByClientID(clientID int, orgID int) ([]CarrierConnecti
 
 }
 
-func GetCheapestCarrierConnection() (*CarrierConnection, error) {
+func GetCheapestCarrierConnection(ctx context.Context) (*CarrierConnection, error) {
 
 	var carrierConnections CarrierConnection
 
-	err := PGDB.Where("id = 1000").Find(&carrierConnections).Error
+	err := util.DBFromContext(ctx).Where("id = 1000").Find(&carrierConnections).Error
 
 	if err != nil {
 		return nil, err
@@ -1044,7 +1045,7 @@ func (ccfusca *CarrierConnectFedexUSCA) ParseAndValidateRequest(r *http.Request)
 
 	errs := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}

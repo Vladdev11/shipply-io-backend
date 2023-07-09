@@ -1,9 +1,10 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"time"
@@ -53,9 +54,9 @@ func (u *User) GetRole() string {
 	return util.UserRoleMap[u.Role]
 }
 
-func (u *User) GetOrganization() error {
+func (u *User) GetOrganization(ctx context.Context) error {
 
-	organization, err := GetOrganizationByID(u.OwnerID)
+	organization, err := GetOrganizationByID(ctx, u.OwnerID)
 	if err != nil {
 		return err
 	}
@@ -63,12 +64,12 @@ func (u *User) GetOrganization() error {
 	return nil
 }
 
-func (u *User) GetClient() error {
+func (u *User) GetClient(ctx context.Context) error {
 	if u.GetRole() != util.ClientAdmin && u.GetRole() != util.ClientUser {
 		return fmt.Errorf("user does not belong to a client")
 	}
 
-	client, err := GetClientByID(u.OwnerID)
+	client, err := GetClientByID(ctx, u.OwnerID)
 	if err != nil {
 		return err
 	}
@@ -76,30 +77,30 @@ func (u *User) GetClient() error {
 	return nil
 }
 
-func (u *User) Delete() error {
-	err := PGDB.Delete(u).Error
+func (u *User) Delete(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Delete(u).Error
 	return err
 }
 
-func GetUserByEmail(email string) (*User, error) {
+func GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	var user User
-	err := PGDB.Where("email = ?", email).First(&user).Error
+	err := util.DBFromContext(ctx).Where("email = ?", email).First(&user).Error
 	return &user, err
 }
 
-func CreateUser(user *User) (*User, error) {
-	err := PGDB.Create(&user).Error
+func CreateUser(ctx context.Context, user *User) (*User, error) {
+	err := util.DBFromContext(ctx).Create(&user).Error
 	return user, err
 }
 
-func (u *User) Update() error {
-	err := PGDB.Save(u).Error
+func (u *User) Update(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Save(u).Error
 	return err
 }
 
-func GetUserByID(id int) (User, error) {
+func GetUserByID(ctx context.Context, id int) (User, error) {
 	var user User
-	err := PGDB.Where("id = ?", id).First(&user).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(&user).Error
 	return user, err
 }
 
@@ -116,16 +117,15 @@ func GenerateUserPasswordAndSalt(password string) ([]byte, []byte, error) {
 	return hashedPassword, salt, err
 }
 
-func (u *User) ConvertToReturnJSON() *UserReturnJSON {
-
+func (u *User) ConvertToReturnJSON(ctx context.Context) *UserReturnJSON {
 	return &UserReturnJSON{
 		ID:            u.ID,
 		FirstName:     u.FirstName,
 		LastName:      u.LastName,
 		Email:         u.Email,
 		Role:          u.GetRole(),
-		Organization:  u.Organization.ConvertToReturnJSON(),
-		AvatarFileURL: fmt.Sprintf("%s/%s", util.ConfigCDNHost, u.AvatarFileName),
+		Organization:  u.Organization.ConvertToReturnJSON(ctx),
+		AvatarFileURL: fmt.Sprintf("%s/%s", util.CDNFromContext(ctx), u.AvatarFileName),
 	}
 }
 
@@ -182,9 +182,9 @@ func (u *UserCreateRequest) UnmarshalJSON(data []byte) error {
 
 }
 
-func (u *User) Create() error {
+func (u *User) Create(ctx context.Context) error {
 
-	if err := PGDB.Create(&u).Error; err != nil {
+	if err := util.DBFromContext(ctx).Create(&u).Error; err != nil {
 		return err
 	}
 
@@ -195,7 +195,7 @@ func (u *UserCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -236,7 +236,7 @@ func (u *UserCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
 		errs = append(errs, "email is required")
 	}
 
-	user, err := GetUserByEmail(u.Email)
+	user, err := GetUserByEmail(r.Context(), u.Email)
 	//check if email is already in use
 	if err == nil {
 		if user != nil {
@@ -328,7 +328,7 @@ type UserUpdatePasswordRequest struct {
 func (uupr *UserUpdatePasswordRequest) ParseAndValidateRequest(r *http.Request) []string {
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -379,7 +379,7 @@ func (uur *UserUpdateRequest) ParseAndValidateRequest(r *http.Request) []string 
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}

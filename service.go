@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"github.com/shipply-io/shipply-io-backend/api"
 	SendgridAPI "github.com/shipply-io/shipply-io-backend/api/sendgrid"
 	ShipengineAPI "github.com/shipply-io/shipply-io-backend/api/shipengine/api"
+	"github.com/shipply-io/shipply-io-backend/api/shopify"
 	"github.com/shipply-io/shipply-io-backend/handlers"
 	"github.com/shipply-io/shipply-io-backend/middlewares"
 	"github.com/shipply-io/shipply-io-backend/models"
@@ -49,21 +51,38 @@ func main() {
 		log.Fatalf("error loading config: %v", err)
 	}
 
-	util.DevelopmentMode = dev
-	util.PrintSQL = printSQL
+	ctx := context.Background()
+	ctx = util.ContextWithAuthSecret(ctx, k.MustString("auth.secret"))
+	ctx = util.ContextWithFrontendBaseURL(ctx, k.MustString("frontend.base_url"))
+	ctx = util.ContextWithCDN(ctx, k.MustString("aws.cdn_host"))
 
-	util.LoadConfig(k)
-	// TODO: Get rid of this as much as possible later...
-	// Especially the part with the database connection, they should be using context values instead...
-	models.PostgresInit()
-	api.InitAWSS3()
-	SendgridAPI.Init()
-	ShipengineAPI.Init()
+	db, err := models.NewDB(k, *printSQL)
+	if err != nil {
+		log.Fatalf("error connecting to database: %v", err)
+	}
+
+	ctx = util.ContextWithDB(ctx, db)
+
+	ctx = SendgridAPI.ContextWithSendgrindClient(ctx, k.MustString("sendgrid.api_key"), k.MustString("sendgrid.from"), k.MustStringMap("sendgrid.templates"))
+	ctx = ShipengineAPI.ContextWithShipengineClient(ctx, k.MustString("shipengine.api_host"), k.MustString("shipengine.api_key"))
+	ctx = shopify.WithContext(ctx, &shopify.ShopifyAppConfig{
+		ID:          k.MustString("shopify.client_id"),
+		Secret:      k.MustString("shopify.client_secret"),
+		RedirectURL: k.MustString("shopify.redirect_url"),
+		Scope:       k.MustString("shopify.scope"),
+		Webhooks:    k.MustStringMap("shopify.webhooks"),
+	})
+	ctx = api.ContextWithS3(ctx, &api.S3Config{
+		AccessKey: k.MustString("aws.access_key"),
+		SecretKey: k.MustString("aws.secret_key"),
+		Region:    k.MustString("aws.region"),
+		Buckets:   k.MustStringMap("aws.buckets"),
+	})
 
 	// ** START UP FUNCTIONS ** //
 
-	tasks.EnsureSeedData()
-	tasks.InitalizeTaskProcesser(1)
+	tasks.EnsureSeedData(ctx)
+	tasks.InitalizeTaskProcesser(ctx, 1)
 
 	// ** END START UP FUNCTIONS ** //
 
@@ -71,21 +90,21 @@ func main() {
 
 	c := cron.New()
 
-	if !*util.DevelopmentMode {
+	if !*dev {
 		//TODO add recurring task to pick up tasks that did not start processing
-		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionOptions)
-		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionPackageTypes)
-		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionServices)
+		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionOptions(ctx))
+		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionPackageTypes(ctx))
+		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionServices(ctx))
 	}
-
 	//** END CRON JOBS **//
 
 	router := mux.NewRouter()
+	router.Use(middlewares.RouterWithContext(ctx))
 
 	v1 := router.PathPrefix("/v1").Subrouter()
 
 	protected := v1.PathPrefix("/").Subrouter()
-	protected.Use(middlewares.AuthMiddleware)
+	protected.Use(middlewares.AuthMiddleware(k.MustString("auth.secret")))
 
 	shopifyRouter := v1.PathPrefix("/shopify").Subrouter()
 	shopifyWebhookRouter := shopifyRouter.PathPrefix("/webhooks").Subrouter()
@@ -290,8 +309,8 @@ func main() {
 	// protected.HandleFunc("/shipping/pick-session-order/{id}/void-label", handlers.ShippingVoidLabel).Methods(http.MethodPost)
 	// ** END SHIPPING ROUTES **//
 
-	fmt.Printf("Server starting on port %s", util.ConfigLocalPort)
-	err = http.ListenAndServe(fmt.Sprintf(":%s", util.ConfigLocalPort), gorillaHandlers.CORS(
+	fmt.Printf("Server starting on port %s", k.MustString("server.port"))
+	err = http.ListenAndServe(fmt.Sprintf(":%s", k.MustString("server.port")), gorillaHandlers.CORS(
 		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}),
 		gorillaHandlers.AllowedHeaders([]string{"Access-Control-Allow-Headers", "Content-Type", "Authorization", "Accept", "Accept-Language", "X-Authorization", "X-API", "X-REAL-IP"}),
 		gorillaHandlers.AllowedOrigins([]string{"*"}),

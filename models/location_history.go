@@ -1,8 +1,10 @@
 package models
 
 import (
+	"context"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -28,17 +30,17 @@ type LocationHistoryReturnJSON struct {
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
-func (lh *LocationHistory) ConvertToLocationHistoryReturnJSON() *LocationHistoryReturnJSON {
+func (lh *LocationHistory) ConvertToLocationHistoryReturnJSON(ctx context.Context) *LocationHistoryReturnJSON {
 	return &LocationHistoryReturnJSON{
 		ID:         lh.ID,
 		LocationID: lh.LocationID,
 		Note:       lh.Note,
-		CreatedBy:  *lh.CreatedByUser.ConvertToReturnJSON(),
+		CreatedBy:  *lh.CreatedByUser.ConvertToReturnJSON(ctx),
 		CreatedAt:  lh.CreatedAt,
 	}
 }
 
-func (lh *LocationHistory) Create() error {
-	result := PGDB.Create(&lh)
+func (lh *LocationHistory) Create(ctx context.Context) error {
+	result := util.DBFromContext(ctx).Create(&lh)
 	return result.Error
 }

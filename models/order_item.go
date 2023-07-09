@@ -1,8 +1,10 @@
 package models
 
 import (
+	"context"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -59,7 +61,7 @@ type OrderItemReturnJSON struct {
 	Product *ProductReturnJSON `json:"product,omitempty"`
 }
 
-func (oi *OrderItem) ConvertToReturnJSON() OrderItemReturnJSON {
+func (oi *OrderItem) ConvertToReturnJSON(ctx context.Context) OrderItemReturnJSON {
 	returnJSON := OrderItemReturnJSON{
 		ID:                           oi.ID,
 		OrderID:                      oi.OrderID,
@@ -82,7 +84,7 @@ func (oi *OrderItem) ConvertToReturnJSON() OrderItemReturnJSON {
 	}
 
 	if oi.Order != nil {
-		returnJSON.Order = oi.Order.ConvertToReturnJSON()
+		returnJSON.Order = oi.Order.ConvertToReturnJSON(ctx)
 	}
 
 	if oi.Product != nil {
@@ -93,27 +95,27 @@ func (oi *OrderItem) ConvertToReturnJSON() OrderItemReturnJSON {
 
 }
 
-func GetOrderItemsByOrderID(orderID int) ([]OrderItem, error) {
+func GetOrderItemsByOrderID(ctx context.Context, orderID int) ([]OrderItem, error) {
 	var orderItems []OrderItem
-	err := PGDB.Where("order_id = ?", orderID).Find(&orderItems).Error
+	err := util.DBFromContext(ctx).Where("order_id = ?", orderID).Find(&orderItems).Error
 	if err != nil {
 		return nil, err
 	}
 	return orderItems, nil
 }
 
-func GetOrderItemsToShipByProductID(productID int) ([]OrderItem, error) {
+func GetOrderItemsToShipByProductID(ctx context.Context, productID int) ([]OrderItem, error) {
 	var orderItems []OrderItem
-	err := PGDB.Where("product_id = ?", productID).Where("quantity > quantity_shipped").Find(&orderItems).Error
+	err := util.DBFromContext(ctx).Where("product_id = ?", productID).Where("quantity > quantity_shipped").Find(&orderItems).Error
 	if err != nil {
 		return nil, err
 	}
 	return orderItems, nil
 }
 
-func BatchUpdateOrderItemsAllocationCount(orderItems []OrderItem) error {
+func BatchUpdateOrderItemsAllocationCount(ctx context.Context, orderItems []OrderItem) error {
 	//start transaction
-	tx := PGDB.Begin()
+	tx := util.DBFromContext(ctx).Begin()
 	for _, orderItem := range orderItems {
 
 		//update the columns
@@ -128,31 +130,31 @@ func BatchUpdateOrderItemsAllocationCount(orderItems []OrderItem) error {
 	return tx.Commit().Error
 }
 
-func GetOrderItemsByProductID(productID int) ([]OrderItem, error) {
+func GetOrderItemsByProductID(ctx context.Context, productID int) ([]OrderItem, error) {
 	var orderItems []OrderItem
-	err := PGDB.Where("product_id = ?", productID).Find(&orderItems).Error
+	err := util.DBFromContext(ctx).Where("product_id = ?", productID).Find(&orderItems).Error
 	if err != nil {
 		return nil, err
 	}
 	return orderItems, nil
 }
 
-func (oi *OrderItem) Create() error {
-	err := PGDB.Create(oi).Error
+func (oi *OrderItem) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(oi).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetOrderItemByOrderIDAndAPIID(orderID int, apiID string) (*OrderItem, error) {
+func GetOrderItemByOrderIDAndAPIID(ctx context.Context, orderID int, apiID string) (*OrderItem, error) {
 	orderItem := OrderItem{}
-	err := PGDB.Where("order_id = ? AND api_id = ?", orderID, apiID).First(&orderItem).Error
+	err := util.DBFromContext(ctx).Where("order_id = ? AND api_id = ?", orderID, apiID).First(&orderItem).Error
 	if err != nil {
 		return nil, err
 	}
 	return &orderItem, nil
 }
-func (oi *OrderItem) Update() error {
-	return PGDB.Save(oi).Error
+func (oi *OrderItem) Update(ctx context.Context) error {
+	return util.DBFromContext(ctx).Save(oi).Error
 }

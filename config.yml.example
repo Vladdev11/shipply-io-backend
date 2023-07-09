@@ -10,12 +10,13 @@ postgres:
   password: shipply
   database: shipply
 aws:
-  access_key_id: ...
-  secret_access_key: ...
+  access_key: ...
+  secret_key: ...
   region: us-east-1
-  attachment_bucket: shippi-attachments-development
-  cdn_bucket: warehance-cdn
-  cdn: https://d28avlftk21p7r.cloudfront.net
+  buckets:
+    attachment: shippi-attachments-development
+    cdn: warehance-cdn
+  cdn_host: https://d28avlftk21p7r.cloudfront.net
 shipengine:
   api_key: ...
   api_host: https://api.shipengine.com/v1
@@ -30,7 +31,8 @@ shopify:
     orders_update: https://appstaging.shipply.io/v1/shopify/webhooks/orders-update
     products_create: https://appstaging.shipply.io/v1/shopify/webhooks/products-create
     products_update: https://appstaging.shipply.io/v1/shopify/webhooks/products-update
-sendgrind:
+sendgrid:
   api_key: ...
-  from_email: brady@shippi.io
-  reset_password_template_id: ...
+  from: brady@shippi.io
+  templates: 
+    password_reset: d-e85f424d34f541449411393c44021bce

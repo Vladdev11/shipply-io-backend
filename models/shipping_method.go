@@ -1,8 +1,9 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -38,7 +39,7 @@ func (smur *ShippingMethodUpdateRequest) ParseAndValidateUpdateRequest(r *http.R
 		Carriers map[string]map[string]bool `json:"carriers"`
 	}{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -164,29 +165,29 @@ func (sm *ShippingMethodListRequest) ParseAndValidateRequest(r *http.Request) []
 	return nil
 }
 
-func (sm *ShippingMethod) Create() error {
-	return PGDB.Create(sm).Error
+func (sm *ShippingMethod) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(sm).Error
 }
 
-func (sm *ShippingMethod) Update() error {
-	return PGDB.Save(sm).Error
+func (sm *ShippingMethod) Update(ctx context.Context) error {
+	return util.DBFromContext(ctx).Save(sm).Error
 }
 
-func (sm *ShippingMethod) Delete() error {
-	return PGDB.Delete(sm).Error
+func (sm *ShippingMethod) Delete(ctx context.Context) error {
+	return util.DBFromContext(ctx).Delete(sm).Error
 }
 
-func GetShippingMethodByStoreAndName(storeID int, name string) (*ShippingMethod, error) {
+func GetShippingMethodByStoreAndName(ctx context.Context, storeID int, name string) (*ShippingMethod, error) {
 	var sm ShippingMethod
-	err := PGDB.Where("store_id = ? AND name = ?", storeID, name).First(&sm).Error
+	err := util.DBFromContext(ctx).Where("store_id = ? AND name = ?", storeID, name).First(&sm).Error
 	if err != nil {
 		return nil, err
 	}
 	return &sm, nil
 }
-func GetShippingMethodByID(id int) (*ShippingMethod, error) {
+func GetShippingMethodByID(ctx context.Context, id int) (*ShippingMethod, error) {
 	sm := &ShippingMethod{}
-	err := PGDB.Where("id = ?", id).First(sm).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(sm).Error
 	return sm, err
 }
 

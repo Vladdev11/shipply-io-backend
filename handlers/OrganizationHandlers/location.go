@@ -8,6 +8,7 @@ import (
 )
 
 func LocationList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -15,7 +16,7 @@ func LocationList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -28,13 +29,13 @@ func LocationList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	locations, total, count, err := user.Organization.GetLocations(request)
+	locations, total, count, err := user.Organization.GetLocations(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get locations", http.StatusBadRequest)
 		return
 	}
 
-	searchResults, err := models.ConvertLocationsToSearchResults(locations, total, count)
+	searchResults, err := models.ConvertLocationsToSearchResults(ctx, locations, total, count)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert locations to search results", http.StatusBadRequest)
 		return
@@ -45,6 +46,7 @@ func LocationList(w http.ResponseWriter, r *http.Request) {
 }
 
 func LocationCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -52,7 +54,7 @@ func LocationCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -74,23 +76,24 @@ func LocationCreate(w http.ResponseWriter, r *http.Request) {
 		IsTote:         request.IsTote,
 	}
 
-	err = location.Create()
+	err = location.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create location", http.StatusBadRequest)
 		return
 	}
 
-	err = location.GetLocationType()
+	err = location.GetLocationType(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
 		return
 	}
 
-	util.JSONResponse(w, location.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, location.ConvertToReturnJSON(ctx), http.StatusOK)
 
 }
 
 func LocationGet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -98,7 +101,7 @@ func LocationGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -110,28 +113,29 @@ func LocationGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	location, err := models.GetLocationByID(locationID)
+	location, err := models.GetLocationByID(ctx, locationID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get location", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsWarehouseOwner(location.WarehouseID) {
+	if !user.Organization.IsWarehouseOwner(ctx, location.WarehouseID) {
 		util.ErrorResponse(w, "user does not have access to location", http.StatusForbidden)
 		return
 	}
 
-	err = location.GetLocationType()
+	err = location.GetLocationType(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
 		return
 	}
 
-	util.JSONResponse(w, location.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, location.ConvertToReturnJSON(ctx), http.StatusOK)
 
 }
 
 func LocationUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -139,7 +143,7 @@ func LocationUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -151,13 +155,13 @@ func LocationUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	location, err := models.GetLocationByID(locationID)
+	location, err := models.GetLocationByID(ctx, locationID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get location", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsWarehouseOwner(location.WarehouseID) {
+	if !user.Organization.IsWarehouseOwner(ctx, location.WarehouseID) {
 		util.ErrorResponse(w, "user does not have access to this location", http.StatusForbidden)
 		return
 	}
@@ -169,23 +173,24 @@ func LocationUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = location.UpdateWithRequest(request)
+	err = location.UpdateWithRequest(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update location", http.StatusBadRequest)
 		return
 	}
 
-	err = location.GetLocationType()
+	err = location.GetLocationType(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
 		return
 	}
 
-	util.JSONResponse(w, location.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, location.ConvertToReturnJSON(ctx), http.StatusOK)
 
 }
 
 func LocationDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -193,7 +198,7 @@ func LocationDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -205,28 +210,28 @@ func LocationDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	location, err := models.GetLocationByID(locationID)
+	location, err := models.GetLocationByID(ctx, locationID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get location", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsWarehouseOwner(location.WarehouseID) {
+	if !user.Organization.IsWarehouseOwner(ctx, location.WarehouseID) {
 		util.ErrorResponse(w, "user does not have access to this location", http.StatusForbidden)
 		return
 	}
 
-	if location.HasInventory() {
+	if location.HasInventory(ctx) {
 		util.ErrorResponse(w, "location has inventory", http.StatusBadRequest)
 		return
 	}
 
-	if location.HasActivePickSessionOrder() {
+	if location.HasActivePickSessionOrder(ctx) {
 		util.ErrorResponse(w, "location has active pick session order", http.StatusBadRequest)
 		return
 	}
 
-	err = location.Delete()
+	err = location.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete location", http.StatusBadRequest)
 		return

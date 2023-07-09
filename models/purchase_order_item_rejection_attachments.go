@@ -1,9 +1,11 @@
 package models
 
 import (
+	"context"
 	"time"
 
 	"github.com/shipply-io/shipply-io-backend/api"
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -24,19 +26,19 @@ type PurchaseOrderItemRejectionAttachmentReturnJSON struct {
 	URL string `json:"url"`
 }
 
-func (poira *PurchaseOrderItemRejectionAttachment) Create() error {
-	result := PGDB.Create(&poira)
+func (poira *PurchaseOrderItemRejectionAttachment) Create(ctx context.Context) error {
+	result := util.DBFromContext(ctx).Create(&poira)
 	return result.Error
 }
 
-func (poira *PurchaseOrderItemRejectionAttachment) ConvertToReturnJSON() PurchaseOrderItemRejectionAttachmentReturnJSON {
+func (poira *PurchaseOrderItemRejectionAttachment) ConvertToReturnJSON(ctx context.Context) PurchaseOrderItemRejectionAttachmentReturnJSON {
 
-	attachment, err := GetAttachmentByID(poira.AttachmentID)
+	attachment, err := GetAttachmentByID(ctx, poira.AttachmentID)
 	if err != nil {
 		return PurchaseOrderItemRejectionAttachmentReturnJSON{}
 	}
 
-	URL, err := api.GetAttachmentURL(attachment.UUID, attachment.Extension, attachment.FileName)
+	URL, err := api.S3FromContext(ctx).GetAttachmentURL(attachment.UUID, attachment.Extension, attachment.FileName)
 	if err != nil {
 		return PurchaseOrderItemRejectionAttachmentReturnJSON{}
 	}

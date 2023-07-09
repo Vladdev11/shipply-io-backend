@@ -1,9 +1,11 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -42,9 +44,9 @@ type InventoryProductStats struct {
 	SellAhead   int
 }
 
-func GetInventoryByProductID(productID int) ([]Inventory, error) {
+func GetInventoryByProductID(ctx context.Context, productID int) ([]Inventory, error) {
 	var inventory []Inventory
-	err := PGDB.Where("product_id = ?", productID).Where("shipped_at IS NULL").Find(&inventory).Error
+	err := util.DBFromContext(ctx).Where("product_id = ?", productID).Where("shipped_at IS NULL").Find(&inventory).Error
 	if err != nil {
 		return nil, err
 	}
@@ -52,10 +54,10 @@ func GetInventoryByProductID(productID int) ([]Inventory, error) {
 }
 
 // function to batch update inventory gien a slice of inventory
-func BatchUpdateInventoryOrderItemIDs(inventory []Inventory) error {
+func BatchUpdateInventoryOrderItemIDs(ctx context.Context, inventory []Inventory) error {
 
 	//start transaction
-	tx := PGDB.Begin()
+	tx := util.DBFromContext(ctx).Begin()
 	for _, inventoryUnit := range inventory {
 		//update inventory unit
 		err := tx.Model(&inventoryUnit).Update("order_item_id", inventoryUnit.OrderItemID).Error
@@ -73,10 +75,10 @@ func BatchUpdateInventoryOrderItemIDs(inventory []Inventory) error {
 	return nil
 }
 
-func CreateInventory(productID int, quantity int, locationID int, damaged bool, rejectionID int) error {
+func CreateInventory(ctx context.Context, productID int, quantity int, locationID int, damaged bool, rejectionID int) error {
 
 	//start transaction
-	tx := PGDB.Begin()
+	tx := util.DBFromContext(ctx).Begin()
 
 	//flag to indicate if an error has occurred
 	errorOccurred := false
@@ -119,14 +121,14 @@ func CreateInventory(productID int, quantity int, locationID int, damaged bool, 
 	return nil
 }
 
-func RemoveInventory(productID int, quantity int, locationID int, damaged bool) error {
+func RemoveInventory(ctx context.Context, productID int, quantity int, locationID int, damaged bool) error {
 
 	//start transaction
-	tx := PGDB.Begin()
+	tx := util.DBFromContext(ctx).Begin()
 
 	//get inventory ids to delete
 	var deletedIDs []uint
-	PGDB.Model(&Inventory{}).Where("product_id = ? AND location_id = ?", 1, 1).Where("damaged = ?", damaged).Order("created_at DESC").Limit(quantity).Pluck("id", &deletedIDs)
+	util.DBFromContext(ctx).Model(&Inventory{}).Where("product_id = ? AND location_id = ?", 1, 1).Where("damaged = ?", damaged).Order("created_at DESC").Limit(quantity).Pluck("id", &deletedIDs)
 
 	//delete inventory
 	err := tx.Where("id IN (?)", deletedIDs).Delete(&Inventory{}).Error
@@ -141,11 +143,11 @@ func RemoveInventory(productID int, quantity int, locationID int, damaged bool) 
 
 }
 
-func GetProductLocationsAndLevelsByProductID(productID int) ([]InventoryLocationLevel, error) {
+func GetProductLocationsAndLevelsByProductID(ctx context.Context, productID int) ([]InventoryLocationLevel, error) {
 
 	var result []InventoryLocationLevel
 
-	err := PGDB.Raw(fmt.Sprintf(`
+	err := util.DBFromContext(ctx).Raw(fmt.Sprintf(`
 	SELECT
 		locations.ID AS location_id,
 		locations.NAME AS location_name,

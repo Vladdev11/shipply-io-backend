@@ -8,6 +8,7 @@ import (
 )
 
 func ListOrders(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -15,7 +16,7 @@ func ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -29,13 +30,13 @@ func ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, count, total, err := user.Organization.GetOrders(request)
+	orders, count, total, err := user.Organization.GetOrders(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get orders", http.StatusBadRequest)
 		return
 	}
 
-	searchResults, err := models.ConvertOrdersToSearchResults(orders, total, count)
+	searchResults, err := models.ConvertOrdersToSearchResults(ctx, orders, total, count)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert orders to search results", http.StatusBadRequest)
 		return
@@ -45,6 +46,7 @@ func ListOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetOrder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -52,7 +54,7 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -64,23 +66,23 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := models.GetOrderByID(orderID)
+	order, err := models.GetOrderByID(ctx, orderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get order", http.StatusBadRequest)
 		return
 	}
 
-	err = order.GetStore()
+	err = order.GetStore(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(order.Store.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, order.Store.ClientID) {
 		util.ErrorResponse(w, "user does not have access to order", http.StatusForbidden)
 		return
 	}
 
-	util.JSONResponse(w, order.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, order.ConvertToReturnJSON(ctx), http.StatusOK)
 
 }

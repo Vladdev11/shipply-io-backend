@@ -1,8 +1,10 @@
 package models
 
 import (
+	"context"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -30,18 +32,18 @@ type PurchaseOrderItemHistoryReturnJSON struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func (poih *PurchaseOrderItemHistory) Create() error {
-	err := PGDB.Save(poih).Error
+func (poih *PurchaseOrderItemHistory) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Save(poih).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetPurchaseOrderItemHistorysByID(id int) ([]PurchaseOrderItemHistory, error) {
+func GetPurchaseOrderItemHistorysByID(ctx context.Context, id int) ([]PurchaseOrderItemHistory, error) {
 
 	var PurchaseOrderItemHistorys []PurchaseOrderItemHistory
-	err := PGDB.Where("purchase_order_item_id = ?", id).Order("id desc").Find(&PurchaseOrderItemHistorys).Error
+	err := util.DBFromContext(ctx).Where("purchase_order_item_id = ?", id).Order("id desc").Find(&PurchaseOrderItemHistorys).Error
 	if err != nil {
 		return nil, err
 	}
@@ -49,10 +51,9 @@ func GetPurchaseOrderItemHistorysByID(id int) ([]PurchaseOrderItemHistory, error
 	return PurchaseOrderItemHistorys, nil
 }
 
-func (pon *PurchaseOrderItemHistory) ConvertToReturnJSON() PurchaseOrderItemHistoryReturnJSON {
-
-	user, _ := GetUserByID(pon.CreatedBy)
-	createdByUser := *user.ConvertToReturnJSON()
+func (pon *PurchaseOrderItemHistory) ConvertToReturnJSON(ctx context.Context) PurchaseOrderItemHistoryReturnJSON {
+	user, _ := GetUserByID(ctx, pon.CreatedBy)
+	createdByUser := *user.ConvertToReturnJSON(ctx)
 
 	return PurchaseOrderItemHistoryReturnJSON{
 		Id:                  pon.ID,

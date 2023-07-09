@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -103,12 +104,12 @@ type ProductSearchRequest struct {
 	OrganizationID int    `json:"organization_id"`
 }
 
-func (p *Product) Create() error {
-	return PGDB.Create(p).Error
+func (p *Product) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(p).Error
 }
 
-func (p *Product) Update() error {
-	return PGDB.Save(p).Error
+func (p *Product) Update(ctx context.Context) error {
+	return util.DBFromContext(ctx).Save(p).Error
 }
 
 func (p *Product) ConvertToReturnJSON() *ProductReturnJSON {
@@ -174,34 +175,34 @@ func (p *ProductSearchRequest) ParseAndValidateRequest(r *http.Request) error {
 	return nil
 }
 
-func GetProductByID(id int) (*Product, error) {
+func GetProductByID(ctx context.Context, id int) (*Product, error) {
 	var product Product
-	err := PGDB.First(&product, id).Error
+	err := util.DBFromContext(ctx).First(&product, id).Error
 	if err != nil {
 		return nil, err
 	}
 	return &product, nil
 }
 
-func GetProductByClientIDAndSku(clientID int, sku string) (*Product, error) {
+func GetProductByClientIDAndSku(ctx context.Context, clientID int, sku string) (*Product, error) {
 	var product Product
-	err := PGDB.Where("client_id = ? AND sku = ?", clientID, sku).First(&product).Error
+	err := util.DBFromContext(ctx).Where("client_id = ? AND sku = ?", clientID, sku).First(&product).Error
 	if err != nil {
 		return nil, err
 	}
 	return &product, nil
 }
 
-func UpdateProductInventoryLevelsByProductID(productID int) error {
-	product, err := GetProductByID(productID)
+func UpdateProductInventoryLevelsByProductID(ctx context.Context, productID int) error {
+	product, err := GetProductByID(ctx, productID)
 	if err != nil {
 		return err
 	}
-	return product.UpdateProductInventoryLevels()
+	return product.UpdateProductInventoryLevels(ctx)
 }
 
-func (p *Product) UpdateProductInventoryLevels() error {
-
+func (p *Product) UpdateProductInventoryLevels(ctx context.Context) error {
+	db := util.DBFromContext(ctx)
 	var onHand int64
 	var nonSellable int64
 	var allocated int64
@@ -209,20 +210,20 @@ func (p *Product) UpdateProductInventoryLevels() error {
 	var inbound int64
 
 	//on hand = total non shipped inventory
-	err := PGDB.Model(&Inventory{}).Where("product_id = ?", p.ID).Count(&onHand).Error
+	err := db.Model(&Inventory{}).Where("product_id = ?", p.ID).Count(&onHand).Error
 	if err != nil {
 		return err
 	}
 
 	//non sellable = total non sellable inventory
-	err = PGDB.Model(&Inventory{}).Where("product_id = ? AND damaged = ?", p.ID, true).Count(&nonSellable).Error
+	err = db.Model(&Inventory{}).Where("product_id = ? AND damaged = ?", p.ID, true).Count(&nonSellable).Error
 	if err != nil {
 		return err
 	}
 
 	//allocated = has order item id and not shipped
 	var allocatedResult NullInt64
-	err = PGDB.Model(&OrderItem{}).Where("product_id = ?", p.ID).Select("SUM(allocated)").Scan(&allocatedResult).Error
+	err = db.Model(&OrderItem{}).Where("product_id = ?", p.ID).Select("SUM(allocated)").Scan(&allocatedResult).Error
 	if err != nil {
 		return err
 	}
@@ -239,7 +240,7 @@ func (p *Product) UpdateProductInventoryLevels() error {
 
 	//backordered = total backordered inventory
 	var backorderedResult NullInt64
-	err = PGDB.Model(&OrderItem{}).Where("product_id = ? AND backordered > 0", p.ID).Select("SUM(backordered)").Scan(&backorderedResult).Error
+	err = db.Model(&OrderItem{}).Where("product_id = ? AND backordered > 0", p.ID).Select("SUM(backordered)").Scan(&backorderedResult).Error
 	if err != nil {
 		return err
 	}
@@ -248,14 +249,14 @@ func (p *Product) UpdateProductInventoryLevels() error {
 	//inbound = total inbound inventory from purchase orders
 	//get purchase orders that are not closed
 	var purchaseOrders []PurchaseOrder
-	err = PGDB.Model(&PurchaseOrder{}).Where("client_id = ? AND closed IS NOT TRUE", p.ClientID).Find(&purchaseOrders).Error
+	err = db.Model(&PurchaseOrder{}).Where("client_id = ? AND closed IS NOT TRUE", p.ClientID).Find(&purchaseOrders).Error
 	if err != nil {
 		return err
 	}
 
 	for _, po := range purchaseOrders {
 		var purchaseOrderItems []PurchaseOrderItem
-		err = PGDB.Model(&PurchaseOrderItem{}).Where("purchase_order_id = ? AND product_id = ?", po.ID, p.ID).Find(&purchaseOrderItems).Error
+		err = db.Model(&PurchaseOrderItem{}).Where("purchase_order_id = ? AND product_id = ?", po.ID, p.ID).Find(&purchaseOrderItems).Error
 		if err != nil {
 			return err
 		}
@@ -275,7 +276,7 @@ func (p *Product) UpdateProductInventoryLevels() error {
 	p.Backordered = int(backordered)
 	p.Inbound = int(inbound)
 
-	err = PGDB.Exec("UPDATE products SET on_hand = ?, non_sellable = ?, allocated = ?, available = ?, backordered = ?, inbound = ? WHERE id = ?", p.OnHand, p.NonSellable, p.Allocated, p.Available, p.Backordered, p.Inbound, p.ID).Error
+	err = db.Exec("UPDATE products SET on_hand = ?, non_sellable = ?, allocated = ?, available = ?, backordered = ?, inbound = ? WHERE id = ?", p.OnHand, p.NonSellable, p.Allocated, p.Available, p.Backordered, p.Inbound, p.ID).Error
 	if err != nil {
 		return err
 	}
@@ -283,9 +284,9 @@ func (p *Product) UpdateProductInventoryLevels() error {
 	return nil
 }
 
-func (p *Product) GetClient() error {
+func (p *Product) GetClient(ctx context.Context) error {
 	var client Client
-	err := PGDB.First(&client, p.ClientID).Error
+	err := util.DBFromContext(ctx).First(&client, p.ClientID).Error
 	if err != nil {
 		return err
 	}
@@ -295,9 +296,9 @@ func (p *Product) GetClient() error {
 
 }
 
-func (p *Product) GetProductLots() error {
+func (p *Product) GetProductLots(ctx context.Context) error {
 	var productLots []ProductLot
-	err := PGDB.Where("product_id = ?", p.ID).Find(&productLots).Error
+	err := util.DBFromContext(ctx).Where("product_id = ?", p.ID).Find(&productLots).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
@@ -306,8 +307,8 @@ func (p *Product) GetProductLots() error {
 	return nil
 }
 
-func (p *Product) UpdateIPA() error {
-	err := PGDB.Exec("UPDATE products SET length = ?, width = ?, height = ?, weight = ?, weight_unit = ? WHERE id = ?", p.Length, p.Width, p.Height, p.Weight, p.WeightUnit, p.ID).Error
+func (p *Product) UpdateIPA(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Exec("UPDATE products SET length = ?, width = ?, height = ?, weight = ?, weight_unit = ? WHERE id = ?", p.Length, p.Width, p.Height, p.Weight, p.WeightUnit, p.ID).Error
 	if err != nil {
 		return err
 	}
@@ -315,9 +316,9 @@ func (p *Product) UpdateIPA() error {
 	return nil
 }
 
-func GetProductByBarcodeAndClientID(barcode string, clientID int) (*Product, error) {
+func GetProductByBarcodeAndClientID(ctx context.Context, barcode string, clientID int) (*Product, error) {
 	var product Product
-	err := PGDB.Where("client_id = ? AND barcode = ?", clientID, barcode).First(&product).Error
+	err := util.DBFromContext(ctx).Where("client_id = ? AND barcode = ?", clientID, barcode).First(&product).Error
 	if err != nil {
 		return nil, err
 	}

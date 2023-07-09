@@ -11,13 +11,15 @@ import (
 )
 
 func ClientCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -36,7 +38,7 @@ func ClientCreate(w http.ResponseWriter, r *http.Request) {
 		Active:         true,
 	}
 
-	err = client.Create()
+	err = client.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create box", http.StatusBadRequest)
 		return
@@ -44,17 +46,19 @@ func ClientCreate(w http.ResponseWriter, r *http.Request) {
 
 	//TODO create all initial things for client
 
-	util.JSONResponse(w, client.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, client.ConvertToReturnJSON(ctx), http.StatusOK)
 }
 
 func GetClient(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -66,7 +70,7 @@ func GetClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := models.GetClientByID(clientID)
+	client, err := models.GetClientByID(ctx, clientID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -77,23 +81,25 @@ func GetClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, client.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, client.ConvertToReturnJSON(ctx), http.StatusOK)
 }
 
 func ListClients(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
 	}
 
-	clients, err := models.GetClientsByOrganizationID(user.Organization.ID)
+	clients, err := models.GetClientsByOrganizationID(ctx, user.Organization.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get clients", http.StatusUnauthorized)
 		return
@@ -101,20 +107,22 @@ func ListClients(w http.ResponseWriter, r *http.Request) {
 
 	clientsJSON := []*models.ClientReturnJSON{}
 	for _, client := range clients {
-		clientsJSON = append(clientsJSON, client.ConvertToReturnJSON())
+		clientsJSON = append(clientsJSON, client.ConvertToReturnJSON(ctx))
 	}
 
 	util.JSONResponse(w, clientsJSON, http.StatusOK)
 }
 
 func UpdateClientAvatar(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -126,7 +134,7 @@ func UpdateClientAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := models.GetClientByID(clientID)
+	client, err := models.GetClientByID(ctx, clientID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -148,7 +156,7 @@ func UpdateClientAvatar(w http.ResponseWriter, r *http.Request) {
 		fileUUID := uuid.New()
 		fileExtension := strings.Split(request.FileType, "/")[1]
 
-		err = api.UploadFileToCDN(request.File, fileUUID.String(), fileExtension, request.FileType)
+		err = api.S3FromContext(ctx).UploadFileToCDN(request.File, fileUUID.String(), fileExtension, request.FileType)
 		if err != nil {
 			util.ErrorResponse(w, "failed to upload attachment to s3", http.StatusInternalServerError)
 			return
@@ -157,23 +165,25 @@ func UpdateClientAvatar(w http.ResponseWriter, r *http.Request) {
 		client.AvatarFileName = fileUUID.String() + "." + fileExtension
 	}
 
-	err = client.Update()
+	err = client.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update client", http.StatusBadRequest)
 		return
 	}
 
-	util.JSONResponse(w, client.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, client.ConvertToReturnJSON(ctx), http.StatusOK)
 }
 
 func UpdateClient(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -185,7 +195,7 @@ func UpdateClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := models.GetClientByID(clientID)
+	client, err := models.GetClientByID(ctx, clientID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -207,11 +217,11 @@ func UpdateClient(w http.ResponseWriter, r *http.Request) {
 		client.Name = request.Name
 	}
 
-	err = client.Update()
+	err = client.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update client", http.StatusBadRequest)
 		return
 	}
 
-	util.JSONResponse(w, client.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, client.ConvertToReturnJSON(ctx), http.StatusOK)
 }

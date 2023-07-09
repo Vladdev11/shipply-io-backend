@@ -1,7 +1,10 @@
 package models
 
 import (
+	"context"
 	"time"
+
+	"github.com/shipply-io/shipply-io-backend/util"
 )
 
 // for purpose of this inventory, we only care about on hand
@@ -20,6 +23,6 @@ type InventoryAuditLog struct {
 	CreatedAt time.Time
 }
 
-func (ial *InventoryAuditLog) Create() error {
-	return PGDB.Create(ial).Error
+func (ial *InventoryAuditLog) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(ial).Error
 }

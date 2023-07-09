@@ -1,5 +1,11 @@
 package models
 
+import (
+	"context"
+
+	"github.com/shipply-io/shipply-io-backend/util"
+)
+
 type ShippingRate struct {
 	ID                        int     `json:"id" gorm:"primary_key"`
 	CarrierConnectionID       int     `json:"carrier_connection_id,omitempty"`
@@ -15,12 +21,12 @@ type ShippingRate struct {
 	DeliveryDays              int     `json:"delivery_days,omitempty"`
 }
 
-func (sr *ShippingRate) Create() error {
-	return PGDB.Create(sr).Error
+func (sr *ShippingRate) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(sr).Error
 }
 
-func GetShippingRateByID(id int) (ShippingRate, error) {
+func GetShippingRateByID(ctx context.Context, id int) (ShippingRate, error) {
 	var shippingRate ShippingRate
-	err := PGDB.Where("id = ?", id).First(&shippingRate).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(&shippingRate).Error
 	return shippingRate, err
 }

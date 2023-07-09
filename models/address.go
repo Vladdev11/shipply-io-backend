@@ -1,9 +1,12 @@
 package models
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/shipply-io/shipply-io-backend/util"
 )
 
 type Address struct {
@@ -61,8 +64,8 @@ func (a *Address) Validate() error {
 	return nil
 }
 
-func (a *Address) Create() error {
-	err := PGDB.Create(a).Error
+func (a *Address) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(a).Error
 	if err != nil {
 		return err
 	}

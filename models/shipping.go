@@ -2,7 +2,7 @@ package models
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -55,7 +55,7 @@ func (sctr *ShippingScanToteRequest) ParseAndValidateRequest(r *http.Request) []
 
 	errors := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -88,7 +88,7 @@ func (sgrr *ShippingGetRatesRequest) ParseAndValidateRequest(r *http.Request) []
 
 	errors := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -119,7 +119,7 @@ func (sgrr *ShippingGetRatesRequest) ParseAndValidateRequest(r *http.Request) []
 	} else if sgrr.BoxID < 1 {
 		errors = append(errors, "box_id must be greater than 0")
 	} else {
-		box, err := GetBoxByID(sgrr.BoxID)
+		box, err := GetBoxByID(r.Context(), sgrr.BoxID)
 		if err != nil {
 			errors = append(errors, "invalid box_id")
 		}
@@ -141,7 +141,7 @@ func (ssrr *ShippingSelectRateRequest) ParseAndValidateRequest(r *http.Request) 
 
 	errors := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -174,7 +174,7 @@ func (splr *ShippingPurchaseLabelRequest) ParseAndValidateRequest(r *http.Reques
 
 	errors := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
