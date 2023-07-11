@@ -99,7 +99,6 @@ func main() {
 	//** END CRON JOBS **//
 
 	router := mux.NewRouter()
-	router.Use(middlewares.RouterWithContext(ctx))
 
 	v1 := router.PathPrefix("/v1").Subrouter()
 
@@ -215,18 +214,18 @@ func main() {
 
 	//** PRODUCT ROUTES **//
 	protected.HandleFunc("/product-search", handlers.SearchProducts).Methods(http.MethodGet)
-	protected.HandleFunc("/product/list", handlers.ListProducts).Methods(http.MethodGet)
-	//add history and images
-	protected.HandleFunc("/product/{id}", handlers.GetProduct).Methods(http.MethodGet)
-	protected.HandleFunc("/product/{id}/inventory", handlers.GetProductInventory).Methods(http.MethodGet)
-	protected.HandleFunc("/product/{id}/orders", handlers.GetProductOrders).Methods(http.MethodGet)
-	protected.HandleFunc("/product/{id}/bundles", handlers.GetProductBundles).Methods(http.MethodGet)
-	// REVIEW -- different return structure than other product routes (returns bundle instead of product)
-	protected.HandleFunc("/product/{id}/components", handlers.GetProductBundleComponents).Methods(http.MethodGet)
-	protected.HandleFunc("/product/{id}/stores", handlers.GetProductStores).Methods(http.MethodGet)
-	//create
-	//update
-	//delete
+    protected.HandleFunc("/product/list", handlers.ListProducts).Methods(http.MethodGet)
+    //add history and images
+    protected.HandleFunc("/product/{id}", handlers.GetProduct).Methods(http.MethodGet)
+    protected.HandleFunc("/product/{id}/inventory", handlers.GetProductInventory).Methods(http.MethodGet)
+    protected.HandleFunc("/product/{id}/orders", handlers.GetProductOrders).Methods(http.MethodGet)
+    protected.HandleFunc("/product/{id}/bundles", handlers.GetProductBundles).Methods(http.MethodGet)
+    // REVIEW -- different return structure than other product routes (returns bundle instead of product)
+    protected.HandleFunc("/product/{id}/components", handlers.GetProductBundleComponents).Methods(http.MethodGet)
+    protected.HandleFunc("/product/{id}/stores", handlers.GetProductStores).Methods(http.MethodGet)
+    //create
+    //update
+    //delete
 	//** END PRODUCT ROUTES **//
 
 	//** PRODUCT ALIAS ROUTES **//
