@@ -167,6 +167,192 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 
 // ** END USER ROUTES ** //
 
+// ** PRODUCT ROUTES ** //
+
+func SearchProducts(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.SearchProducts(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.SearchProducts(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.SearchProducts(w, r)
+	case util.ClientUser:
+		ClientHandlers.SearchProducts(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func ListProducts(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.ListProducts(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.ListProducts(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.ListProducts(w, r)
+	case util.ClientUser:
+		ClientHandlers.ListProducts(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func GetProduct(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.GetProduct(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.GetProduct(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.GetProduct(w, r)
+	case util.ClientUser:
+		ClientHandlers.GetProduct(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func GetProductOrders(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.GetProductOrders(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.GetProductOrders(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.GetProductOrders(w, r)
+	case util.ClientUser:
+		ClientHandlers.GetProductOrders(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func GetProductInventory(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.GetProductInventory(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.GetProductInventory(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.GetProductInventory(w, r)
+	case util.ClientUser:
+		ClientHandlers.GetProductInventory(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func GetProductBundles(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.GetProductBundles(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.GetProductBundles(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.GetProductBundles(w, r)
+	case util.ClientUser:
+		ClientHandlers.GetProductBundles(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func GetProductBundleComponents(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.GetProductBundleComponents(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.GetProductBundleComponents(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.GetProductBundleComponents(w, r)
+	case util.ClientUser:
+		ClientHandlers.GetProductBundleComponents(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func GetProductStores(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusBadRequest)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.GetProductStores(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.GetProductStores(w, r)
+	case util.ClientAdmin:
+		// ClientHandlers.GetProductStores(w, r)
+	case util.ClientUser:
+		// ClientHandlers.GetProductStores(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+// ** END PRODUCT ROUTES ** //
+
 // ** PURCHASE ORDER ROUTES ** //
 func PurchaseOrderList(w http.ResponseWriter, r *http.Request) {
 
@@ -681,33 +867,6 @@ func PurchaseOrderAttachmentDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // ** END PURCHASE ORDER ATTACHMENTS ROUTES ** //
-
-// ** PRODUCT ROUTES ** //
-
-func ProductSearch(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.ProductSearch(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.ProductSearch(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.ProductSearch(w, r)
-	case util.ClientUser:
-		ClientHandlers.ProductSearch(w, r)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-
-}
-
-// ** END PRODUCT ROUTES ** //
 
 // ** VENDOR ROUTES **//
 func VendorList(w http.ResponseWriter, r *http.Request) {

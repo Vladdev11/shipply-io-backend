@@ -114,6 +114,35 @@ func (organization *Organization) GetPurchaseOrders(ctx context.Context, polr Pu
 	return purchaseOrders, int(count), int(total), nil
 }
 
+// TODO add context
+func (organization *Organization) GetProducts(ctx context.Context, plr ProductListRequest) ([]Product, int, int, error) {
+
+	query := plr.ConvertToOrganizationQuery(ctx)
+	countQuery := plr.ConvertToOrganizationQuery(ctx)
+
+	totalQuery := util.DBFromContext(ctx).Model(&Product{}).
+		Joins("LEFT JOIN clients ON clients.id = products.client_id").
+		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
+	query = query.Where("organizations.id = ?", organization.ID)
+
+	var products []Product
+	if err := query.Offset(plr.Offset).Limit(plr.Limit).Find(&products).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	var count int64
+	if err := countQuery.Count(&count).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	var total int64
+	if err := totalQuery.Count(&total).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	return products, int(count), int(total), nil
+}
+
 func (organization *Organization) GetOrders(ctx context.Context, olr OrdersListRequest) ([]Order, int, int, error) {
 
 	query := olr.ConvertToOrganizationQuery(ctx)

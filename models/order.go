@@ -259,6 +259,55 @@ func (o *Order) Update(ctx context.Context) error {
 	return util.DBFromContext(ctx).Save(o).Error
 }
 
+// TODO delete this
+func (o *Order) ConvertToProductReturnJSON() *OrderReturnJSON {
+
+	// TODO add status
+	//get status
+	// status, _ := GetPurchaseOrderStatusByID(p.Status)
+
+	return &OrderReturnJSON{
+		ID:                            o.ID,
+		Priority:                      o.Priority,
+		OrderNumber:                   o.OrderNumber,
+		GiftNote:                      o.GiftNote,
+		PackingNote:                   o.PackingNote,
+		ReadyToShip:                   o.ReadyToShip,
+		Holds:                         o.Holds,
+		Subtotal:                      o.Subtotal,
+		Tax:                           o.Tax,
+		Shipping:                      o.Shipping,
+		Discount:                      o.Discount,
+		DiscountCodes:                 o.DiscountCodes,
+		Tip:                           o.Tip,
+		Total:                         o.Total,
+		OrderDate:                     o.OrderDate,
+		RequiredShipDate:              o.RequiredShipDate,
+		HoldUntilDate:                 o.HoldUntilDate,
+		FulfillmentStatus:             o.FulfillmentStatus,
+		MarketplaceFinacialStatus:     o.MarketplaceFinacialStatus,
+		AutoPrintReturnLabel:          o.AutoPrintReturnLabel,
+		CustomerEmail:                 o.CustomerEmail,
+		CustomerPhone:                 o.CustomerPhone,
+		SaturdayDelivery:              o.SaturdayDelivery,
+		IgnoreAddressValidationErrors: o.IgnoreAddressValidationErrors,
+		SkipAddressValidation:         o.SkipAddressValidation,
+		AllocationPriority:            o.AllocationPriority,
+		AllowPartial:                  o.AllowPartial,
+		GiftInvoice:                   o.GiftInvoice,
+		RequireSignature:              o.RequireSignature,
+		AdultSignatureRequired:        o.AdultSignatureRequired,
+		Alcohol:                       o.Alcohol,
+		Insurance:                     o.Insurance,
+		InsuranceValue:                o.InsuranceValue,
+		Currency:                      o.Currency,
+		HasDryIce:                     o.HasDryIce,
+		DryIceWeightInLbs:             o.DryIceWeightInLbs,
+		AllowSplit:                    o.AllowSplit,
+		FTRExemption:                  o.FTRExemption,
+	}
+}
+
 func (o *Order) ConvertToReturnJSON(ctx context.Context) *OrderReturnJSON {
 
 	//make sure order items is an empty array if it is nil
@@ -544,4 +593,21 @@ func ConvertOrdersToSearchResults(ctx context.Context, matchingOrders []Order, t
 	}
 
 	return searchResults, nil
+}
+
+func GetOrdersByProductID(ctx context.Context, productID int) ([]Order, error) {
+
+	var orders []Order
+
+	err := util.DBFromContext(ctx).Model(&Order{}).
+		Select("DISTINCT orders.*").
+		Joins("LEFT JOIN order_items ON order_items.order_id = orders.id").
+		Where("order_items.product_id = ?", productID).
+		Find(&orders).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }

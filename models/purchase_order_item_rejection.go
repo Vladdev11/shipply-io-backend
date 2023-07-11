@@ -29,6 +29,7 @@ type PurchaseOrderItemRejection struct {
 	PurchaseOrderItem *PurchaseOrderItem
 
 	Attachments []PurchaseOrderItemRejectionAttachment `gorm:"-"`
+	Location    *Location                              `gorm:"-"`
 }
 
 func (poir *PurchaseOrderItemRejection) Create(ctx context.Context) error {
@@ -130,14 +131,15 @@ func (poir *PurchaseOrderItemRejectRequest) ParseAndValidateRequest(r *http.Requ
 }
 
 type PurchaseOrderItemRejectionReturnJSON struct {
-	ID                  int            `json:"id"`
-	PurchaseOrderItemID int            `json:"purchase_order_item_id"`
-	RejectedReaseon     string         `json:"rejected_reason"`
-	Note                string         `json:"note"`
-	CreatedBy           UserReturnJSON `json:"created_by"`
-	CreatedAt           time.Time      `json:"created_at"`
-	Images              []string       `json:"images"`
-	Quantity            int            `json:"quantity"`
+	ID                  int                `json:"id"`
+	PurchaseOrderItemID int                `json:"purchase_order_item_id"`
+	RejectedReaseon     string             `json:"rejected_reason"`
+	Note                string             `json:"note"`
+	CreatedBy           UserReturnJSON     `json:"created_by"`
+	CreatedAt           time.Time          `json:"created_at"`
+	Images              []string           `json:"images"`
+	Quantity            int                `json:"quantity"`
+	Location            LocationReturnJSON `json:"location"`
 }
 
 func (poir *PurchaseOrderItemRejection) ConvertToReturnJSON(ctx context.Context) *PurchaseOrderItemRejectionReturnJSON {
@@ -149,6 +151,11 @@ func (poir *PurchaseOrderItemRejection) ConvertToReturnJSON(ctx context.Context)
 		if err != nil {
 			return nil
 		}
+	}
+
+	locationJSON := &LocationReturnJSON{}
+	if poir.Location != nil {
+		locationJSON = poir.Location.ConvertToReturnJSON(ctx)
 	}
 
 	attachments := []string{}
@@ -168,6 +175,7 @@ func (poir *PurchaseOrderItemRejection) ConvertToReturnJSON(ctx context.Context)
 		CreatedAt:           poir.CreatedAt,
 		Images:              attachments,
 		Quantity:            poir.Quantity,
+		Location:            *locationJSON,
 	}
 }
 
@@ -180,6 +188,28 @@ func (poir *PurchaseOrderItemRejection) GetImages(ctx context.Context) error {
 	}
 
 	poir.Attachments = attachments
+
+	return nil
+
+}
+
+func (poir *PurchaseOrderItemRejection) GetLocation(ctx context.Context) error {
+
+	//find inventory where rejection id = poir.ID
+	var inventory []Inventory
+	result := util.DBFromContext(ctx).Where("rejection_id = ?", poir.ID).Find(&inventory)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	//find location where inventory id = inventory.LocationID
+	var location Location
+	result1 := util.DBFromContext(ctx).Where("id = ?", inventory[0].LocationID).Find(&location)
+	if result1.Error != nil {
+		return result1.Error
+	}
+
+	poir.Location = &location
 
 	return nil
 

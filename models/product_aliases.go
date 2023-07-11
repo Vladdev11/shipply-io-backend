@@ -98,3 +98,19 @@ func GetProductAliasByBarcode(ctx context.Context, barcode string) (*ProductAlia
 	err := util.DBFromContext(ctx).Where("barcode = ?", barcode).First(productAlias).Error
 	return productAlias, err
 }
+
+type ProductAliasReturnJSON struct {
+	ID        int    `json:"id"`
+	ProductID int    `json:"product_id"`
+	Barcode   string `json:"barcode"`
+	Quantity  int    `json:"quantity"`
+}
+
+func (pa *ProductAlias) ConvertToReturnJSON() *ProductAliasReturnJSON {
+	return &ProductAliasReturnJSON{
+		ID:        pa.ID,
+		ProductID: pa.ProductID,
+		Barcode:   pa.Barcode,
+		Quantity:  pa.Quantity,
+	}
+}

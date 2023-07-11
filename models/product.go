@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -43,7 +44,9 @@ type Product struct {
 	ClientID             int `gorm:"uniqueIndex:idx_client_sku"`
 	ProductNote          string
 	PackNote             string
+	ReturnNote           string
 	ImageURL             string
+	AdditionalImageUrls  StringSlice `gorm:"type:VARCHAR"`
 
 	OnHand      int
 	NonSellable int
@@ -58,44 +61,59 @@ type Product struct {
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt
 
-	Client      Client
-	ProductLots []ProductLot `gorm:"-"`
+	Client             Client
+	ProductLots        []ProductLot               `gorm:"-"`
+	InventoryLocations []ProductInventoryLocation `gorm:"-"`
+	Aliases            []ProductAlias             `gorm:"-"`
+	InventoryHistory   []InventoryAuditLog        `gorm:"-"`
+	ProductBundles     []ProductBundle            `gorm:"many2many:bundle_products;"`
+	Components         []Product                  `gorm:"-"`
+	Stores             []Store                    `gorm:"-"`
 }
 
 type ProductReturnJSON struct {
-	ID                   int       `json:"id"`
-	Name                 string    `json:"name"`
-	Sku                  string    `json:"sku"`
-	Barcode              string    `json:"barcode"`
-	Kit                  bool      `json:"kit"`
-	Active               bool      `json:"active"`
-	Weight               float64   `json:"weight"`
-	WeightUnit           string    `json:"weight_unit"`
-	Grams                int       `json:"grams"`
-	Height               float64   `json:"height"`
-	Width                float64   `json:"width"`
-	Length               float64   `json:"length"`
-	Value                float64   `json:"value"`
-	FinalSale            bool      `json:"final_sale"`
-	NoAir                bool      `json:"no_air"`
-	ValueCurrency        string    `json:"value_currency"`
-	Price                float64   `json:"price"`
-	PriceCurrency        string    `json:"price_currency"`
-	CustomsValue         float64   `json:"customs_value"`
-	CustomsDescription   string    `json:"customs_description"`
-	ReorderLevel         int       `json:"reorder_level"`
-	LastCounted          time.Time `json:"last_counted"`
-	CountryOfManufacture string    `json:"country_of_manufacture"`
-	TariffCode           string    `json:"tariff_code"`
-	NeedsSerialNumber    bool      `json:"needs_serial_number"`
-	NeedsLotNumber       bool      `json:"needs_lot_number"`
-	IgnoreOnInvoice      bool      `json:"ignore_on_invoice"`
-	IgnoreOnCustoms      bool      `json:"ignore_on_customs"`
-	Virtual              bool      `json:"virtual"`
-	ClientID             int       `json:"client_id"`
-	ProductNote          string    `json:"product_note"`
-	PackNote             string    `json:"pack_note"`
-	ImageURL             string    `json:"image_url"`
+	ID                   int       `json:"id,omitempty"`
+	Name                 string    `json:"name,omitempty"`
+	Sku                  string    `json:"sku,omitempty"`
+	Barcode              string    `json:"barcode,omitempty"`
+	Kit                  bool      `json:"kit,omitempty"`
+	Active               bool      `json:"active,omitempty"`
+	Weight               float64   `json:"weight,omitempty"`
+	WeightUnit           string    `json:"weight_unit,omitempty"`
+	Grams                int       `json:"grams,omitempty"`
+	Height               float64   `json:"height,omitempty"`
+	Width                float64   `json:"width,omitempty"`
+	Length               float64   `json:"length,omitempty"`
+	Value                float64   `json:"value,omitempty"`
+	FinalSale            bool      `json:"final_sale,omitempty"`
+	NoAir                bool      `json:"no_air,omitempty"`
+	ValueCurrency        string    `json:"value_currency,omitempty"`
+	Price                float64   `json:"price,omitempty"`
+	PriceCurrency        string    `json:"price_currency,omitempty"`
+	CustomsValue         float64   `json:"customs_value,omitempty"`
+	CustomsDescription   string    `json:"customs_description,omitempty"`
+	ReorderLevel         int       `json:"reorder_level,omitempty"`
+	LastCounted          time.Time `json:"last_counted,omitempty"`
+	CountryOfManufacture string    `json:"country_of_manufacture,omitempty"`
+	TariffCode           string    `json:"tariff_code,omitempty"`
+	NeedsSerialNumber    bool      `json:"needs_serial_number,omitempty"`
+	NeedsLotNumber       bool      `json:"needs_lot_number,omitempty"`
+	IgnoreOnInvoice      bool      `json:"ignore_on_invoice,omitempty"`
+	IgnoreOnCustoms      bool      `json:"ignore_on_customs,omitempty"`
+	Virtual              bool      `json:"virtual,omitempty"`
+	ClientID             int       `json:"client_id,omitempty"`
+	ProductNote          string    `json:"product_note,omitempty"`
+	PackNote             string    `json:"pack_note,omitempty"`
+	ReturnNote           string    `json:"return_note,omitempty"`
+	ImageURL             string    `json:"image_url,omitempty"`
+	OnHand               int       `json:"on_hand,omitempty"`
+	NonSellable          int       `json:"non_sellable,omitempty"`
+	Allocated            int       `json:"allocated,omitempty"`
+	Available            int       `json:"available,omitempty"`
+	Backordered          int       `json:"backordered,omitempty"`
+	Reserve              int       `json:"reserve,omitempty"`
+	SellAhead            int       `json:"sell_ahead,omitempty"`
+	Inbound              int       `json:"inbound,omitempty"`
 }
 
 type ProductSearchRequest struct {
@@ -116,6 +134,7 @@ func (p *Product) ConvertToReturnJSON() *ProductReturnJSON {
 	if p == nil {
 		return &ProductReturnJSON{}
 	}
+
 	productReturnJSON := ProductReturnJSON{
 		ID:                   p.ID,
 		Name:                 p.Name,
@@ -149,7 +168,16 @@ func (p *Product) ConvertToReturnJSON() *ProductReturnJSON {
 		ClientID:             p.ClientID,
 		ProductNote:          p.ProductNote,
 		PackNote:             p.PackNote,
+		ReturnNote:           p.ReturnNote,
 		ImageURL:             p.ImageURL,
+		OnHand:               p.OnHand,
+		NonSellable:          p.NonSellable,
+		Allocated:            p.Allocated,
+		Available:            p.Available,
+		Backordered:          p.Backordered,
+		Reserve:              p.Reserve,
+		SellAhead:            p.SellAhead,
+		Inbound:              p.Inbound,
 	}
 	return &productReturnJSON
 }
@@ -316,6 +344,20 @@ func (p *Product) UpdateIPA(ctx context.Context) error {
 	return nil
 }
 
+// TODO add context
+func (p *Product) IsBundle(ctx context.Context) (bool, error) {
+	var productBundle ProductBundle
+	err := util.DBFromContext(ctx).Where("product_id = ?", p.ID).First(&productBundle).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
 func GetProductByBarcodeAndClientID(ctx context.Context, barcode string, clientID int) (*Product, error) {
 	var product Product
 	err := util.DBFromContext(ctx).Where("client_id = ? AND barcode = ?", clientID, barcode).First(&product).Error
@@ -323,4 +365,340 @@ func GetProductByBarcodeAndClientID(ctx context.Context, barcode string, clientI
 		return nil, err
 	}
 	return &product, nil
+}
+
+type ProductListRequest struct {
+	ClientID       int    `json:"client_id"`
+	OrganizationID int    `json:"organization_id"`
+	Limit          int    `json:"limit"`
+	Offset         int    `json:"offset"`
+	OrderBy        string `json:"order_by"`
+	OrderByColumn  string `json:"order_by_column"`
+	SearchValue    string `json:"search_value"`
+}
+
+func (plr *ProductListRequest) ParseAndValidateRequest(r *http.Request) []string {
+
+	errors := []string{}
+
+	clientID, err := util.GetIntQueryParam(r, "client_id")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errors = append(errors, "client_id must be an integer")
+		} else {
+			plr.ClientID = clientID
+		}
+	}
+
+	plr.Limit = 100
+	limit, err := util.GetIntQueryParam(r, "limit")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errors = append(errors, "limit must be an integer")
+		} else if limit < 0 {
+			errors = append(errors, "limit must be greater than or equal to 0")
+		} else {
+			plr.Limit = limit
+		}
+	}
+
+	plr.Offset = 0
+	offset, err := util.GetIntQueryParam(r, "offset")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errors = append(errors, "offset must be an integer")
+		} else if offset < 0 {
+			errors = append(errors, "offset must be greater than or equal to 0")
+		} else {
+			plr.Offset = offset
+		}
+	}
+
+	plr.OrderBy = "asc"
+	orderBy, err := util.GetStringQueryParam(r, "order_by")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errors = append(errors, "order must be a string")
+		} else if orderBy != "asc" && orderBy != "desc" {
+			errors = append(errors, "order must be either asc or desc")
+		} else {
+			plr.OrderBy = orderBy
+		}
+	}
+
+	searchValue, err := util.GetStringQueryParam(r, "search_value")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errors = append(errors, "search_value must be a string")
+		} else {
+			plr.SearchValue = searchValue
+		}
+	}
+
+	orderByColumn, err := util.GetStringQueryParam(r, "order_by_column")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errors = append(errors, "order_by_column must be a string")
+		} else {
+			plr.OrderByColumn = orderByColumn
+		}
+	}
+
+	if len(errors) > 0 {
+		return errors
+	}
+
+	return nil
+}
+
+func (por *ProductListRequest) ConvertToOrganizationQuery(ctx context.Context) *gorm.DB {
+
+	query := util.DBFromContext(ctx).Model(&Product{}).
+		Select("DISTINCT products.*").
+		Joins("LEFT JOIN clients ON clients.id = products.client_id").
+		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
+
+	query = query.Where("organizations.id = ?", por.OrganizationID)
+
+	if por.ClientID != 0 {
+		query = query.Where("products.client_id = ?", por.ClientID)
+	}
+
+	if por.SearchValue != "" {
+		query = query.
+			Where(util.DBFromContext(ctx).
+				Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue)).
+				Or("to_tsvector('english', products.sku) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue)))
+	}
+
+	if por.OrderByColumn != "" {
+		query = query.Order(por.OrderByColumn + " " + por.OrderBy)
+	} else {
+		if por.OrderBy == "asc" {
+			query = query.Order("id asc")
+		} else {
+			query = query.Order("id desc")
+		}
+	}
+
+	return query
+}
+
+func (por *ProductListRequest) ConvertToClientQuery(ctx context.Context) *gorm.DB {
+
+	query := util.DBFromContext(ctx).Model(&Product{}).
+		Select("DISTINCT products.*").
+		Joins("LEFT JOIN clients ON clients.id = products.client_id")
+
+	query = query.Where("products.client_id = ?", por.ClientID)
+
+	if por.SearchValue != "" {
+		query = query.
+			Where(util.DBFromContext(ctx).
+				Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue)).
+				Or("to_tsvector('english', products.sku) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue)))
+	}
+
+	if por.OrderByColumn != "" {
+		query = query.Order(por.OrderByColumn + " " + por.OrderBy)
+	} else {
+		if por.OrderBy == "asc" {
+			query = query.Order("id asc")
+		} else {
+			query = query.Order("id desc")
+		}
+	}
+
+	return query
+}
+
+func ConvertProductsToSearchResults(products []Product, total int, count int) (*SearchResults, error) {
+
+	var productsJSON []*ProductReturnJSON
+
+	for _, product := range products {
+		productsJSON = append(productsJSON, product.ConvertToReturnJSON())
+	}
+
+	results, err := util.ConvertStructsToInterfaces(productsJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	searchResults := &SearchResults{
+		TotalCount:    total,
+		FilteredCount: count,
+		Data:          results,
+	}
+
+	return searchResults, nil
+}
+
+func (client *Client) GetProducts(ctx context.Context, polr ProductListRequest) ([]Product, int, int, error) {
+
+	query := polr.ConvertToClientQuery(ctx)
+	countQuery := polr.ConvertToClientQuery(ctx)
+	totalQuery := util.DBFromContext(ctx).Model(&Product{}).Where("client_id = ?", client.ID)
+
+	var products []Product
+	if err := query.Offset(polr.Offset).Limit(polr.Limit).Find(&products).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	var count int64
+	if err := countQuery.Count(&count).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	var total int64
+	if err := totalQuery.Count(&total).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	return products, int(count), int(total), nil
+}
+
+type ProductInventoryLocation struct {
+	Quantity     int    `json:"quantity"`
+	LocationName string `json:"location_name"`
+	LocationID   int    `json:"location_id"`
+	Pickable     bool   `json:"pickable"`
+	Sellable     bool   `json:"sellable"`
+}
+
+type ProductInventoryLocationReturnJSON struct {
+	Quantity     int    `json:"quantity"`
+	LocationName string `json:"location_name"`
+	LocationID   int    `json:"location_id"`
+	Pickable     bool   `json:"pickable"`
+	Sellable     bool   `json:"sellable"`
+}
+
+func (ProductInventoryLocation *ProductInventoryLocation) ConvertToReturnJSON() *ProductInventoryLocationReturnJSON {
+
+	return &ProductInventoryLocationReturnJSON{
+		Quantity:     ProductInventoryLocation.Quantity,
+		LocationName: ProductInventoryLocation.LocationName,
+		LocationID:   ProductInventoryLocation.LocationID,
+		Pickable:     ProductInventoryLocation.Pickable,
+		Sellable:     ProductInventoryLocation.Sellable,
+	}
+
+}
+
+func (product *Product) GetInventoryLocations(ctx context.Context) error {
+
+	var productInventoryLevels []ProductInventoryLocation
+
+	err := util.DBFromContext(ctx).Raw(fmt.Sprintf(`
+		SELECT COUNT
+			( inventory.ID ) AS quantity,
+			locations.NAME AS location_name,
+			locations.ID AS location_id,
+			locations.pickable,
+			locations.sellable 
+		FROM
+			inventory
+			INNER JOIN locations ON locations.ID = inventory.location_id 
+		WHERE
+			product_id = %d 
+		GROUP BY
+			locations.NAME,
+			locations.pickable,
+			locations.sellable,
+			locations.id
+	`, product.ID)).Scan(&productInventoryLevels).Error
+
+	if err != nil {
+		return err
+	}
+
+	product.InventoryLocations = productInventoryLevels
+
+	return nil
+
+}
+
+func (product *Product) GetProductAliases(ctx context.Context) error {
+
+	var productAliases []ProductAlias
+
+	if err := util.DBFromContext(ctx).Where("product_id = ?", product.ID).Find(&productAliases).Error; err != nil {
+		return err
+	}
+
+	product.Aliases = productAliases
+
+	return nil
+
+}
+
+func (product *Product) GetInventoryHistory(ctx context.Context) error {
+
+	var inventoryHistory []InventoryAuditLog
+
+	if err := util.DBFromContext(ctx).Where("product_id = ?", product.ID).Find(&inventoryHistory).Error; err != nil {
+		return err
+	}
+
+	product.InventoryHistory = inventoryHistory
+
+	return nil
+}
+
+func (product *Product) GetLots(ctx context.Context) error {
+
+	var lots []ProductLot
+
+	if err := util.DBFromContext(ctx).Where("product_id = ?", product.ID).Find(&lots).Error; err != nil {
+		return err
+	}
+
+	product.ProductLots = lots
+
+	return nil
+}
+
+func (product *Product) GetProductBundles(ctx context.Context) error {
+
+	err := util.DBFromContext(ctx).Model(product).Association("ProductBundles").Find(&product.ProductBundles)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (product *Product) GetStores(ctx context.Context) error {
+
+	var stores []Store
+	if err := util.DBFromContext(ctx).
+		Joins("JOIN shopify_products ON shopify_products.store_id = stores.id").
+		Where("shopify_products.product_id = ?", product.ID).
+		Find(&stores).Error; err != nil {
+		return err
+	}
+
+	product.Stores = stores
+
+	return nil
+
+}
+
+func (product *Product) IsComponent(ctx context.Context) bool {
+
+	// find bundle product with product id
+	var productBundle ProductBundle
+	err := util.DBFromContext(ctx).
+		Joins("JOIN bundle_products ON bundle_products.product_bundle_id = product_bundles.id").
+		Where("bundle_products.product_id = ?", product.ID).First(&productBundle).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false
+		}
+		return false
+	}
+
+	return true
+
 }

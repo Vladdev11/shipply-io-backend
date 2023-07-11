@@ -504,9 +504,9 @@ func (poi *PurchaseOrderItem) GetRejections(ctx context.Context) error {
 	}
 
 	if len(purchaseOrderItemRejections) > 0 {
-		//add images to rejections
 		for i := range purchaseOrderItemRejections {
 			err = purchaseOrderItemRejections[i].GetImages(ctx)
+      err = purchaseOrderItemRejections[i].GetLocation(ctx)
 			if err != nil {
 				return err
 			}

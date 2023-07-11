@@ -64,3 +64,13 @@ func GetShopifyProductAndProductByGraphqlID(ctx context.Context, graphqlID strin
 
 	return shopifyProduct, nil
 }
+
+func GetShopifyProductsByProductID(ctx context.Context, productID int) ([]*ShopifyProduct, error) {
+	shopifyProducts := []*ShopifyProduct{}
+	err := util.DBFromContext(ctx).Where("product_id = ?", productID).Find(&shopifyProducts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return shopifyProducts, nil
+}

@@ -2,8 +2,11 @@ package models
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"errors"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/knadh/koanf/v2"
@@ -87,6 +90,7 @@ func NewDB(k *koanf.Koanf, debug bool) (*gorm.DB, error) {
 		&PurchaseOrderItemRejection{},
 		&PurchaseOrderItemRejectionAttachment{},
 		&PurchaseOrderItemHistory{},
+		&ProductBundle{},
 	)
 	// TODO: ADD CHECKS FOR THE ABOVE MIGRATION, AND RETURN AN ERROR IF IT FAILS
 	// Right now it just fails silently, and the app will crash later on when it tries to access a table that doesn't exist
@@ -100,4 +104,25 @@ func NewDB(k *koanf.Koanf, debug bool) (*gorm.DB, error) {
 
 type NullInt64 struct {
 	sql.NullInt64
+}
+
+type StringSlice []string
+
+func (o *StringSlice) Scan(src interface{}) error {
+	switch src := src.(type) {
+	case []byte:
+		*o = strings.Split(string(src), ",")
+		return nil
+	case string:
+		*o = strings.Split(src, ",")
+		return nil
+	default:
+		return errors.New("incompatible type for StringSlice")
+	}
+}
+func (o StringSlice) Value() (driver.Value, error) {
+	if len(o) == 0 {
+		return nil, nil
+	}
+	return strings.Join(o, ","), nil
 }
