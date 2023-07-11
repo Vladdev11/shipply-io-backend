@@ -322,12 +322,12 @@ func main() {
 	// ** END SHIPPING ROUTES **//
 
 	fmt.Printf("Server starting on port %s", k.MustString("server.port"))
-	err = http.ListenAndServe(fmt.Sprintf(":%s", k.MustString("server.port")), gorillaHandlers.CORS(
+	err = http.ListenAndServe(fmt.Sprintf(":%s", k.MustString("server.port")), middlewares.RouterWithContext(ctx)(gorillaHandlers.CORS(
 		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}),
 		gorillaHandlers.AllowedHeaders([]string{"Access-Control-Allow-Headers", "Content-Type", "Authorization", "Accept", "Accept-Language", "X-Authorization", "X-API", "X-REAL-IP"}),
 		gorillaHandlers.AllowedOrigins([]string{"*"}),
 		gorillaHandlers.AllowCredentials(),
-	)(router))
+	)(router)))
 	if err != nil {
 		panic(err)
 	}
