@@ -9,19 +9,21 @@ import (
 )
 
 func LocationTypeList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
 	}
 
-	locationTypes, err := user.Organization.GetLocationTypes()
+	locationTypes, err := user.Organization.GetLocationTypes(ctx)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		util.ErrorResponse(w, "failed to get location types", http.StatusBadRequest)
 		return
@@ -40,13 +42,15 @@ func LocationTypeList(w http.ResponseWriter, r *http.Request) {
 }
 
 func LocationTypeCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -64,7 +68,7 @@ func LocationTypeCreate(w http.ResponseWriter, r *http.Request) {
 		OrganizationID: user.Organization.ID,
 	}
 
-	err = locationType.Create()
+	err = locationType.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create location type", http.StatusBadRequest)
 		return
@@ -74,6 +78,8 @@ func LocationTypeCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func LocationTypeGet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
@@ -86,7 +92,7 @@ func LocationTypeGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	locationType, err := models.GetLocationTypeByID(locationTypeID)
+	locationType, err := models.GetLocationTypeByID(ctx, locationTypeID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
 		return
@@ -101,6 +107,8 @@ func LocationTypeGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func LocationTypeUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
@@ -113,7 +121,7 @@ func LocationTypeUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	locationType, err := models.GetLocationTypeByID(locationTypeID)
+	locationType, err := models.GetLocationTypeByID(ctx, locationTypeID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
 		return
@@ -141,6 +149,8 @@ func LocationTypeUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func LocationTypeDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
@@ -153,7 +163,7 @@ func LocationTypeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	locationType, err := models.GetLocationTypeByID(locationTypeID)
+	locationType, err := models.GetLocationTypeByID(ctx, locationTypeID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
 		return
@@ -164,7 +174,7 @@ func LocationTypeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = locationType.GetLocations()
+	err = locationType.GetLocations(ctx)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		util.ErrorResponse(w, "failed to get locations", http.StatusBadRequest)
 		return
@@ -175,7 +185,7 @@ func LocationTypeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = locationType.Delete()
+	err = locationType.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete location type", http.StatusBadRequest)
 		return

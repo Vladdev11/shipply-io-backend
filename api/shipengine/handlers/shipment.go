@@ -1,15 +1,15 @@
 package ShipengineHandlers
 
 import (
+	"context"
 	"fmt"
 
 	ShipengineAPI "github.com/shipply-io/shipply-io-backend/api/shipengine/api"
 	ShipengineModels "github.com/shipply-io/shipply-io-backend/api/shipengine/models"
 )
 
-func CreateShipment(shipment ShipengineModels.CreateShipmentRequest) (*ShipengineModels.CreateShipmentResponse, error) {
-
-	shipmentResponse, errorResponse, err := ShipengineAPI.CreateShipment(shipment)
+func CreateShipment(ctx context.Context, shipment ShipengineModels.CreateShipmentRequest) (*ShipengineModels.CreateShipmentResponse, error) {
+	shipmentResponse, errorResponse, err := ShipengineAPI.CreateShipment(ctx, shipment)
 	if err != nil {
 		return nil, err
 	}

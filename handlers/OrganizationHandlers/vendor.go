@@ -8,6 +8,7 @@ import (
 )
 
 func VendorList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -15,7 +16,7 @@ func VendorList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -29,7 +30,7 @@ func VendorList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	request.OrganizationID = user.Organization.ID
-	vendors, total, count, err := user.Organization.GetVendors(request)
+	vendors, total, count, err := user.Organization.GetVendors(ctx, request)
 
 	searchResults, err := models.ConvertVendorsToSearchResults(vendors, total, count)
 	if err != nil {
@@ -42,6 +43,7 @@ func VendorList(w http.ResponseWriter, r *http.Request) {
 }
 
 func VendorCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -49,7 +51,7 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -62,7 +64,7 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !user.Organization.IsClientOwner(request.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, request.ClientID) {
 		util.ErrorResponse(w, "user does not have access to client", http.StatusForbidden)
 		return
 	}
@@ -73,7 +75,7 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 		VendorAccountID: request.VendorAccountID,
 	}
 
-	err = vendor.Create()
+	err = vendor.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create vendor", http.StatusBadRequest)
 		return
@@ -84,6 +86,7 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func VendorGet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -91,7 +94,7 @@ func VendorGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -103,13 +106,13 @@ func VendorGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vendor, err := models.GetVendorByID(vendorID)
+	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get vendor", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(vendor.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, vendor.ClientID) {
 		util.ErrorResponse(w, "user does not have access to client", http.StatusForbidden)
 		return
 	}
@@ -119,6 +122,7 @@ func VendorGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func VendorUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -126,7 +130,7 @@ func VendorUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -138,13 +142,13 @@ func VendorUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vendor, err := models.GetVendorByID(vendorID)
+	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find vendor", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(vendor.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, vendor.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
@@ -156,7 +160,7 @@ func VendorUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = vendor.UpdateWithRequest(request)
+	err = vendor.UpdateWithRequest(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update vendor", http.StatusInternalServerError)
 		return
@@ -168,6 +172,7 @@ func VendorUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func VendorDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -175,7 +180,7 @@ func VendorDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -187,18 +192,18 @@ func VendorDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vendor, err := models.GetVendorByID(vendorID)
+	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find vendor", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(vendor.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, vendor.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
 
-	purchaseOrders, err := vendor.GetPurchaseOrders()
+	purchaseOrders, err := vendor.GetPurchaseOrders(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase orders", http.StatusInternalServerError)
 		return
@@ -209,7 +214,7 @@ func VendorDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = vendor.Delete()
+	err = vendor.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete vendor", http.StatusInternalServerError)
 		return

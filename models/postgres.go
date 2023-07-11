@@ -2,29 +2,29 @@ package models
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"log"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/shipply-io/shipply-io-backend/util"
+	"github.com/knadh/koanf/v2"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-var PGDB *gorm.DB
-
-func PostgresInit() {
+func NewDB(k *koanf.Koanf, debug bool) (*gorm.DB, error) {
 	//set postgres dsn
-	//if development, use local postgres
-	dsn := "host=" + util.ConfigPgAddr + " user=" + util.ConfigPgUsername + " password=" + util.ConfigPgPassword + " dbname=" + util.ConfigPgDatabase + " port=5432 sslmode=disable TimeZone=UTC"
-	if *util.DevelopmentMode {
-		dsn = "host=" + util.ConfigPgDevelopmentAddr + " user=" + util.ConfigPgDevelopmentUsername + " password=" + util.ConfigPgDevelopmentPassword + " dbname=" + util.ConfigPgDevelopmentDatabase + " port=5432 sslmode=disable TimeZone=UTC"
-	}
+	dsn := "host=" + k.String("postgres.hostname") +
+		" user=" + k.String("postgres.username") +
+		" password=" + k.String("postgres.password") +
+		" dbname=" + k.String("postgres.database") +
+		" port=5432 sslmode=disable TimeZone=UTC"
 
 	newLogger := logger.Default
-	if *util.PrintSQL {
+	if debug {
 		newLogger = logger.New(
 			log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 			logger.Config{
@@ -41,17 +41,14 @@ func PostgresInit() {
 		Logger: newLogger,
 	})
 	if err != nil {
-		panic(errors.New("failed to connect to postgres database"))
+		return nil, err
 	}
 
-	//set global db
-	PGDB = db
-
-	// Migrate the schema
-	PGDB.AutoMigrate(&Order{},
+	db.AutoMigrate(&Order{},
 		&OrderItem{},
 		&Inventory{},
 		&Product{},
+		&ProductAlias{},
 		&Kit{},
 		&ProductKit{},
 		&OrderTags{},
@@ -93,10 +90,39 @@ func PostgresInit() {
 		&PurchaseOrderItemRejection{},
 		&PurchaseOrderItemRejectionAttachment{},
 		&PurchaseOrderItemHistory{},
+		&ProductBundle{},
 	)
+	// TODO: ADD CHECKS FOR THE ABOVE MIGRATION, AND RETURN AN ERROR IF IT FAILS
+	// Right now it just fails silently, and the app will crash later on when it tries to access a table that doesn't exist
+	// It's actually already failing as can be seen by the first log message you get when the app is started.
+	// Also the failure here is kind of complicated as the pick_session_order stuff seems to have a circular dependency with pick_session_order_{item,error} tables.
+	// I'm not sure how to fix this, but I think it's a good idea to fix it before we go to production...
+	// The only reason this probably doesn't happen in your local environment is because you have the tables already created from the previous version of the app.
 
+	return db, nil
 }
 
 type NullInt64 struct {
 	sql.NullInt64
+}
+
+type StringSlice []string
+
+func (o *StringSlice) Scan(src interface{}) error {
+	switch src := src.(type) {
+	case []byte:
+		*o = strings.Split(string(src), ",")
+		return nil
+	case string:
+		*o = strings.Split(src, ",")
+		return nil
+	default:
+		return errors.New("incompatible type for StringSlice")
+	}
+}
+func (o StringSlice) Value() (driver.Value, error) {
+	if len(o) == 0 {
+		return nil, nil
+	}
+	return strings.Join(o, ","), nil
 }

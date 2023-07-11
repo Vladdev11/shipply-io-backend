@@ -1,9 +1,10 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"time"
@@ -27,13 +28,13 @@ type Client struct {
 	Stores       []Store
 }
 
-func (c *Client) Create() error {
-	err := PGDB.Create(c).Error
+func (c *Client) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(c).Error
 	return err
 }
 
-func (c *Client) Update() error {
-	err := PGDB.Save(c).Error
+func (c *Client) Update(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Save(c).Error
 	return err
 }
 
@@ -44,8 +45,8 @@ type ClientReturnJSON struct {
 	AvatarURL string `json:"avatar_url"`
 }
 
-func (c *Client) GetOrganization() error {
-	organization, err := GetOrganizationByID(c.OrganizationID)
+func (c *Client) GetOrganization(ctx context.Context) error {
+	organization, err := GetOrganizationByID(ctx, c.OrganizationID)
 	if err != nil {
 		return err
 	}
@@ -53,44 +54,43 @@ func (c *Client) GetOrganization() error {
 	return nil
 }
 
-func GetClientByID(id int) (Client, error) {
+func GetClientByID(ctx context.Context, id int) (Client, error) {
 	var client Client
-	err := PGDB.Where("id = ?", id).First(&client).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(&client).Error
 	return client, err
 }
 
-func GetClientByStoreID(storeID int) (Client, error) {
+func GetClientByStoreID(ctx context.Context, storeID int) (Client, error) {
 	var client Client
-	err := PGDB.Where("id = (SELECT client_id FROM stores WHERE id = ?)", storeID).First(&client).Error
+	err := util.DBFromContext(ctx).Where("id = (SELECT client_id FROM stores WHERE id = ?)", storeID).First(&client).Error
 	return client, err
 }
 
-func DeleteClientByID(id int) error {
-	err := PGDB.Delete(&Client{}, id).Error
+func DeleteClientByID(ctx context.Context, id int) error {
+	err := util.DBFromContext(ctx).Delete(&Client{}, id).Error
 	return err
 }
 
-func GetAllClients() ([]Client, error) {
+func GetAllClients(ctx context.Context) ([]Client, error) {
 	var clients []Client
-	err := PGDB.Find(&clients).Error
+	err := util.DBFromContext(ctx).Find(&clients).Error
 	return clients, err
 }
 
-func GetClientsByOrganizationID(organizationID int) ([]Client, error) {
+func GetClientsByOrganizationID(ctx context.Context, organizationID int) ([]Client, error) {
 	var clients []Client
-	err := PGDB.Where("organization_id = ?", organizationID).Find(&clients).Error
+	err := util.DBFromContext(ctx).Where("organization_id = ?", organizationID).Find(&clients).Error
 	return clients, err
 }
 
-func (c *Client) ConvertToReturnJSON() *ClientReturnJSON {
-
+func (c *Client) ConvertToReturnJSON(ctx context.Context) *ClientReturnJSON {
 	if c.ID == 0 {
 		return nil
 	}
 
 	avatarurl := ""
 	if c.AvatarFileName != "" {
-		avatarurl = fmt.Sprintf("%s/%s", util.ConfigCDNHost, c.AvatarFileName)
+		avatarurl = fmt.Sprintf("%s/%s", util.CDNFromContext(ctx), c.AvatarFileName)
 	}
 
 	clientReturnJSON := ClientReturnJSON{
@@ -102,8 +102,8 @@ func (c *Client) ConvertToReturnJSON() *ClientReturnJSON {
 	return &clientReturnJSON
 }
 
-func GetClientIDsByOrganizationID(organizationID int) ([]int, error) {
-	clients, err := GetClientsByOrganizationID(organizationID)
+func GetClientIDsByOrganizationID(ctx context.Context, organizationID int) ([]int, error) {
+	clients, err := GetClientsByOrganizationID(ctx, organizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,11 +114,10 @@ func GetClientIDsByOrganizationID(organizationID int) ([]int, error) {
 	return clientIDs, nil
 }
 
-func (client *Client) GetPurchaseOrders(polr PurchaseOrderListRequest) ([]PurchaseOrder, int, int, error) {
-
-	query := polr.ConvertToClientQuery()
-	countQuery := polr.ConvertToClientQuery()
-	totalQuery := PGDB.Model(&PurchaseOrder{}).Where("client_id = ?", client.ID)
+func (client *Client) GetPurchaseOrders(ctx context.Context, polr PurchaseOrderListRequest) ([]PurchaseOrder, int, int, error) {
+	query := polr.ConvertToClientQuery(ctx)
+	countQuery := polr.ConvertToClientQuery(ctx)
+	totalQuery := util.DBFromContext(ctx).Model(&PurchaseOrder{}).Where("client_id = ?", client.ID)
 
 	var purchaseOrders []PurchaseOrder
 	if err := query.Offset(polr.Offset).Limit(polr.Limit).Find(&purchaseOrders).Error; err != nil {
@@ -138,11 +137,11 @@ func (client *Client) GetPurchaseOrders(polr PurchaseOrderListRequest) ([]Purcha
 	return purchaseOrders, int(count), int(total), nil
 }
 
-func (client *Client) GetPurchaseOrderStatuses(poslr PurchaseOrderStatusListRequest) ([]PurchaseOrderStatus, int, int, error) {
+func (client *Client) GetPurchaseOrderStatuses(ctx context.Context, poslr PurchaseOrderStatusListRequest) ([]PurchaseOrderStatus, int, int, error) {
 
-	query := poslr.ConvertToClientQuery()
-	countQuery := poslr.ConvertToClientQuery()
-	totalQuery := PGDB.Model(&PurchaseOrderStatus{}).Where("client_id = ?", client.ID)
+	query := poslr.ConvertToClientQuery(ctx)
+	countQuery := poslr.ConvertToClientQuery(ctx)
+	totalQuery := util.DBFromContext(ctx).Model(&PurchaseOrderStatus{}).Where("client_id = ?", client.ID)
 
 	var purchaseOrderStatuses []PurchaseOrderStatus
 	if err := query.Offset(poslr.Offset).Limit(poslr.Limit).Find(&purchaseOrderStatuses).Error; err != nil {
@@ -162,13 +161,13 @@ func (client *Client) GetPurchaseOrderStatuses(poslr PurchaseOrderStatusListRequ
 	return purchaseOrderStatuses, int(count), int(total), nil
 }
 
-func (client *Client) GetOrders(olr OrdersListRequest) ([]Order, int, int, error) {
+func (client *Client) GetOrders(ctx context.Context, olr OrdersListRequest) ([]Order, int, int, error) {
 
 	olr.ClientID = client.ID
 
-	query := olr.ConvertToClientQuery()
-	countQuery := olr.ConvertToClientQuery()
-	totalQuery := PGDB.Model(&Order{}).
+	query := olr.ConvertToClientQuery(ctx)
+	countQuery := olr.ConvertToClientQuery(ctx)
+	totalQuery := util.DBFromContext(ctx).Model(&Order{}).
 		Joins("JOIN stores ON stores.id = orders.store_id").
 		Where("stores.client_id = ?", client.ID)
 
@@ -190,16 +189,16 @@ func (client *Client) GetOrders(olr OrdersListRequest) ([]Order, int, int, error
 	return Orders, int(count), int(total), nil
 }
 
-func (client *Client) SearchProducts(spr ProductSearchRequest) ([]Product, error) {
+func (client *Client) SearchProducts(ctx context.Context, spr ProductSearchRequest) ([]Product, error) {
 
 	var products []Product
 
-	query := PGDB.Model(&Product{})
+	query := util.DBFromContext(ctx).Model(&Product{})
 
 	query = query.Where("client_id = ?", spr.ClientID)
 
 	if spr.SearchValue != "" {
-		query = query.Where(PGDB.Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", spr.SearchValue)).
+		query = query.Where(util.DBFromContext(ctx).Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", spr.SearchValue)).
 			Or("to_tsvector('english', products.sku) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", spr.SearchValue)).
 			Or("to_tsvector('english', products.barcode) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", spr.SearchValue)))
 	}
@@ -213,12 +212,12 @@ func (client *Client) SearchProducts(spr ProductSearchRequest) ([]Product, error
 
 }
 
-func (client *Client) GetVendors(vlr VendorListRequest) ([]Vendor, int, int, error) {
+func (client *Client) GetVendors(ctx context.Context, vlr VendorListRequest) ([]Vendor, int, int, error) {
 
-	query := vlr.ConvertToClientQuery()
-	countQuery := vlr.ConvertToClientQuery()
+	query := vlr.ConvertToClientQuery(ctx)
+	countQuery := vlr.ConvertToClientQuery(ctx)
 
-	totalQuery := PGDB.Model(&Vendor{}).Where("client_id = ?", client.ID)
+	totalQuery := util.DBFromContext(ctx).Model(&Vendor{}).Where("client_id = ?", client.ID)
 
 	var vendors []Vendor
 	if err := query.Offset(vlr.Offset).Limit(vlr.Limit).Find(&vendors).Error; err != nil {
@@ -239,10 +238,10 @@ func (client *Client) GetVendors(vlr VendorListRequest) ([]Vendor, int, int, err
 
 }
 
-func (client *Client) GetCarrierConnections() ([]CarrierConnection, error) {
+func (client *Client) GetCarrierConnections(ctx context.Context) ([]CarrierConnection, error) {
 
 	var carrierConnections []CarrierConnection
-	err := PGDB.Where("owner_id = ?", client.ID).
+	err := util.DBFromContext(ctx).Where("owner_id = ?", client.ID).
 		Where("owner_type = ?", 2).
 		Find(&carrierConnections).Error
 
@@ -254,10 +253,10 @@ func (client *Client) GetCarrierConnections() ([]CarrierConnection, error) {
 
 }
 
-func (client *Client) GetStores() error {
+func (client *Client) GetStores(ctx context.Context) error {
 
 	var stores []Store
-	err := PGDB.Where("client_id = ?", client.ID).Find(&stores).Error
+	err := util.DBFromContext(ctx).Where("client_id = ?", client.ID).Find(&stores).Error
 
 	if err != nil {
 		return err
@@ -277,7 +276,7 @@ func (c *ClientCreateRequest) ParseAndValidateRequest(r *http.Request) []string 
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -304,7 +303,7 @@ func (c *ClientCreateRequest) ParseAndValidateRequest(r *http.Request) []string 
 
 	//check if name is unique
 	var count int64
-	PGDB.Model(&Client{}).Where("name = ?", c.Name).Count(&count)
+	util.DBFromContext(r.Context()).Model(&Client{}).Where("name = ?", c.Name).Count(&count)
 	if count > 0 {
 		errs = append(errs, "client already exists with this name")
 	}
@@ -356,7 +355,7 @@ func (c *ClientUpdateRequest) ParseAndValidateRequest(r *http.Request) []string 
 
 	var errors []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}

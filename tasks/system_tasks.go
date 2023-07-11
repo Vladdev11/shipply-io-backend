@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -12,12 +13,12 @@ import (
 var TaskChannel = make(chan *models.SystemTask, 100)
 
 // InitalizeTaskProcesser is a function that is used to initialize the system task worker
-func InitalizeTaskProcesser(numWorkers int) {
+func InitalizeTaskProcesser(ctx context.Context, numWorkers int) {
 	for i := 0; i < numWorkers; i++ {
 		go func() {
 			for {
 				task := <-TaskChannel
-				ExecuteTask(task)
+				ExecuteTask(ctx, task)
 				//add a delay for cpu usage
 				time.Sleep(1 * time.Second)
 			}
@@ -25,9 +26,9 @@ func InitalizeTaskProcesser(numWorkers int) {
 	}
 }
 
-func StartAllTasks() {
+func StartAllTasks(ctx context.Context) {
 	//get all tasks that are not completed
-	tasks, err := models.GetAllTasksForProcessing()
+	tasks, err := models.GetAllTasksForProcessing(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -42,39 +43,39 @@ func StartAllTasks() {
 }
 
 // ExecuteTask is a function that is used to execute a system task
-func ExecuteTask(st *models.SystemTask) {
+func ExecuteTask(ctx context.Context, st *models.SystemTask) {
 	parameters, err := st.GetParameters()
 	if err != nil {
 		st.Errors = err.Error()
 		st.HasError = true
-		st.Update()
+		st.Update(ctx)
 		return
 	}
 
 	st.StartedAt = time.Now()
 	st.Processing = true
-	err = st.Update()
+	err = st.Update(ctx)
 
 	switch st.TaskType {
 	case util.PullShopifyOrdersTaskType:
-		err = PullShopifyOrdersTask(parameters["store_id"].(int), parameters["shop_name"].(string), parameters["access_token"].(string))
+		err = PullShopifyOrdersTask(ctx, parameters["store_id"].(int), parameters["shop_name"].(string), parameters["access_token"].(string))
 		if err != nil {
 			st.Errors = err.Error()
 			st.HasError = true
 		}
-		st.Update()
+		st.Update(ctx)
 	case util.PullShopifyProductsTaskType:
-		err = PullShopifyProductsTask(parameters["store_id"].(int), parameters["shop_name"].(string), parameters["access_token"].(string))
+		err = PullShopifyProductsTask(ctx, parameters["store_id"].(int), parameters["shop_name"].(string), parameters["access_token"].(string))
 		if err != nil {
 			st.Errors = err.Error()
 			st.HasError = true
 		}
-		st.Update()
+		st.Update(ctx)
 	default:
 		fmt.Println("Unknown Task")
 	}
 
 	st.CompletedAt = time.Now()
 	st.Processing = false
-	st.Update()
+	st.Update(ctx)
 }

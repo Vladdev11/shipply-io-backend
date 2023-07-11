@@ -1,11 +1,13 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -70,8 +72,8 @@ type BoxUpdateRequest struct {
 	Cost    float64 `json:"cost"`
 }
 
-func (b *Box) Create() error {
-	err := PGDB.Create(b).Error
+func (b *Box) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(b).Error
 	if err != nil {
 		return err
 	}
@@ -79,8 +81,8 @@ func (b *Box) Create() error {
 	return nil
 }
 
-func (b *Box) Update() error {
-	err := PGDB.Save(b).Error
+func (b *Box) Update(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Save(b).Error
 	if err != nil {
 		return err
 	}
@@ -88,8 +90,8 @@ func (b *Box) Update() error {
 	return nil
 }
 
-func (b *Box) Delete() error {
-	err := PGDB.Delete(b).Error
+func (b *Box) Delete(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Delete(b).Error
 	if err != nil {
 		return err
 	}
@@ -97,9 +99,9 @@ func (b *Box) Delete() error {
 	return nil
 }
 
-func GetBoxByBarcode(barcode string) (*Box, error) {
+func GetBoxByBarcode(ctx context.Context, barcode string) (*Box, error) {
 	box := &Box{}
-	err := PGDB.Where("barcode = ?", barcode).First(box).Error
+	err := util.DBFromContext(ctx).Where("barcode = ?", barcode).First(box).Error
 	if err != nil {
 		return nil, err
 	}
@@ -107,9 +109,9 @@ func GetBoxByBarcode(barcode string) (*Box, error) {
 	return box, nil
 }
 
-func CheckForUniqueBarcode(barcode string, boxID int) (bool, error) {
+func CheckForUniqueBarcode(ctx context.Context, barcode string, boxID int) (bool, error) {
 	box := &Box{}
-	err := PGDB.Where("barcode = ? AND id != ?", barcode, boxID).First(box).Error
+	err := util.DBFromContext(ctx).Where("barcode = ? AND id != ?", barcode, boxID).First(box).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return true, nil
@@ -139,7 +141,7 @@ func (b *BoxCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -182,7 +184,7 @@ func (b *BoxCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
 		}
 
 		//make sure barcode is unique
-		box, err := GetBoxByBarcode(b.Barcode)
+		box, err := GetBoxByBarcode(r.Context(), b.Barcode)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			errs = append(errs, "error checking if barcode is unique")
 		} else if box != nil {
@@ -263,9 +265,9 @@ func (b *BoxCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
 	return nil
 }
 
-func GetBoxByID(id int) (*Box, error) {
+func GetBoxByID(ctx context.Context, id int) (*Box, error) {
 	box := &Box{}
-	err := PGDB.Where("id = ?", id).First(box).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(box).Error
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +278,7 @@ func GetBoxByID(id int) (*Box, error) {
 func (b *BoxUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -317,7 +319,7 @@ func (b *BoxUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
 		}
 
 		// make sure barcode is unique
-		exists, err := CheckForUniqueBarcode(b.Barcode, b.ID)
+		exists, err := CheckForUniqueBarcode(r.Context(), b.Barcode, b.ID)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			errs = append(errs, "error checking if barcode is unique")
 		} else if !exists {

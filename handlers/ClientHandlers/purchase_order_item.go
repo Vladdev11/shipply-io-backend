@@ -8,6 +8,8 @@ import (
 )
 
 func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
@@ -20,7 +22,7 @@ func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
@@ -38,7 +40,7 @@ func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := models.GetProductByID(request.ProductID)
+	product, err := models.GetProductByID(ctx, request.ProductID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find product", http.StatusBadRequest)
 		return
@@ -55,17 +57,18 @@ func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
 		Product:         product,
 	}
 
-	err = purchaseOrderItem.Create()
+	err = purchaseOrderItem.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create purchase order item", http.StatusBadRequest)
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON()
+	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(r.Context())
 	util.JSONResponse(w, purchaseOrderItemJson, http.StatusCreated)
 }
 
 func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -79,7 +82,7 @@ func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
@@ -96,7 +99,7 @@ func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(purchaseOrderItemID)
+	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(ctx, purchaseOrderItemID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order item", http.StatusBadRequest)
 		return
@@ -107,18 +110,19 @@ func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = purchaseOrderItem.GetProduct()
+	err = purchaseOrderItem.GetProduct(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find product", http.StatusBadRequest)
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON()
+	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(r.Context())
 	util.JSONResponse(w, purchaseOrderItemJson, http.StatusOK)
 
 }
 
 func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -132,7 +136,7 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
@@ -158,7 +162,7 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 
 		request := purchaseOrderItemUpdateRequest
 
-		purchaseOrderItem, err := models.GetPurchaseOrderItemByID(purchaseOrderItemUpdateRequest.ID)
+		purchaseOrderItem, err := models.GetPurchaseOrderItemByID(ctx, purchaseOrderItemUpdateRequest.ID)
 		if err != nil {
 			util.ErrorResponse(w, "failed to find purchase order item", http.StatusBadRequest)
 			return
@@ -179,7 +183,7 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, item := range itemsMap {
-		err := item.POItem.UpdateWithRequest(&item.Request)
+		err := item.POItem.UpdateWithRequest(ctx, &item.Request)
 		if err != nil {
 			util.ErrorResponse(w, "failed to update purchase order item", http.StatusInternalServerError)
 			return
@@ -191,6 +195,7 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -204,7 +209,7 @@ func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
@@ -221,7 +226,7 @@ func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(purchaseOrderItemID)
+	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(ctx, purchaseOrderItemID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order item", http.StatusBadRequest)
 		return
@@ -239,17 +244,18 @@ func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = purchaseOrderItem.UpdateWithRequest(request)
+	err = purchaseOrderItem.UpdateWithRequest(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update purchase order item", http.StatusInternalServerError)
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON()
+	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(r.Context())
 	util.JSONResponse(w, purchaseOrderItemJson, http.StatusOK)
 }
 
 func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -263,7 +269,7 @@ func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
@@ -280,7 +286,7 @@ func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(purchaseOrderItemID)
+	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(ctx, purchaseOrderItemID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order item", http.StatusBadRequest)
 		return
@@ -291,7 +297,7 @@ func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = purchaseOrderItem.Delete()
+	err = purchaseOrderItem.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete purchase order item", http.StatusInternalServerError)
 		return

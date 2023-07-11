@@ -2,6 +2,7 @@ package ShipengineAPI
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -10,18 +11,18 @@ import (
 	"github.com/shipply-io/shipply-io-backend/models"
 )
 
-func CreateWarehouse(warehouse *ShipengineModels.Warehouse) (*ShipengineModels.WarehouseResponse, *ShipengineModels.ShipengineError, error) {
+func CreateWarehouse(ctx context.Context, warehouse *ShipengineModels.Warehouse) (*ShipengineModels.WarehouseResponse, *ShipengineModels.ShipengineError, error) {
 	body, err := json.Marshal(warehouse)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", apiClient.GetApiHost()+"/warehouses", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "/v1/warehouses", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -32,11 +33,11 @@ func CreateWarehouse(warehouse *ShipengineModels.Warehouse) (*ShipengineModels.W
 		Body:       string(body),
 		Endpoint:   "/warehouses",
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + "/warehouses",
+		RequestURL: resp.Request.URL.String(),
 		Method:     "POST",
 		CreatedAt:  time.Now(),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	defer resp.Body.Close()
 

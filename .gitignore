@@ -22,3 +22,4 @@ Thumbs.db
 public/avatars/
 *.gz
 api/shopify/.gqlgenc.yml
+config.*.yml

@@ -1,6 +1,7 @@
 package ShipengineModels
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 
@@ -89,18 +90,18 @@ type Rate struct {
 	ErrorMessages         []string `json:"error_messages,omitempty"`
 }
 
-func ConstructRateShopRequest(pickSessionOrder models.PickSessionOrder, boxID int, weight float64, shopAllServiceCodes bool) (*RateShopRequest, error) {
-	box, err := models.GetBoxByID(boxID)
+func ConstructRateShopRequest(ctx context.Context, pickSessionOrder models.PickSessionOrder, boxID int, weight float64, shopAllServiceCodes bool) (*RateShopRequest, error) {
+	box, err := models.GetBoxByID(ctx, boxID)
 	if err != nil {
 		return nil, errors.New("failed to get box")
 	}
 
-	order, err := pickSessionOrder.GetOrder()
+	order, err := pickSessionOrder.GetOrder(ctx)
 	if err != nil {
 		return nil, errors.New("failed to get order")
 	}
 
-	err = order.GetShippingMethod()
+	err = order.GetShippingMethod(ctx)
 	if err != nil {
 		return nil, errors.New("failed to get shipping method")
 	}
@@ -119,7 +120,7 @@ func ConstructRateShopRequest(pickSessionOrder models.PickSessionOrder, boxID in
 	enabledCarrierServiceCodes := []string{}
 	carrierCodes := []string{}
 	for _, carrier := range shippingMethodCarriers {
-		carrierConnection, err := models.GetCarrierConnectionByID(carrier.CarrierConnectionID)
+		carrierConnection, err := models.GetCarrierConnectionByID(ctx, carrier.CarrierConnectionID)
 		if err != nil {
 			// TODO error log
 			continue
@@ -150,12 +151,12 @@ func ConstructRateShopRequest(pickSessionOrder models.PickSessionOrder, boxID in
 
 	// TODO if box is carrier specific, only shop rates for that carrier
 
-	err = order.GetShipToAddress()
+	err = order.GetShipToAddress(ctx)
 	if err != nil {
 		return nil, errors.New("failed to get ship to address")
 	}
 
-	err = order.GetWarehouse()
+	err = order.GetWarehouse(ctx)
 	if err != nil {
 		return nil, errors.New("failed to get warehouse")
 	}

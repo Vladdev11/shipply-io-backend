@@ -8,7 +8,7 @@ import (
 	"github.com/shipply-io/shipply-io-backend/models"
 )
 
-func AddLocation(shopName string, accessToken string, warehouse models.Warehouse) (string, error) {
+func AddLocation(ctx context.Context, shopName string, accessToken string, warehouse models.Warehouse) (string, error) {
 
 	client := NewClient(shopName, accessToken)
 	fulfillsOnlineOrders := true
@@ -46,7 +46,7 @@ func AddLocation(shopName string, accessToken string, warehouse models.Warehouse
 		}
 	}
 
-	models.LogShopifyAPIEvent(&models.ShopifyApiLog{
+	models.LogShopifyAPIEvent(ctx, &models.ShopifyApiLog{
 		ShopDomain: shopName,
 		EventType:  "api_response",
 		Endpoint:   "locations",

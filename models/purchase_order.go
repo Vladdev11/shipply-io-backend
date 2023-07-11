@@ -1,9 +1,10 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -107,9 +108,9 @@ type PurchaseOrderListRequest struct {
 }
 
 // CreatePurchaseOrder creates a purchase order and returns the purchase order
-func CreatePurchaseOrder(purchaseOrder *PurchaseOrder) (*PurchaseOrder, error) {
+func CreatePurchaseOrder(ctx context.Context, purchaseOrder *PurchaseOrder) (*PurchaseOrder, error) {
 	//create purchase order
-	err := PGDB.Create(purchaseOrder).Error
+	err := util.DBFromContext(ctx).Create(purchaseOrder).Error
 	if err != nil {
 		return nil, err
 	}
@@ -119,10 +120,10 @@ func CreatePurchaseOrder(purchaseOrder *PurchaseOrder) (*PurchaseOrder, error) {
 }
 
 // GetPurchaseOrderByID returns a purchase order by id
-func GetPurchaseOrderByID(purchaseOrderID int) (*PurchaseOrder, error) {
+func GetPurchaseOrderByID(ctx context.Context, purchaseOrderID int) (*PurchaseOrder, error) {
 	//get purchase order from database
 	purchaseOrder := &PurchaseOrder{}
-	err := PGDB.First(purchaseOrder, purchaseOrderID).Error
+	err := util.DBFromContext(ctx).First(purchaseOrder, purchaseOrderID).Error
 	if err != nil {
 		return nil, err
 	}
@@ -132,9 +133,9 @@ func GetPurchaseOrderByID(purchaseOrderID int) (*PurchaseOrder, error) {
 }
 
 // UpdatePurchaseOrder updates a purchase order and returns the purchase order
-func UpdatePurchaseOrder(purchaseOrder *PurchaseOrder) (*PurchaseOrder, error) {
+func UpdatePurchaseOrder(ctx context.Context, purchaseOrder *PurchaseOrder) (*PurchaseOrder, error) {
 	//update purchase order
-	err := PGDB.Save(purchaseOrder).Error
+	err := util.DBFromContext(ctx).Save(purchaseOrder).Error
 	if err != nil {
 		return nil, err
 	}
@@ -144,6 +145,7 @@ func UpdatePurchaseOrder(purchaseOrder *PurchaseOrder) (*PurchaseOrder, error) {
 }
 
 func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	var errs []string
 
@@ -153,7 +155,7 @@ func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request)
 		return errs
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -181,7 +183,7 @@ func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request)
 		errs = append(errs, "invalid purchase order id")
 	}
 
-	purchaseOrder, err := GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		errs = append(errs, "invalid purchase order id")
 		return []string{"invalid purchase order id"}
@@ -203,7 +205,7 @@ func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request)
 		if err := json.Unmarshal(aux.Status, &pour.Status); err != nil {
 			errs = append(errs, "status must be an integer")
 		} else {
-			status, err := GetPurchaseOrderStatusByID(pour.Status)
+			status, err := GetPurchaseOrderStatusByID(ctx, pour.Status)
 			if err != nil {
 				errs = append(errs, "invalid status")
 			} else {
@@ -236,7 +238,7 @@ func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request)
 		if err := json.Unmarshal(aux.VendorID, &pour.VendorID); err != nil {
 			errs = append(errs, "vendor_id must be an integer")
 		} else {
-			vendor, err := GetVendorByID(pour.VendorID)
+			vendor, err := GetVendorByID(ctx, pour.VendorID)
 			if err != nil {
 				errs = append(errs, fmt.Sprintf("vendor_id %d does not exist", pour.VendorID))
 			} else if vendor.ClientID != purchaseOrder.ClientID {
@@ -249,7 +251,7 @@ func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request)
 		if err := json.Unmarshal(aux.WarehouseID, &pour.WarehouseID); err != nil {
 			errs = append(errs, "warehouse_id must be an integer")
 		} else {
-			warehouse, err := GetWarehouseByID(pour.WarehouseID)
+			warehouse, err := GetWarehouseByID(ctx, pour.WarehouseID)
 			if err != nil {
 				errs = append(errs, "warehouse_id must be a valid warehouse")
 			} else if user.GetRole() == "organization_admin" || user.GetRole() == "organization_user" {
@@ -257,7 +259,7 @@ func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request)
 					errs = append(errs, fmt.Sprintf("warehouse_id %d does not belong to your organization", pour.WarehouseID))
 				}
 			} else {
-				user.GetClient()
+				user.GetClient(ctx)
 				if warehouse.OrganizationID != user.Client.OrganizationID {
 					errs = append(errs, "you do not have access to this warehouse")
 				}
@@ -310,14 +312,15 @@ func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request)
 
 }
 
-func (po *PurchaseOrder) Delete() error {
+func (po *PurchaseOrder) Delete(ctx context.Context) error {
+	db := util.DBFromContext(ctx)
 
-	err := PGDB.Delete(po).Error
+	err := db.Delete(po).Error
 	if err != nil {
 		return err
 	}
 
-	err = PGDB.Where("purchase_order_id = ?", po.ID).Delete(&PurchaseOrderItem{}).Error
+	err = db.Where("purchase_order_id = ?", po.ID).Delete(&PurchaseOrderItem{}).Error
 	if err != nil {
 		return err
 	}
@@ -326,17 +329,17 @@ func (po *PurchaseOrder) Delete() error {
 
 }
 
-func (po *PurchaseOrder) Update() error {
-	err := PGDB.Save(po).Error
+func (po *PurchaseOrder) Update(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Save(po).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (po *PurchaseOrder) GetHistory() error {
+func (po *PurchaseOrder) GetHistory(ctx context.Context) error {
 
-	history, err := GetPurchaseOrderHistorysByID(po.ID)
+	history, err := GetPurchaseOrderHistorysByID(ctx, po.ID)
 	if err != nil {
 		return err
 	}
@@ -347,9 +350,9 @@ func (po *PurchaseOrder) GetHistory() error {
 
 }
 
-func (po *PurchaseOrder) GetItems() error {
+func (po *PurchaseOrder) GetItems(ctx context.Context) error {
 
-	err := PGDB.Where("purchase_order_id = ?", po.ID).Order("id ASC").Find(&po.Items).Error
+	err := util.DBFromContext(ctx).Where("purchase_order_id = ?", po.ID).Order("id ASC").Find(&po.Items).Error
 	if err != nil {
 		return err
 	}
@@ -357,7 +360,7 @@ func (po *PurchaseOrder) GetItems() error {
 	totalItems := 0
 	for i, item := range po.Items {
 		//get product
-		product, err := GetProductByID(item.ProductID)
+		product, err := GetProductByID(ctx, item.ProductID)
 		if err != nil {
 			return err
 		}
@@ -371,9 +374,9 @@ func (po *PurchaseOrder) GetItems() error {
 	return nil
 }
 
-func (p *PurchaseOrder) GetAttachments() error {
+func (p *PurchaseOrder) GetAttachments(ctx context.Context) error {
 
-	err := PGDB.Where("purchase_order_id = ?", p.ID).Order("id ASC").Find(&p.Attachments).Error
+	err := util.DBFromContext(ctx).Where("purchase_order_id = ?", p.ID).Order("id ASC").Find(&p.Attachments).Error
 	if err != nil {
 		return err
 	}
@@ -382,11 +385,11 @@ func (p *PurchaseOrder) GetAttachments() error {
 
 }
 
-func (p *PurchaseOrder) GetTags() error {
+func (p *PurchaseOrder) GetTags(ctx context.Context) error {
 
 	var purchaseOrderTags []PurchaseOrderTag
 
-	err := PGDB.Where("purchase_order_id = ?", p.ID).Find(&purchaseOrderTags).Error
+	err := util.DBFromContext(ctx).Where("purchase_order_id = ?", p.ID).Find(&purchaseOrderTags).Error
 	if err != nil {
 		return err
 	}
@@ -396,11 +399,11 @@ func (p *PurchaseOrder) GetTags() error {
 	return nil
 }
 
-func (p *PurchaseOrder) HasTag(tagName string) bool {
+func (p *PurchaseOrder) HasTag(ctx context.Context, tagName string) bool {
 
 	var purchaseOrderTag PurchaseOrderTag
 
-	err := PGDB.Where("tag = ?", tagName).Where("purchase_order_id = ?", p.ID).First(&purchaseOrderTag).Error
+	err := util.DBFromContext(ctx).Where("tag = ?", tagName).Where("purchase_order_id = ?", p.ID).First(&purchaseOrderTag).Error
 	if err != nil {
 		return false
 	}
@@ -408,14 +411,14 @@ func (p *PurchaseOrder) HasTag(tagName string) bool {
 	return true
 }
 
-func (p *PurchaseOrder) AddTag(tagName string) error {
+func (p *PurchaseOrder) AddTag(ctx context.Context, tagName string) error {
 
 	purchaseOrderTag := &PurchaseOrderTag{
 		PurchaseOrderID: p.ID,
 		Tag:             tagName,
 	}
 
-	err := PGDB.Create(purchaseOrderTag).Error
+	err := util.DBFromContext(ctx).Create(purchaseOrderTag).Error
 	if err != nil {
 		return err
 	}
@@ -425,9 +428,9 @@ func (p *PurchaseOrder) AddTag(tagName string) error {
 	return nil
 }
 
-func (p *PurchaseOrder) RemoveTag(tagName string) error {
+func (p *PurchaseOrder) RemoveTag(ctx context.Context, tagName string) error {
 
-	err := PGDB.Where("tag = ?", tagName).Where("purchase_order_id = ?", p.ID).Delete(&PurchaseOrderTag{}).Error
+	err := util.DBFromContext(ctx).Where("tag = ?", tagName).Where("purchase_order_id = ?", p.ID).Delete(&PurchaseOrderTag{}).Error
 	if err != nil {
 		return err
 	}
@@ -444,10 +447,11 @@ func (p *PurchaseOrder) RemoveTag(tagName string) error {
 
 // UnmarshalJSON unmarshals the purchase order create request and returns clean specific errors for fields
 func (p *PurchaseOrderCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -494,7 +498,7 @@ func (p *PurchaseOrderCreateRequest) ParseAndValidateRequest(r *http.Request) []
 	} else if p.WarehouseID <= 0 {
 		errs = append(errs, "warehouse_id must be greater than 0")
 	} else {
-		warehouse, err := GetWarehouseByID(p.WarehouseID)
+		warehouse, err := GetWarehouseByID(ctx, p.WarehouseID)
 		if err != nil {
 			errs = append(errs, "warehouse_id must be a valid warehouse")
 		} else if user.GetRole() == "organization_admin" || user.GetRole() == "organization_user" {
@@ -502,7 +506,7 @@ func (p *PurchaseOrderCreateRequest) ParseAndValidateRequest(r *http.Request) []
 				errs = append(errs, fmt.Sprintf("warehouse_id %d does not belong to your organization", p.WarehouseID))
 			}
 		} else {
-			user.GetClient()
+			user.GetClient(ctx)
 			if warehouse.OrganizationID != user.Client.OrganizationID {
 				errs = append(errs, "you do not have access to this warehouse")
 			}
@@ -515,7 +519,7 @@ func (p *PurchaseOrderCreateRequest) ParseAndValidateRequest(r *http.Request) []
 		} else if p.VendorID <= 0 {
 			errs = append(errs, "vendor_id must be greater than 0")
 		} else {
-			vendor, err := GetVendorByID(p.VendorID)
+			vendor, err := GetVendorByID(ctx, p.VendorID)
 			if err != nil {
 				errs = append(errs, "vendor_id must be a valid vendor")
 			} else if vendor.ClientID != p.ClientID {
@@ -536,7 +540,7 @@ func (p *PurchaseOrderCreateRequest) ParseAndValidateRequest(r *http.Request) []
 		if err := json.Unmarshal(aux.Status, &p.Status); err != nil {
 			errs = append(errs, "status must be an int")
 		} else {
-			status, err := GetPurchaseOrderStatusByID(p.Status)
+			status, err := GetPurchaseOrderStatusByID(ctx, p.Status)
 			if err != nil {
 				errs = append(errs, "invalid status")
 			} else {
@@ -613,8 +617,7 @@ func (p *PurchaseOrder) UpdateWithPurchaseOrderUpdateRequest(poRequest *Purchase
 	return p
 }
 
-func (p *PurchaseOrder) ConvertToReturnJSON() *PurchaseOrderReturnJSON {
-
+func (p *PurchaseOrder) ConvertToReturnJSON(ctx context.Context) *PurchaseOrderReturnJSON {
 	//make sure items is an empty array if it is nil
 	if p.Items == nil {
 		p.Items = []PurchaseOrderItem{}
@@ -625,7 +628,7 @@ func (p *PurchaseOrder) ConvertToReturnJSON() *PurchaseOrderReturnJSON {
 		//set to 0 to omit from json response
 		item.PurchaseOrderID = 0
 		item.ProductID = 0
-		purchaseOrderItems = append(purchaseOrderItems, item.ConvertToReturnJSON())
+		purchaseOrderItems = append(purchaseOrderItems, item.ConvertToReturnJSON(ctx))
 	}
 
 	//make sure notes is an empty array if it is nil
@@ -636,7 +639,7 @@ func (p *PurchaseOrder) ConvertToReturnJSON() *PurchaseOrderReturnJSON {
 	PurchaseOrderHistorys := []PurchaseOrderHistoryReturnJSON{}
 	for _, note := range p.History {
 		note.PurchaseOrderID = 0
-		PurchaseOrderHistorys = append(PurchaseOrderHistorys, note.ConvertToReturnJSON())
+		PurchaseOrderHistorys = append(PurchaseOrderHistorys, note.ConvertToReturnJSON(ctx))
 	}
 
 	//convert purchase order tags to slice of strings
@@ -648,14 +651,14 @@ func (p *PurchaseOrder) ConvertToReturnJSON() *PurchaseOrderReturnJSON {
 	}
 
 	//get status
-	status, _ := GetPurchaseOrderStatusByID(p.Status)
+	status, _ := GetPurchaseOrderStatusByID(ctx, p.Status)
 
 	//get client
-	client, _ := GetClientByID(p.ClientID)
+	client, _ := GetClientByID(ctx, p.ClientID)
 
 	return &PurchaseOrderReturnJSON{
 		ID:             p.ID,
-		Client:         *client.ConvertToReturnJSON(),
+		Client:         *client.ConvertToReturnJSON(ctx),
 		PONumber:       p.PONumber,
 		Status:         status.ConvertToReturnJSON(),
 		ExpectedDate:   p.ExpectedDate.Format("2006-01-02"),
@@ -676,9 +679,9 @@ func (p *PurchaseOrder) ConvertToReturnJSON() *PurchaseOrderReturnJSON {
 	}
 }
 
-func DeletePurchaseOrder(purchaseOrder *PurchaseOrder) error {
+func DeletePurchaseOrder(ctx context.Context, purchaseOrder *PurchaseOrder) error {
 	//delete purchase order
-	if err := PGDB.Delete(purchaseOrder).Error; err != nil {
+	if err := util.DBFromContext(ctx).Delete(purchaseOrder).Error; err != nil {
 		return err
 	}
 
@@ -759,17 +762,17 @@ func (por *PurchaseOrderListRequest) ParseAndValidateRequest(r *http.Request) []
 	return nil
 }
 
-func (por *PurchaseOrder) Create() error {
-	if err := PGDB.Create(por).Error; err != nil {
+func (por *PurchaseOrder) Create(ctx context.Context) error {
+	if err := util.DBFromContext(ctx).Create(por).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (por *PurchaseOrderListRequest) ConvertToClientQuery() *gorm.DB {
+func (por *PurchaseOrderListRequest) ConvertToClientQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&PurchaseOrder{}).
+	query := util.DBFromContext(ctx).Model(&PurchaseOrder{}).
 		Select("DISTINCT purchase_orders.*").
 		Joins("LEFT JOIN purchase_order_items ON purchase_order_items.purchase_order_id = purchase_orders.id").
 		Joins("LEFT JOIN products ON products.id = purchase_order_items.product_id").
@@ -779,14 +782,14 @@ func (por *PurchaseOrderListRequest) ConvertToClientQuery() *gorm.DB {
 	query = query.Where("purchase_orders.client_id = ?", por.ClientID)
 
 	if por.SearchValue != "" {
-		query = query.Where(PGDB.Where("to_tsvector('english', po_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue)).
-			Or(PGDB.Where("to_tsvector('english', purchase_orders.tracking_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', purchase_orders.tracking_url) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', purchase_orders.warehouse_notes) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', products.sku) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', vendors.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', purchase_order_statuses.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))))
+		query = query.Where(util.DBFromContext(ctx).Where("to_tsvector('english', po_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue)).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', purchase_orders.tracking_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', purchase_orders.tracking_url) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', purchase_orders.warehouse_notes) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', products.sku) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', vendors.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', purchase_order_statuses.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))))
 	}
 
 	if por.OrderByColumn != "" {
@@ -802,9 +805,9 @@ func (por *PurchaseOrderListRequest) ConvertToClientQuery() *gorm.DB {
 	return query
 }
 
-func (por *PurchaseOrderListRequest) ConvertToOrganizationQuery() *gorm.DB {
+func (por *PurchaseOrderListRequest) ConvertToOrganizationQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&PurchaseOrder{}).
+	query := util.DBFromContext(ctx).Model(&PurchaseOrder{}).
 		Select("DISTINCT purchase_orders.*").
 		Joins("LEFT JOIN purchase_order_items ON purchase_order_items.purchase_order_id = purchase_orders.id").
 		Joins("LEFT JOIN products ON products.id = purchase_order_items.product_id").
@@ -820,15 +823,15 @@ func (por *PurchaseOrderListRequest) ConvertToOrganizationQuery() *gorm.DB {
 	}
 
 	if por.SearchValue != "" {
-		query = query.Where(PGDB.Where("to_tsvector('english', po_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue)).
-			Or(PGDB.Where("to_tsvector('english', purchase_orders.tracking_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', purchase_orders.tracking_url) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', purchase_orders.warehouse_notes) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', products.sku) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', vendors.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', clients.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', purchase_order_statuses.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))))
+		query = query.Where(util.DBFromContext(ctx).Where("to_tsvector('english', po_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue)).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', purchase_orders.tracking_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', purchase_orders.tracking_url) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', purchase_orders.warehouse_notes) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', products.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', products.sku) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', vendors.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', clients.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', purchase_order_statuses.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", por.SearchValue))))
 	}
 
 	if por.OrderByColumn != "" {
@@ -844,15 +847,15 @@ func (por *PurchaseOrderListRequest) ConvertToOrganizationQuery() *gorm.DB {
 	return query
 }
 
-func (por *PurchaseOrderListRequest) Search() ([]PurchaseOrder, int, int, error) {
+func (por *PurchaseOrderListRequest) Search(ctx context.Context) ([]PurchaseOrder, int, int, error) {
 
 	purchaseOrders := []PurchaseOrder{}
 	var count int64
 	var total int64
 
-	query := por.ConvertToClientQuery()
-	countQuery := por.ConvertToClientQuery()
-	totalQuery := PGDB.Model(&PurchaseOrder{})
+	query := por.ConvertToClientQuery(ctx)
+	countQuery := por.ConvertToClientQuery(ctx)
+	totalQuery := util.DBFromContext(ctx).Model(&PurchaseOrder{})
 
 	if err := query.Limit(por.Limit).Offset(por.Offset).Find(&purchaseOrders).Error; err != nil {
 		return nil, 0, 0, err
@@ -869,12 +872,12 @@ func (por *PurchaseOrderListRequest) Search() ([]PurchaseOrder, int, int, error)
 	return purchaseOrders, int(total), int(count), nil
 }
 
-func ConvertPurchaseOrdersToSearchResults(matchingPurchaseOrders []PurchaseOrder, total int, count int) (*SearchResults, error) {
+func ConvertPurchaseOrdersToSearchResults(ctx context.Context, matchingPurchaseOrders []PurchaseOrder, total int, count int) (*SearchResults, error) {
 
 	var purchaseOrders []*PurchaseOrderReturnJSON
 
 	for _, purchaseOrder := range matchingPurchaseOrders {
-		purchaseOrders = append(purchaseOrders, purchaseOrder.ConvertToReturnJSON())
+		purchaseOrders = append(purchaseOrders, purchaseOrder.ConvertToReturnJSON(ctx))
 	}
 
 	results, err := util.ConvertStructsToInterfaces(purchaseOrders)
@@ -890,7 +893,7 @@ func ConvertPurchaseOrdersToSearchResults(matchingPurchaseOrders []PurchaseOrder
 
 	return searchResults, nil
 }
-func (por *PurchaseOrder) UpdateWithRequest(request PurchaseOrderUpdateRequest) error {
+func (por *PurchaseOrder) UpdateWithRequest(ctx context.Context, request PurchaseOrderUpdateRequest) error {
 
 	if request.PONumber != "" {
 		por.PONumber = request.PONumber
@@ -932,12 +935,12 @@ func (por *PurchaseOrder) UpdateWithRequest(request PurchaseOrderUpdateRequest) 
 		por.WarehouseNotes = request.WarehouseNotes
 	}
 
-	if err := PGDB.Save(&por).Error; err != nil {
+	if err := util.DBFromContext(ctx).Save(&por).Error; err != nil {
 		return err
 	}
 
 	if request.Tags != nil {
-		por.GetTags()
+		por.GetTags(ctx)
 
 		var currentTags []string
 		for _, tag := range por.Tags {
@@ -947,14 +950,14 @@ func (por *PurchaseOrder) UpdateWithRequest(request PurchaseOrderUpdateRequest) 
 		// Delete tags that are no longer in the request
 		for _, tag := range currentTags {
 			if !util.SliceContains(request.Tags, tag) {
-				por.RemoveTag(tag)
+				por.RemoveTag(ctx, tag)
 			}
 		}
 
 		// Add tags that are in the request but not in the purchase order
 		for _, tag := range request.Tags {
 			if !util.SliceContains(currentTags, tag) {
-				por.AddTag(tag)
+				por.AddTag(ctx, tag)
 			}
 		}
 	}
@@ -974,7 +977,7 @@ type PurchaseOrderItemScanInputResponse struct {
 
 func (porisir *PurchaseOrderItemScanInputRequest) ParseAndValidateRequest(r *http.Request) []string {
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}

@@ -11,6 +11,7 @@ import (
 )
 
 func PurchaseOrderList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -18,7 +19,7 @@ func PurchaseOrderList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -32,13 +33,13 @@ func PurchaseOrderList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrders, count, total, err := user.Organization.GetPurchaseOrders(request)
+	purchaseOrders, count, total, err := user.Organization.GetPurchaseOrders(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase orders", http.StatusInternalServerError)
 		return
 	}
 
-	searchResults, err := models.ConvertPurchaseOrdersToSearchResults(purchaseOrders, total, count)
+	searchResults, err := models.ConvertPurchaseOrdersToSearchResults(ctx, purchaseOrders, total, count)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert purchase orders to search results", http.StatusBadRequest)
 		return
@@ -49,6 +50,7 @@ func PurchaseOrderList(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	_, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -76,18 +78,19 @@ func PurchaseOrderCreate(w http.ResponseWriter, r *http.Request) {
 		TrackingURL:    request.TrackingURL,
 	}
 
-	err = purchaseOrder.Create()
+	err = purchaseOrder.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create purchase order", http.StatusInternalServerError)
 		return
 	}
 
-	purchaseOrderJSON := purchaseOrder.ConvertToReturnJSON()
+	purchaseOrderJSON := purchaseOrder.ConvertToReturnJSON(ctx)
 	util.JSONResponse(w, purchaseOrderJSON, http.StatusOK)
 
 }
 
 func PurchaseOrderGet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -95,7 +98,7 @@ func PurchaseOrderGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -107,41 +110,42 @@ func PurchaseOrderGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrder.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
 
-	err = purchaseOrder.GetItems()
+	err = purchaseOrder.GetItems(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order items", http.StatusBadRequest)
 		return
 	}
 
-	err = purchaseOrder.GetTags()
+	err = purchaseOrder.GetTags(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order tags", http.StatusBadRequest)
 		return
 	}
 
-	err = purchaseOrder.GetHistory()
+	err = purchaseOrder.GetHistory(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order notes", http.StatusBadRequest)
 		return
 	}
 
-	purchaseOrderJSON := purchaseOrder.ConvertToReturnJSON()
+	purchaseOrderJSON := purchaseOrder.ConvertToReturnJSON(ctx)
 	util.JSONResponse(w, purchaseOrderJSON, http.StatusOK)
 
 }
 
 func PurchaseOrderUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -149,7 +153,7 @@ func PurchaseOrderUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -168,47 +172,48 @@ func PurchaseOrderUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
 	}
 
-	err = purchaseOrder.UpdateWithRequest(request)
+	err = purchaseOrder.UpdateWithRequest(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update purchase order", http.StatusInternalServerError)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrder.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
 
-	err = purchaseOrder.GetItems()
+	err = purchaseOrder.GetItems(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order items", http.StatusBadRequest)
 		return
 	}
 
-	err = purchaseOrder.GetTags()
+	err = purchaseOrder.GetTags(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order tags", http.StatusBadRequest)
 		return
 	}
 
-	err = purchaseOrder.GetHistory()
+	err = purchaseOrder.GetHistory(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order history", http.StatusBadRequest)
 		return
 	}
 
-	purchaseOrderJSON := purchaseOrder.ConvertToReturnJSON()
+	purchaseOrderJSON := purchaseOrder.ConvertToReturnJSON(ctx)
 	util.JSONResponse(w, purchaseOrderJSON, http.StatusOK)
 
 }
 
 func PurchaseOrderDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -216,7 +221,7 @@ func PurchaseOrderDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -228,18 +233,18 @@ func PurchaseOrderDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrder.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
 
-	err = purchaseOrder.Delete()
+	err = purchaseOrder.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete purchase order", http.StatusInternalServerError)
 		return
@@ -250,6 +255,7 @@ func PurchaseOrderDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -257,7 +263,7 @@ func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -270,7 +276,7 @@ func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !user.Organization.IsClientOwner(request.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, request.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
@@ -282,7 +288,7 @@ func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 		TextColor:   request.TextColor,
 	}
 
-	err = purchaseOrderStatus.Create()
+	err = purchaseOrderStatus.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create purchase order status", http.StatusInternalServerError)
 		return
@@ -294,13 +300,14 @@ func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderStatusList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -314,7 +321,7 @@ func PurchaseOrderStatusList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	request.OrganizationID = user.Organization.ID
-	statuses, total, count, err := user.Organization.GetPurchaseOrderStatuses(request)
+	statuses, total, count, err := user.Organization.GetPurchaseOrderStatuses(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order statuses", http.StatusBadRequest)
 		return
@@ -330,6 +337,7 @@ func PurchaseOrderStatusList(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderStatusDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -337,7 +345,7 @@ func PurchaseOrderStatusDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -349,23 +357,23 @@ func PurchaseOrderStatusDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderStatus, err := models.GetPurchaseOrderStatusByID(posID)
+	purchaseOrderStatus, err := models.GetPurchaseOrderStatusByID(ctx, posID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order status", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrderStatus.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrderStatus.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
 
-	if purchaseOrderStatus.IsInUse() {
+	if purchaseOrderStatus.IsInUse(ctx) {
 		util.ErrorResponse(w, "purchase order status is in use and cannot be deleted", http.StatusBadRequest)
 		return
 	}
 
-	err = purchaseOrderStatus.Delete()
+	err = purchaseOrderStatus.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete purchase order status", http.StatusInternalServerError)
 		return
@@ -376,6 +384,7 @@ func PurchaseOrderStatusDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderStatusUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -383,7 +392,7 @@ func PurchaseOrderStatusUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -395,13 +404,13 @@ func PurchaseOrderStatusUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderStatus, err := models.GetPurchaseOrderStatusByID(posID)
+	purchaseOrderStatus, err := models.GetPurchaseOrderStatusByID(ctx, posID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order status", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrderStatus.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrderStatus.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
@@ -413,7 +422,7 @@ func PurchaseOrderStatusUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = purchaseOrderStatus.UpdateWithRequest(&request)
+	err = purchaseOrderStatus.UpdateWithRequest(ctx, &request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update purchase order status", http.StatusInternalServerError)
 		return
@@ -424,6 +433,7 @@ func PurchaseOrderStatusUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -431,7 +441,7 @@ func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 
 	request := &models.PurchaseOrderHistoryCreateRequest{}
 	errors := request.ParseAndValidateRequest(r)
@@ -440,20 +450,20 @@ func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(request.PurchaseOrderId)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, request.PurchaseOrderId)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrder.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this purchase order", http.StatusForbidden)
 		return
 	}
 
 	request.CreatedBy = user.ID
 	PurchaseOrderHistory := request.ConvertToPurchaseOrderHistory()
-	err = PurchaseOrderHistory.Create()
+	err = PurchaseOrderHistory.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create purchase order note", http.StatusBadRequest)
 		return
@@ -464,6 +474,7 @@ func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderAttachmentCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -477,19 +488,19 @@ func PurchaseOrderAttachmentCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrder.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this purchase order", http.StatusForbidden)
 		return
 	}
@@ -504,13 +515,13 @@ func PurchaseOrderAttachmentCreate(w http.ResponseWriter, r *http.Request) {
 	attachmentUUID := uuid.New()
 	fileExtension := util.GetFileExtension(request.FileName)
 
-	err = api.UploadAttachmentToS3(request.File, attachmentUUID.String(), fileExtension)
+	err = api.S3FromContext(ctx).UploadAttachment(request.File, attachmentUUID.String(), fileExtension)
 	if err != nil {
 		util.ErrorResponse(w, "failed to upload attachment to s3", http.StatusInternalServerError)
 		return
 	}
 
-	attachment, err := models.CreateAttachment(&models.Attachment{
+	attachment, err := models.CreateAttachment(ctx, &models.Attachment{
 		FileName:  request.FileName,
 		Extension: fileExtension,
 		UUID:      attachmentUUID.String(),
@@ -520,7 +531,7 @@ func PurchaseOrderAttachmentCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = models.CreatePurchaseOrderAttachment(&models.PurchaseOrderAttachment{
+	_, err = models.CreatePurchaseOrderAttachment(ctx, &models.PurchaseOrderAttachment{
 		PurchaseOrderID: purchaseOrderID,
 		AttachmentID:    attachment.ID,
 	})
@@ -534,6 +545,7 @@ func PurchaseOrderAttachmentCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderAttachmentList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -541,7 +553,7 @@ func PurchaseOrderAttachmentList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
@@ -553,18 +565,18 @@ func PurchaseOrderAttachmentList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order", http.StatusInternalServerError)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrder.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this purchase order", http.StatusForbidden)
 		return
 	}
 
-	err = purchaseOrder.GetAttachments()
+	err = purchaseOrder.GetAttachments(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get attachments", http.StatusInternalServerError)
 		return
@@ -572,9 +584,9 @@ func PurchaseOrderAttachmentList(w http.ResponseWriter, r *http.Request) {
 
 	purchaseOrderAttachmentsReturnJSON := []models.PurchaseOrderAttachmentReturnJSON{}
 	for _, purchaseOrderAttachment := range purchaseOrder.Attachments {
-		purchaseOrderAttachmentReturnJSON, err := purchaseOrderAttachment.ConvertToReturnJSON()
+		purchaseOrderAttachmentReturnJSON, err := purchaseOrderAttachment.ConvertToReturnJSON(ctx)
 		if err != nil {
-			models.CreateSystemError(fmt.Sprintf("failed to convert purchase order attachment to return json: %s", err.Error()))
+			models.CreateSystemError(ctx, fmt.Sprintf("failed to convert purchase order attachment to return json: %s", err.Error()))
 			continue
 		}
 
@@ -586,6 +598,7 @@ func PurchaseOrderAttachmentList(w http.ResponseWriter, r *http.Request) {
 }
 
 func PurchaseOrderAttachmentDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -593,7 +606,7 @@ func PurchaseOrderAttachmentDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
@@ -605,13 +618,13 @@ func PurchaseOrderAttachmentDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrder, err := models.GetPurchaseOrderByID(purchaseOrderID)
+	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get purchase order", http.StatusInternalServerError)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(purchaseOrder.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this purchase order", http.StatusForbidden)
 		return
 	}
@@ -622,7 +635,7 @@ func PurchaseOrderAttachmentDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderAttachment, err := models.GetPurchaseOrderAttachmentByID(purchaseOrderAttachmentID)
+	purchaseOrderAttachment, err := models.GetPurchaseOrderAttachmentByID(ctx, purchaseOrderAttachmentID)
 	if err != nil {
 		util.ErrorResponse(w, fmt.Sprintf("purchase order attachment with ID %d does not exist", purchaseOrderAttachmentID), http.StatusBadRequest)
 		return
@@ -633,7 +646,7 @@ func PurchaseOrderAttachmentDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = purchaseOrderAttachment.Delete()
+	err = purchaseOrderAttachment.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete purchase order attachment", http.StatusInternalServerError)
 		return

@@ -1,19 +1,20 @@
 package ShipengineHandlers
 
 import (
+	"context"
 	"fmt"
 
 	ShipengineAPI "github.com/shipply-io/shipply-io-backend/api/shipengine/api"
 	ShipengineModels "github.com/shipply-io/shipply-io-backend/api/shipengine/models"
 )
 
-func ValidateAddress(inputAddress ShipengineModels.Address) (*ShipengineModels.AddressResponse, error) {
+func ValidateAddress(ctx context.Context, inputAddress ShipengineModels.Address) (*ShipengineModels.AddressResponse, error) {
 
 	addressRequest := []ShipengineModels.Address{
 		inputAddress,
 	}
 
-	addressResponse, errorResponse, err := ShipengineAPI.ValidateAddress(addressRequest)
+	addressResponse, errorResponse, err := ShipengineAPI.ValidateAddress(ctx, addressRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -28,13 +29,13 @@ func ValidateAddress(inputAddress ShipengineModels.Address) (*ShipengineModels.A
 
 }
 
-func ParseAddress(addressText string) (ShipengineModels.Address, error) {
+func ParseAddress(ctx context.Context, addressText string) (ShipengineModels.Address, error) {
 
 	addressParseRequest := ShipengineModels.AddressParseRequest{
 		Text: addressText,
 	}
 
-	addressParseResponse, errorResponse, err := ShipengineAPI.ParseAddress(addressParseRequest)
+	addressParseResponse, errorResponse, err := ShipengineAPI.ParseAddress(ctx, addressParseRequest)
 	if err != nil {
 		return ShipengineModels.Address{}, err
 	}

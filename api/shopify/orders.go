@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -112,7 +112,7 @@ func ParseAndValidateOrderCreateRequest(r *http.Request) (*string, []string) {
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		errs = append(errs, "failed to read body")
 		return nil, errs
@@ -146,7 +146,7 @@ func ParseAndValidateOrderUpdateRequest(r *http.Request) (*string, []string) {
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		errs = append(errs, "failed to read body")
 		return nil, errs
@@ -195,8 +195,8 @@ func ConvertShopifyAddressToModelAddress(srcAddress *ShopifyGraphqlModelAddress)
 	return &address
 }
 
-func GetOrCreateShippingMethod(storeID int, shippingMethodName string) (*int, error) {
-	shippingMethod, err := models.GetShippingMethodByStoreAndName(storeID, shippingMethodName)
+func GetOrCreateShippingMethod(ctx context.Context, storeID int, shippingMethodName string) (*int, error) {
+	shippingMethod, err := models.GetShippingMethodByStoreAndName(ctx, storeID, shippingMethodName)
 	if err == nil && shippingMethod != nil {
 		return &shippingMethod.ID, nil
 	} else if err == gorm.ErrRecordNotFound {
@@ -205,7 +205,7 @@ func GetOrCreateShippingMethod(storeID int, shippingMethodName string) (*int, er
 			StoreID: storeID,
 			Mapped:  false,
 		}
-		err = shippingMethod.Create()
+		err = shippingMethod.Create(ctx)
 		if err != nil {
 			return nil, err
 		}

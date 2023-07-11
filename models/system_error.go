@@ -1,6 +1,11 @@
 package models
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/shipply-io/shipply-io-backend/util"
+)
 
 type SystemError struct {
 	ID             int64
@@ -10,10 +15,10 @@ type SystemError struct {
 	CreatedAt      time.Time
 }
 
-func (SystemError) Create() error {
-	return PGDB.Create(&SystemError{}).Error
+func (SystemError) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(&SystemError{}).Error
 }
 
-func CreateSystemError(message string) {
-	PGDB.Create(&SystemError{Message: message})
+func CreateSystemError(ctx context.Context, message string) {
+	util.DBFromContext(ctx).Create(&SystemError{Message: message})
 }

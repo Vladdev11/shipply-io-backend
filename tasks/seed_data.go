@@ -1,15 +1,16 @@
 package tasks
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/shipply-io/shipply-io-backend/models"
 	"gorm.io/gorm"
 )
 
-func EnsureSeedData() {
-	EnsureCarrierSeedData()
-	EnsureCarrierConnectionSeedData()
+func EnsureSeedData(ctx context.Context) {
+	EnsureCarrierSeedData(ctx)
+	EnsureCarrierConnectionSeedData(ctx)
 }
 
 type CarrierSeed struct {
@@ -21,7 +22,7 @@ type CarrierSeed struct {
 }
 
 // EnsureCarrierSeedData populates the database with carrier seed data if carriers are missing
-func EnsureCarrierSeedData() {
+func EnsureCarrierSeedData(ctx context.Context) {
 
 	carrierSeeds := []CarrierSeed{
 		{
@@ -89,7 +90,7 @@ func EnsureCarrierSeedData() {
 		},
 	}
 
-	currentCarriers, err := models.GetCarriers()
+	currentCarriers, err := models.GetCarriers(ctx)
 	if err != nil {
 		return
 	}
@@ -112,7 +113,7 @@ func EnsureCarrierSeedData() {
 				ThumbnailURL:      carrierSeed.ThumbnailURL,
 				SmallThumbnailURL: carrierSeed.SmallThumbnailURL,
 			}
-			err = newCarrier.Create()
+			err = newCarrier.Create(ctx)
 			if err != nil {
 				return
 			}
@@ -131,7 +132,7 @@ type CarrierConnectionSeed struct {
 	CarrierServices    json.RawMessage
 }
 
-func EnsureCarrierConnectionSeedData() {
+func EnsureCarrierConnectionSeedData(ctx context.Context) {
 
 	cheapestCarrierServicesJSON := `[
   {
@@ -211,7 +212,7 @@ func EnsureCarrierConnectionSeedData() {
 	}}
 
 	for _, ccSeed := range carrierConnectionSeeds {
-		carrierConnectionExists, err := models.GetCarrierConnectionByID(ccSeed.ID)
+		carrierConnectionExists, err := models.GetCarrierConnectionByID(ctx, ccSeed.ID)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			continue
 		}
@@ -226,7 +227,7 @@ func EnsureCarrierConnectionSeedData() {
 				CarrierServices: ccSeed.CarrierServices,
 			}
 
-			newCarrierConnection.Create()
+			newCarrierConnection.Create(ctx)
 
 		}
 

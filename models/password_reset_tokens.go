@@ -1,10 +1,12 @@
 package models
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -21,24 +23,24 @@ type PasswordResetToken struct {
 	User User
 }
 
-func (prt *PasswordResetToken) Create() error {
-	err := PGDB.Create(prt).Error
+func (prt *PasswordResetToken) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(prt).Error
 	return err
 }
 
-func (prt *PasswordResetToken) Update() error {
-	err := PGDB.Save(prt).Error
+func (prt *PasswordResetToken) Update(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Save(prt).Error
 	return err
 }
 
-func (prt *PasswordResetToken) Delete() error {
-	err := PGDB.Delete(prt).Error
+func (prt *PasswordResetToken) Delete(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Delete(prt).Error
 	return err
 }
 
-func GetPasswordResetTokenByToken(token string) (PasswordResetToken, error) {
+func GetPasswordResetTokenByToken(ctx context.Context, token string) (PasswordResetToken, error) {
 	var passwordResetToken PasswordResetToken
-	err := PGDB.Where("token = ?", token).First(&passwordResetToken).Error
+	err := util.DBFromContext(ctx).Where("token = ?", token).First(&passwordResetToken).Error
 	return passwordResetToken, err
 }
 

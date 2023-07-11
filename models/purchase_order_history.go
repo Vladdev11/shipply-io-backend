@@ -1,8 +1,9 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -52,7 +53,7 @@ func (pon *PurchaseOrderHistoryCreateRequest) ParseAndValidateRequest(r *http.Re
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -71,7 +72,7 @@ func (pon *PurchaseOrderHistoryCreateRequest) ParseAndValidateRequest(r *http.Re
 	} else if purchaseOrderID <= 0 {
 		errs = append(errs, "purchase order id must be greater than 0")
 	} else {
-		_, err := GetPurchaseOrderByID(purchaseOrderID)
+		_, err := GetPurchaseOrderByID(r.Context(), purchaseOrderID)
 		if err != nil {
 			errs = append(errs, "purchase order id is not a valid purchase order")
 		} else {
@@ -95,18 +96,18 @@ func (pon *PurchaseOrderHistoryCreateRequest) ParseAndValidateRequest(r *http.Re
 
 }
 
-func (pon *PurchaseOrderHistory) Create() error {
-	err := PGDB.Save(pon).Error
+func (pon *PurchaseOrderHistory) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Save(pon).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetPurchaseOrderHistorysByID(id int) ([]PurchaseOrderHistory, error) {
+func GetPurchaseOrderHistorysByID(ctx context.Context, id int) ([]PurchaseOrderHistory, error) {
 
 	var PurchaseOrderHistorys []PurchaseOrderHistory
-	err := PGDB.Where("purchase_order_id = ?", id).Order("id desc").Find(&PurchaseOrderHistorys).Error
+	err := util.DBFromContext(ctx).Where("purchase_order_id = ?", id).Order("id desc").Find(&PurchaseOrderHistorys).Error
 	if err != nil {
 		return nil, err
 	}
@@ -114,10 +115,9 @@ func GetPurchaseOrderHistorysByID(id int) ([]PurchaseOrderHistory, error) {
 	return PurchaseOrderHistorys, nil
 }
 
-func (pon *PurchaseOrderHistory) ConvertToReturnJSON() PurchaseOrderHistoryReturnJSON {
-
-	user, _ := GetUserByID(pon.CreatedBy)
-	createdByUser := *user.ConvertToReturnJSON()
+func (pon *PurchaseOrderHistory) ConvertToReturnJSON(ctx context.Context) PurchaseOrderHistoryReturnJSON {
+	user, _ := GetUserByID(ctx, pon.CreatedBy)
+	createdByUser := *user.ConvertToReturnJSON(ctx)
 
 	return PurchaseOrderHistoryReturnJSON{
 		Id:              pon.ID,

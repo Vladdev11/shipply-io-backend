@@ -9,6 +9,7 @@ import (
 )
 
 func ActivateStore(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -16,7 +17,7 @@ func ActivateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -28,18 +29,18 @@ func ActivateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetStoreByID(storeID)
+	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(store.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, store.ClientID) {
 		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
 		return
 	}
 
-	err = store.Activate()
+	err = store.Activate(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to activate store", http.StatusBadRequest)
 		return
@@ -49,6 +50,7 @@ func ActivateStore(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeactivateStore(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -56,7 +58,7 @@ func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -68,18 +70,18 @@ func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetStoreByID(storeID)
+	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(store.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, store.ClientID) {
 		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
 		return
 	}
 
-	err = store.Deactivate()
+	err = store.Deactivate(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to deactivate store", http.StatusBadRequest)
 		return
@@ -89,6 +91,7 @@ func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateStore(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -96,7 +99,7 @@ func UpdateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -108,13 +111,13 @@ func UpdateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetStoreByID(storeID)
+	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find store", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(store.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, store.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this store", http.StatusForbidden)
 		return
 	}
@@ -126,7 +129,7 @@ func UpdateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = store.UpdateWithRequest(request)
+	err = store.UpdateWithRequest(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update store", http.StatusInternalServerError)
 		return
@@ -138,6 +141,7 @@ func UpdateStore(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteStore(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -145,7 +149,7 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -157,27 +161,27 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetStoreByID(storeID)
+	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(store.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, store.ClientID) {
 		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
 		return
 	}
 
 	if store.MarketplaceID == util.ShopifyMarketplaceID {
 
-		shopifyCredentials, err := store.GetShopifyCredentials()
+		shopifyCredentials, err := store.GetShopifyCredentials(ctx)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get shopify credentials", http.StatusBadRequest)
 			return
 		}
 
 		// Delete ShopifyLocations in DB
-		store.DeleteShopifyLocations()
+		store.DeleteShopifyLocations(ctx)
 
 		err = shopify.UninstallApp(shopifyCredentials.ShopName, shopifyCredentials.AccessToken)
 		if err != nil {
@@ -187,7 +191,7 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	err = store.Delete()
+	err = store.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete store", http.StatusBadRequest)
 		return
@@ -197,6 +201,7 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListStores(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -204,7 +209,7 @@ func ListStores(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -218,7 +223,7 @@ func ListStores(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stores, err := user.Organization.GetStores(request)
+	stores, err := user.Organization.GetStores(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find shipping methods", http.StatusBadRequest)
 		return
@@ -235,6 +240,7 @@ func ListStores(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetStore(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -242,7 +248,7 @@ func GetStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -254,13 +260,13 @@ func GetStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, err := models.GetStoreByID(storeID)
+	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(store.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, store.ClientID) {
 		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
 		return
 	}

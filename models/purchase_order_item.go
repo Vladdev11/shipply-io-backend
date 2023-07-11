@@ -1,8 +1,9 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"time"
@@ -80,8 +81,8 @@ type PurchaseOrderItemReceiveBatchRequest []PurchaseOrderItemReceiveRequest
 
 type PurchaseOrderItemBulkUpdateRequest []PurchaseOrderItemUpdateRequest
 
-func (poi *PurchaseOrderItem) Create() error {
-	err := PGDB.Create(poi).Error
+func (poi *PurchaseOrderItem) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(poi).Error
 	if err != nil {
 		return err
 	}
@@ -89,9 +90,9 @@ func (poi *PurchaseOrderItem) Create() error {
 	return nil
 }
 
-func (poi *PurchaseOrderItem) Delete() error {
+func (poi *PurchaseOrderItem) Delete(ctx context.Context) error {
 
-	err := PGDB.Delete(poi).Error
+	err := util.DBFromContext(ctx).Delete(poi).Error
 	if err != nil {
 		return err
 	}
@@ -100,8 +101,8 @@ func (poi *PurchaseOrderItem) Delete() error {
 
 }
 
-func (poi *PurchaseOrderItem) GetProduct() error {
-	product, err := GetProductByID(poi.ProductID)
+func (poi *PurchaseOrderItem) GetProduct(ctx context.Context) error {
+	product, err := GetProductByID(ctx, poi.ProductID)
 	if err != nil {
 		return err
 	}
@@ -111,12 +112,12 @@ func (poi *PurchaseOrderItem) GetProduct() error {
 	return nil
 }
 
-func GetPurchaseOrderItemByID(purchaseOrderItemID int) (*PurchaseOrderItem, error) {
+func GetPurchaseOrderItemByID(ctx context.Context, purchaseOrderItemID int) (*PurchaseOrderItem, error) {
 	//define purchase order item
 	purchaseOrderItem := &PurchaseOrderItem{}
 
 	//get purchase order item from database
-	err := PGDB.Where("id = ?", purchaseOrderItemID).First(purchaseOrderItem).Error
+	err := util.DBFromContext(ctx).Where("id = ?", purchaseOrderItemID).First(purchaseOrderItem).Error
 	if err != nil {
 		return nil, err
 	}
@@ -125,9 +126,9 @@ func GetPurchaseOrderItemByID(purchaseOrderItemID int) (*PurchaseOrderItem, erro
 	return purchaseOrderItem, nil
 }
 
-func UpdatePurchaseOrderItem(purchaseOrderItem *PurchaseOrderItem) error {
+func UpdatePurchaseOrderItem(ctx context.Context, purchaseOrderItem *PurchaseOrderItem) error {
 	//update purchase order item in database
-	err := PGDB.Save(purchaseOrderItem).Error
+	err := util.DBFromContext(ctx).Save(purchaseOrderItem).Error
 	if err != nil {
 		return err
 	}
@@ -138,7 +139,7 @@ func UpdatePurchaseOrderItem(purchaseOrderItem *PurchaseOrderItem) error {
 func (poicr *PurchaseOrderItemCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -193,7 +194,7 @@ func (p *PurchaseOrderItemUpdateRequest) ParseAndValidateRequest(r *http.Request
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -237,7 +238,7 @@ func ParseAndValidatePurchaseOrderItemUpdateRequests(r *http.Request) ([]Purchas
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, []string{"invalid JSON"}
 	}
@@ -297,7 +298,7 @@ func ParseAndValidatePurchaseOrderItemUpdateRequests(r *http.Request) ([]Purchas
 
 }
 
-func (p *PurchaseOrderItem) ConvertToReturnJSON() PurchaseOrderItemReturnJSON {
+func (p *PurchaseOrderItem) ConvertToReturnJSON(ctx context.Context) PurchaseOrderItemReturnJSON {
 
 	if p == nil {
 		return PurchaseOrderItemReturnJSON{}
@@ -322,7 +323,7 @@ func (p *PurchaseOrderItem) ConvertToReturnJSON() PurchaseOrderItemReturnJSON {
 	historyReturnJSON := []PurchaseOrderItemHistoryReturnJSON{}
 	if len(p.History) > 0 {
 		for _, history := range p.History {
-			historyReturnJSON = append(historyReturnJSON, history.ConvertToReturnJSON())
+			historyReturnJSON = append(historyReturnJSON, history.ConvertToReturnJSON(ctx))
 		}
 		PurchaseOrderItemReturnJSON.History = historyReturnJSON
 	}
@@ -330,7 +331,7 @@ func (p *PurchaseOrderItem) ConvertToReturnJSON() PurchaseOrderItemReturnJSON {
 	rejectionReturnJSON := []PurchaseOrderItemRejectionReturnJSON{}
 	if len(p.Rejections) > 0 {
 		for _, rejection := range p.Rejections {
-			rejectionReturnJSON = append(rejectionReturnJSON, *rejection.ConvertToReturnJSON())
+			rejectionReturnJSON = append(rejectionReturnJSON, *rejection.ConvertToReturnJSON(ctx))
 		}
 		PurchaseOrderItemReturnJSON.Rejections = rejectionReturnJSON
 	}
@@ -338,7 +339,7 @@ func (p *PurchaseOrderItem) ConvertToReturnJSON() PurchaseOrderItemReturnJSON {
 	ProductLotReturnJSON := []ProductLotReturnJSON{}
 	if len(p.ProductLots) > 0 {
 		for _, productLot := range p.ProductLots {
-			ProductLotReturnJSON = append(ProductLotReturnJSON, *productLot.ConvertToReturnJSON())
+			ProductLotReturnJSON = append(ProductLotReturnJSON, *productLot.ConvertToReturnJSON(ctx))
 		}
 		PurchaseOrderItemReturnJSON.ProductLots = ProductLotReturnJSON
 	}
@@ -346,9 +347,9 @@ func (p *PurchaseOrderItem) ConvertToReturnJSON() PurchaseOrderItemReturnJSON {
 	return PurchaseOrderItemReturnJSON
 }
 
-func DeletePurchaseOrderItem(purchaseOrderItem *PurchaseOrderItem) error {
+func DeletePurchaseOrderItem(ctx context.Context, purchaseOrderItem *PurchaseOrderItem) error {
 	//delete purchase order item in database
-	err := PGDB.Delete(purchaseOrderItem).Error
+	err := util.DBFromContext(ctx).Delete(purchaseOrderItem).Error
 	if err != nil {
 		return err
 	}
@@ -356,9 +357,9 @@ func DeletePurchaseOrderItem(purchaseOrderItem *PurchaseOrderItem) error {
 	return nil
 }
 
-func DeletePurchaeOrderItemByPurchaseOrderID(purchaseOrderID int) error {
+func DeletePurchaeOrderItemByPurchaseOrderID(ctx context.Context, purchaseOrderID int) error {
 	//delete all purchase order items from database where purchase order id matches
-	err := PGDB.Where("purchase_order_id = ?", purchaseOrderID).Delete(&PurchaseOrderItem{}).Error
+	err := util.DBFromContext(ctx).Where("purchase_order_id = ?", purchaseOrderID).Delete(&PurchaseOrderItem{}).Error
 	if err != nil {
 		return err
 	}
@@ -366,7 +367,7 @@ func DeletePurchaeOrderItemByPurchaseOrderID(purchaseOrderID int) error {
 	return nil
 }
 
-func (p *PurchaseOrderItem) UpdateWithRequest(request *PurchaseOrderItemUpdateRequest) error {
+func (p *PurchaseOrderItem) UpdateWithRequest(ctx context.Context, request *PurchaseOrderItemUpdateRequest) error {
 
 	if request.Ordered != 0 {
 		p.Ordered = request.Ordered
@@ -380,7 +381,7 @@ func (p *PurchaseOrderItem) UpdateWithRequest(request *PurchaseOrderItemUpdateRe
 		p.Notes = request.Notes
 	}
 
-	if err := PGDB.Save(p).Error; err != nil {
+	if err := util.DBFromContext(ctx).Save(p).Error; err != nil {
 		return err
 	}
 
@@ -391,7 +392,7 @@ func ValidateBatchPurchaseOrderItemReceiveRequest(r *http.Request) ([]PurchaseOr
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, []string{"invalid JSON"}
 	}
@@ -457,17 +458,17 @@ func ValidateBatchPurchaseOrderItemReceiveRequest(r *http.Request) ([]PurchaseOr
 
 }
 
-func (poi *PurchaseOrderItem) Update() error {
-	if err := PGDB.Save(poi).Error; err != nil {
+func (poi *PurchaseOrderItem) Update(ctx context.Context) error {
+	if err := util.DBFromContext(ctx).Save(poi).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (poi *PurchaseOrderItem) GetLocationsAndLevels() error {
+func (poi *PurchaseOrderItem) GetLocationsAndLevels(ctx context.Context) error {
 
-	inventoryLocationLevels, err := GetProductLocationsAndLevelsByProductID(poi.ProductID)
+	inventoryLocationLevels, err := GetProductLocationsAndLevelsByProductID(ctx, poi.ProductID)
 	if err != nil {
 		return err
 	}
@@ -478,11 +479,11 @@ func (poi *PurchaseOrderItem) GetLocationsAndLevels() error {
 
 }
 
-func (poi *PurchaseOrderItem) GetHistory() error {
+func (poi *PurchaseOrderItem) GetHistory(ctx context.Context) error {
 
 	var purchaseOrderItemHistories []PurchaseOrderItemHistory
 
-	err := PGDB.Where("purchase_order_item_id = ?", poi.ID).Find(&purchaseOrderItemHistories).Error
+	err := util.DBFromContext(ctx).Where("purchase_order_item_id = ?", poi.ID).Find(&purchaseOrderItemHistories).Error
 	if err != nil {
 		return err
 	}
@@ -493,19 +494,19 @@ func (poi *PurchaseOrderItem) GetHistory() error {
 
 }
 
-func (poi *PurchaseOrderItem) GetRejections() error {
+func (poi *PurchaseOrderItem) GetRejections(ctx context.Context) error {
 
 	var purchaseOrderItemRejections []PurchaseOrderItemRejection
 
-	err := PGDB.Where("purchase_order_item_id = ?", poi.ID).Find(&purchaseOrderItemRejections).Error
+	err := util.DBFromContext(ctx).Where("purchase_order_item_id = ?", poi.ID).Find(&purchaseOrderItemRejections).Error
 	if err != nil {
 		return err
 	}
 
 	if len(purchaseOrderItemRejections) > 0 {
-		//add images to rejections
-		for i, _ := range purchaseOrderItemRejections {
-			err = purchaseOrderItemRejections[i].GetImages()
+		for i := range purchaseOrderItemRejections {
+			err = purchaseOrderItemRejections[i].GetImages(ctx)
+      err = purchaseOrderItemRejections[i].GetLocation(ctx)
 			if err != nil {
 				return err
 			}
@@ -518,11 +519,11 @@ func (poi *PurchaseOrderItem) GetRejections() error {
 
 }
 
-func (poi *PurchaseOrderItem) GetProductLots() error {
+func (poi *PurchaseOrderItem) GetProductLots(ctx context.Context) error {
 
 	var productLots []ProductLot
 
-	err := PGDB.Where("product_id = ?", poi.ProductID).Find(&productLots).Error
+	err := util.DBFromContext(ctx).Where("product_id = ?", poi.ProductID).Find(&productLots).Error
 	if err != nil {
 		return err
 	}
@@ -544,7 +545,7 @@ func (poiuipar *PurchaseOrderItemUpdateIPARequest) ParseAndValidateRequest(r *ht
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}

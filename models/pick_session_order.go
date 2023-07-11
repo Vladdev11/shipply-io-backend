@@ -1,7 +1,10 @@
 package models
 
 import (
+	"context"
 	"errors"
+
+	"github.com/shipply-io/shipply-io-backend/util"
 )
 
 type PickSessionOrder struct {
@@ -23,18 +26,18 @@ type PickSessionOrder struct {
 	ShippingRate          ShippingRate           `json:"shipping_rate"`
 }
 
-func (pso *PickSessionOrder) Create() error {
-	return PGDB.Create(pso).Error
+func (pso *PickSessionOrder) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(pso).Error
 }
 
-func (pso *PickSessionOrder) Update() error {
-	return PGDB.Save(pso).Error
+func (pso *PickSessionOrder) Update(ctx context.Context) error {
+	return util.DBFromContext(ctx).Save(pso).Error
 }
 
-func (pso *PickSessionOrder) GetShippingRate() error {
+func (pso *PickSessionOrder) GetShippingRate(ctx context.Context) error {
 
 	var shippingRate ShippingRate
-	err := PGDB.Where("id = ?", pso.ShippingRateID).First(&shippingRate).Error
+	err := util.DBFromContext(ctx).Where("id = ?", pso.ShippingRateID).First(&shippingRate).Error
 	if err != nil {
 		return err
 	}
@@ -45,29 +48,29 @@ func (pso *PickSessionOrder) GetShippingRate() error {
 
 }
 
-func (pso *PickSessionOrder) GetPickSession() error {
-	return PGDB.Where("id = ?", pso.PickSessionID).First(&pso.PickSession).Error
+func (pso *PickSessionOrder) GetPickSession(ctx context.Context) error {
+	return util.DBFromContext(ctx).Where("id = ?", pso.PickSessionID).First(&pso.PickSession).Error
 }
 
-func (pso *PickSessionOrder) GetOrder() (Order, error) {
+func (pso *PickSessionOrder) GetOrder(ctx context.Context) (Order, error) {
 	var order Order
-	err := PGDB.Where("id = ?", pso.OrderID).First(&order).Error
+	err := util.DBFromContext(ctx).Where("id = ?", pso.OrderID).First(&order).Error
 	return order, err
 }
 
-func (pso *PickSessionOrder) GetPickSessionOrderItems() error {
-	return PGDB.Where("pick_session_order_id = ?", pso.ID).Find(&pso.PickSessionOrderItems).Error
+func (pso *PickSessionOrder) GetPickSessionOrderItems(ctx context.Context) error {
+	return util.DBFromContext(ctx).Where("pick_session_order_id = ?", pso.ID).Find(&pso.PickSessionOrderItems).Error
 }
 
 // TODO clean up this function
-func (pso *PickSessionOrder) CreatePickSessionOrderItems(warehouseID int) error {
+func (pso *PickSessionOrder) CreatePickSessionOrderItems(ctx context.Context, warehouseID int) error {
 	var result []struct {
 		ID         int
 		Allocated  int
 		ProductID  int
 		LocationID int
 	}
-	err := PGDB.Raw(`SELECT order_items.id, order_items.allocated, order_items.product_id, locations.id as location_id
+	err := util.DBFromContext(ctx).Raw(`SELECT order_items.id, order_items.allocated, order_items.product_id, locations.id as location_id
 	FROM order_items
 	JOIN locations ON locations.warehouse_id = ? AND locations.pickable = true AND locations.is_tote IS NOT TRUE
 	JOIN inventory ON inventory.product_id = order_items.product_id
@@ -95,7 +98,7 @@ func (pso *PickSessionOrder) CreatePickSessionOrderItems(warehouseID int) error 
 			ProductID:          orderItem.ProductID,
 			LocationID:         orderItem.LocationID,
 		}
-		err := pickSessionOrderItem.Create()
+		err := pickSessionOrderItem.Create(ctx)
 		if err != nil {
 			return err
 		}
@@ -103,12 +106,12 @@ func (pso *PickSessionOrder) CreatePickSessionOrderItems(warehouseID int) error 
 		for i := 0; i < orderItem.Allocated; i++ {
 
 			var inventoryItem Inventory
-			err := PGDB.Where("product_id = ? AND location_id = ? AND order_item_id IS NULL", orderItem.ProductID, orderItem.LocationID).First(&inventoryItem).Error
+			err := util.DBFromContext(ctx).Where("product_id = ? AND location_id = ? AND order_item_id IS NULL", orderItem.ProductID, orderItem.LocationID).First(&inventoryItem).Error
 			if err != nil {
 				return errors.New("failed to get inventory item for pick session order item")
 			}
 
-			err = PGDB.Model(&inventoryItem).Update("order_item_id", orderItem.ID).Error
+			err = util.DBFromContext(ctx).Model(&inventoryItem).Update("order_item_id", orderItem.ID).Error
 			if err != nil {
 				return errors.New("failed to update inventory item for pick session order item")
 			}
@@ -119,8 +122,8 @@ func (pso *PickSessionOrder) CreatePickSessionOrderItems(warehouseID int) error 
 	return nil
 }
 
-func GetPickSessionOrderByID(id int) (PickSessionOrder, error) {
+func GetPickSessionOrderByID(ctx context.Context, id int) (PickSessionOrder, error) {
 	var pickSessionOrder PickSessionOrder
-	err := PGDB.Where("id = ?", id).First(&pickSessionOrder).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(&pickSessionOrder).Error
 	return pickSessionOrder, err
 }

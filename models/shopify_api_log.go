@@ -2,8 +2,8 @@ package models
 
 import (
 	"bytes"
+	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -23,8 +23,8 @@ type ShopifyApiLog struct {
 	CreatedAt  time.Time
 }
 
-func (log *ShopifyApiLog) Create() error {
-	return PGDB.Create(log).Error
+func (log *ShopifyApiLog) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(log).Error
 }
 
 func LogShopifyWebhookRequest(r *http.Request) error {
@@ -43,8 +43,8 @@ func LogShopifyWebhookRequest(r *http.Request) error {
 		CreatedAt:  time.Now(),
 	}
 
-	r.Body = ioutil.NopCloser(bodyReader)
-	return log.Create()
+	r.Body = io.NopCloser(bodyReader)
+	return log.Create(r.Context())
 }
 
 func LogShopifyInstallRequest(r *http.Request) error {
@@ -61,9 +61,9 @@ func LogShopifyInstallRequest(r *http.Request) error {
 		Endpoint:   r.URL.Path,
 		Method:     r.Method,
 	}
-	return log.Create()
+	return log.Create(r.Context())
 }
 
-func LogShopifyAPIEvent(log *ShopifyApiLog) error {
-	return log.Create()
+func LogShopifyAPIEvent(ctx context.Context, log *ShopifyApiLog) error {
+	return log.Create(ctx)
 }

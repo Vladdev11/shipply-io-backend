@@ -1,8 +1,10 @@
 package models
 
 import (
+	"context"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -17,9 +19,9 @@ type Attachment struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (a *Attachment) Delete() error {
+func (a *Attachment) Delete(ctx context.Context) error {
 
-	err := PGDB.Delete(a).Error
+	err := util.DBFromContext(ctx).Delete(a).Error
 	if err != nil {
 		return err
 	}
@@ -27,9 +29,9 @@ func (a *Attachment) Delete() error {
 	return nil
 }
 
-func CreateAttachment(attachment *Attachment) (*Attachment, error) {
+func CreateAttachment(ctx context.Context, attachment *Attachment) (*Attachment, error) {
 
-	err := PGDB.Create(attachment).Error
+	err := util.DBFromContext(ctx).Create(attachment).Error
 	if err != nil {
 		return nil, err
 	}
@@ -37,10 +39,10 @@ func CreateAttachment(attachment *Attachment) (*Attachment, error) {
 	return attachment, nil
 }
 
-func GetAttachmentByID(id int) (*Attachment, error) {
+func GetAttachmentByID(ctx context.Context, id int) (*Attachment, error) {
 
 	var attachment Attachment
-	err := PGDB.Where("id = ?", id).First(&attachment).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(&attachment).Error
 	if err != nil {
 		return nil, err
 	}

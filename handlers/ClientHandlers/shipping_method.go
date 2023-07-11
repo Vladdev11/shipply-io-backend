@@ -9,19 +9,21 @@ import (
 )
 
 func ListShippingMethods(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find organization", http.StatusBadRequest)
 		return
 	}
 
-	err = user.Client.GetOrganization()
+	err = user.Client.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find organization", http.StatusBadRequest)
 		return
@@ -36,7 +38,7 @@ func ListShippingMethods(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shippingMethods, err := user.Client.Organization.GetShippingMethods(request)
+	shippingMethods, err := user.Client.Organization.GetShippingMethods(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find shipping methods", http.StatusBadRequest)
 		return
@@ -53,13 +55,15 @@ func ListShippingMethods(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find organization", http.StatusBadRequest)
 		return
@@ -71,19 +75,19 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shippingMethod, err := models.GetShippingMethodByID(shippingMethodID)
+	shippingMethod, err := models.GetShippingMethodByID(ctx, shippingMethodID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find shipping method", http.StatusBadRequest)
 		return
 	}
 
-	store, err := models.GetStoreByID(shippingMethod.StoreID)
+	store, err := models.GetStoreByID(ctx, shippingMethod.StoreID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find store", http.StatusBadRequest)
 		return
 	}
 
-	client, err := models.GetClientByID(store.ClientID)
+	client, err := models.GetClientByID(ctx, store.ClientID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find client", http.StatusBadRequest)
 		return
@@ -94,13 +98,13 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	carrierConnections, err := models.GetCarrierConnectionsByClientID(client.ID, user.Organization.ID)
+	carrierConnections, err := models.GetCarrierConnectionsByClientID(ctx, client.ID, user.Organization.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find carrier connections", http.StatusBadRequest)
 		return
 	}
 
-	cheapestCarrier, err := models.GetCheapestCarrierConnection()
+	cheapestCarrier, err := models.GetCheapestCarrierConnection(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find carrier connections", http.StatusBadRequest)
 		return
@@ -114,7 +118,7 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 		carrierConnectionMap[carrierConnection.ID] = carrierConnection
 	}
 
-	baseCarriers, err := models.GetCarriers()
+	baseCarriers, err := models.GetCarriers(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find carriers", http.StatusBadRequest)
 		return
@@ -240,7 +244,7 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shippingMethod.Carriers, _ = json.Marshal(shippingMethodCarriers)
-	shippingMethod.Update()
+	shippingMethod.Update(ctx)
 
 	//update the shipping method carriers with most updated base carrier info
 	for i, shippingMethodCarrier := range shippingMethodCarriers {
@@ -257,13 +261,15 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find organization", http.StatusBadRequest)
 		return
@@ -275,19 +281,19 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shippingMethod, err := models.GetShippingMethodByID(shippingMethodID)
+	shippingMethod, err := models.GetShippingMethodByID(ctx, shippingMethodID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find shipping method", http.StatusBadRequest)
 		return
 	}
 
-	store, err := models.GetStoreByID(shippingMethod.StoreID)
+	store, err := models.GetStoreByID(ctx, shippingMethod.StoreID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find store", http.StatusBadRequest)
 		return
 	}
 
-	client, err := models.GetClientByID(store.ClientID)
+	client, err := models.GetClientByID(ctx, store.ClientID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find client", http.StatusBadRequest)
 		return
@@ -313,7 +319,7 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 
 	shippingMethod.MappedBy = user.ID
 
-	err = shippingMethod.Update()
+	err = shippingMethod.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update shipping method", http.StatusBadRequest)
 		return
@@ -323,13 +329,13 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 	var shippingMethodCarriers []models.ShippingMethodCarrier
 	err = json.Unmarshal(shippingMethod.Carriers, &shippingMethodCarriers)
 
-	carrierConnections, err := models.GetCarrierConnectionsByClientID(client.ID, user.Organization.ID)
+	carrierConnections, err := models.GetCarrierConnectionsByClientID(ctx, client.ID, user.Organization.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find carrier connections", http.StatusBadRequest)
 		return
 	}
 
-	cheapestCarrier, err := models.GetCheapestCarrierConnection()
+	cheapestCarrier, err := models.GetCheapestCarrierConnection(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find carrier connections", http.StatusBadRequest)
 		return
@@ -343,7 +349,7 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 		carrierConnectionMap[carrierConnection.ID] = carrierConnection
 	}
 
-	baseCarriers, err := models.GetCarriers()
+	baseCarriers, err := models.GetCarriers(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find carriers", http.StatusBadRequest)
 		return

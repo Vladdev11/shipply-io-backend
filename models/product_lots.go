@@ -1,11 +1,13 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -24,12 +26,12 @@ type ProductLot struct {
 	DeletedAt     gorm.DeletedAt
 }
 
-func (pl *ProductLot) Create() error {
-	return PGDB.Create(pl).Error
+func (pl *ProductLot) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(pl).Error
 }
 
-func (pl *ProductLot) Update() error {
-	return PGDB.Save(pl).Error
+func (pl *ProductLot) Update(ctx context.Context) error {
+	return util.DBFromContext(ctx).Save(pl).Error
 }
 
 type ProductLotReturnJSON struct {
@@ -43,9 +45,8 @@ type ProductLotReturnJSON struct {
 	UpdatedAt  time.Time      `json:"updated_at"`
 }
 
-func (pl *ProductLot) ConvertToReturnJSON() *ProductLotReturnJSON {
-
-	createdByUser, err := GetUserByID(pl.CreatedBy)
+func (pl *ProductLot) ConvertToReturnJSON(ctx context.Context) *ProductLotReturnJSON {
+	createdByUser, err := GetUserByID(ctx, pl.CreatedBy)
 	if err != nil {
 		return nil
 	}
@@ -56,7 +57,7 @@ func (pl *ProductLot) ConvertToReturnJSON() *ProductLotReturnJSON {
 		ProductID:  pl.ProductID,
 		ExpiryDate: pl.ExpiryDate.Format("2006-01-02"),
 		Active:     pl.Active,
-		CreatedBy:  *createdByUser.ConvertToReturnJSON(),
+		CreatedBy:  *createdByUser.ConvertToReturnJSON(ctx),
 		CreatedAt:  pl.CreatedAt,
 		UpdatedAt:  pl.UpdatedAt,
 	}
@@ -71,7 +72,7 @@ type ProductLotCreateRequest struct {
 func (plcr *ProductLotCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}

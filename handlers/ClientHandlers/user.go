@@ -11,6 +11,7 @@ import (
 )
 
 func UserGet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -18,24 +19,25 @@ func UserGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
 	}
 
-	client, err := models.GetClientByID(user.OwnerID)
+	client, err := models.GetClientByID(ctx, user.OwnerID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 		return
 	}
 	user.Organization.Clients = append(user.Organization.Clients, client)
 
-	userJSON := user.ConvertToReturnJSON()
+	userJSON := user.ConvertToReturnJSON(ctx)
 	util.JSONResponse(w, userJSON, http.StatusOK)
 }
 
 func UserGetByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	requestingUser, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -49,7 +51,7 @@ func UserGetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := models.GetUserByID(userID)
+	user, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
@@ -60,7 +62,7 @@ func UserGetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON()
+	userJSON := user.ConvertToReturnJSON(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert user to json", http.StatusInternalServerError)
 		return
@@ -70,6 +72,7 @@ func UserGetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	requestingUser, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -107,13 +110,13 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 		Role:      role,
 	}
 
-	err = user.Create()
+	err = user.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create user", http.StatusBadRequest)
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON()
+	userJSON := user.ConvertToReturnJSON(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
 		return
@@ -124,13 +127,15 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -142,13 +147,13 @@ func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFromRequest, err := models.GetUserByID(userID)
+	userFromRequest, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	err = userFromRequest.GetClient()
+	err = userFromRequest.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 		return
@@ -170,7 +175,7 @@ func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
 		fileUUID := uuid.New()
 		fileExtension := strings.Split(request.FileType, "/")[1]
 
-		err = api.UploadFileToCDN(request.File, fileUUID.String(), fileExtension, request.FileType)
+		err = api.S3FromContext(ctx).UploadFileToCDN(request.File, fileUUID.String(), fileExtension, request.FileType)
 		if err != nil {
 			util.ErrorResponse(w, "failed to upload attachment to s3", http.StatusInternalServerError)
 			return
@@ -179,13 +184,13 @@ func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
 		userFromRequest.AvatarFileName = fileUUID.String() + "." + fileExtension
 	}
 
-	err = userFromRequest.Update()
+	err = userFromRequest.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update user", http.StatusBadRequest)
 		return
 	}
 
-	userJSON := userFromRequest.ConvertToReturnJSON()
+	userJSON := userFromRequest.ConvertToReturnJSON(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
 		return
@@ -195,13 +200,15 @@ func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -213,7 +220,7 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFromRequest, err := models.GetUserByID(userID)
+	userFromRequest, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
@@ -224,7 +231,7 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = userFromRequest.GetClient()
+	err = userFromRequest.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 		return
@@ -235,7 +242,7 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = userFromRequest.Delete()
+	err = userFromRequest.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete user", http.StatusBadRequest)
 		return
@@ -245,6 +252,7 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -252,7 +260,7 @@ func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
@@ -280,7 +288,7 @@ func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
 	user.Password = hashedPassword
 	user.Salt = salt
 
-	err = user.Update()
+	err = user.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update user", http.StatusBadRequest)
 		return
@@ -291,6 +299,7 @@ func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -298,7 +307,7 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
@@ -310,7 +319,7 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFromRequest, err := models.GetUserByID(userID)
+	userFromRequest, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
@@ -343,13 +352,13 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = userFromRequest.Update()
+	err = userFromRequest.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update user", http.StatusBadRequest)
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON()
+	userJSON := user.ConvertToReturnJSON(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
 		return

@@ -1,14 +1,16 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -96,21 +98,21 @@ type PickSessionRemaining struct {
 	ProductID    int    `json:"product_id"`
 }
 
-func (ps *PickSession) Create() error {
-	return PGDB.Create(ps).Error
+func (ps *PickSession) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(ps).Error
 }
 
-func (ps *PickSession) Complete() error {
+func (ps *PickSession) Complete(ctx context.Context) error {
 	ps.Completed = true
 	ps.CompletedAt = time.Now()
-	return PGDB.Save(ps).Error
+	return util.DBFromContext(ctx).Save(ps).Error
 }
 
-func (ps *PickSession) GetPickSessionOrders() error {
-	return PGDB.Model(ps).Association("PickSessionOrders").Find(&ps.PickSessionOrders)
+func (ps *PickSession) GetPickSessionOrders(ctx context.Context) error {
+	return util.DBFromContext(ctx).Model(ps).Association("PickSessionOrders").Find(&ps.PickSessionOrders)
 }
 
-func (ps *PickSession) CreatePickSessionOrders(toteCount int) ([]PickSessionOrder, error) {
+func (ps *PickSession) CreatePickSessionOrders(ctx context.Context, toteCount int) ([]PickSessionOrder, error) {
 
 	// TODO pick session order rules (partial picks, etc)
 
@@ -118,7 +120,7 @@ func (ps *PickSession) CreatePickSessionOrders(toteCount int) ([]PickSessionOrde
 
 	// TODO optimize query
 	var orders []Order
-	err := PGDB.Where("NOT EXISTS (?)", PGDB.Table("pick_session_orders").
+	err := util.DBFromContext(ctx).Where("NOT EXISTS (?)", util.DBFromContext(ctx).Table("pick_session_orders").
 		Where("pick_session_orders.order_id = orders.id")).
 		Joins("JOIN order_items ON order_items.order_id = orders.id").
 		Where("order_items.quantity = order_items.allocated").
@@ -139,7 +141,7 @@ func (ps *PickSession) CreatePickSessionOrders(toteCount int) ([]PickSessionOrde
 			PickSessionID: ps.ID,
 			OrderID:       order.ID,
 		}
-		err := pickSessionOrder.Create()
+		err := pickSessionOrder.Create(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -151,20 +153,20 @@ func (ps *PickSession) CreatePickSessionOrders(toteCount int) ([]PickSessionOrde
 
 }
 
-func (ps *PickSession) ConvertToPickSessionResponse() (*PickSessionResponse, error) {
+func (ps *PickSession) ConvertToPickSessionResponse(ctx context.Context) (*PickSessionResponse, error) {
 
 	pickSessionResponse := &PickSessionResponse{
 		ID: ps.ID,
 	}
 
-	err := ps.GetPickSessionOrders()
+	err := ps.GetPickSessionOrders(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, pickSessionOrder := range ps.PickSessionOrders {
 
-		err := pickSessionOrder.GetPickSessionOrderItems()
+		err := pickSessionOrder.GetPickSessionOrderItems(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +177,7 @@ func (ps *PickSession) ConvertToPickSessionResponse() (*PickSessionResponse, err
 		}
 
 		if pickSessionOrder.LocationID != nil {
-			tote, err := GetLocationByID(*pickSessionOrder.LocationID)
+			tote, err := GetLocationByID(ctx, *pickSessionOrder.LocationID)
 			if err != nil {
 				return nil, err
 			}
@@ -189,7 +191,7 @@ func (ps *PickSession) ConvertToPickSessionResponse() (*PickSessionResponse, err
 
 		for _, pickSessionOrderItem := range pickSessionOrder.PickSessionOrderItems {
 
-			product, err := GetProductByID(pickSessionOrderItem.ProductID)
+			product, err := GetProductByID(ctx, pickSessionOrderItem.ProductID)
 			if err != nil {
 				return nil, err
 			}
@@ -218,7 +220,7 @@ func (ps *PickSession) ConvertToPickSessionResponse() (*PickSessionResponse, err
 
 			if !alreadyHasProduct {
 
-				location, err := GetLocationByID(pickSessionOrderItem.LocationID)
+				location, err := GetLocationByID(ctx, pickSessionOrderItem.LocationID)
 				if err != nil {
 					return nil, err
 				}
@@ -249,6 +251,7 @@ func (ps *PickSession) ConvertToPickSessionResponse() (*PickSessionResponse, err
 }
 
 func (pscr *PickSessionCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	var errs []string
 
@@ -256,9 +259,9 @@ func (pscr *PickSessionCreateRequest) ParseAndValidateRequest(r *http.Request) [
 	if err != nil {
 		return []string{"invalid user"}
 	}
-	user.GetOrganization()
+	user.GetOrganization(ctx)
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -277,7 +280,7 @@ func (pscr *PickSessionCreateRequest) ParseAndValidateRequest(r *http.Request) [
 	} else if err := json.Unmarshal(aux.WarehouseID, &pscr.WarehouseID); err != nil {
 		errs = append(errs, "warehouse_id must be an integer")
 	} else {
-		if !user.Organization.IsWarehouseOwner(pscr.WarehouseID) {
+		if !user.Organization.IsWarehouseOwner(ctx, pscr.WarehouseID) {
 			return []string{"you do not have permission to create a pick session at that warehouse"}
 		}
 	}
@@ -297,10 +300,10 @@ func (pscr *PickSessionCreateRequest) ParseAndValidateRequest(r *http.Request) [
 	return nil
 }
 
-func GetCurrentPickSessionByUserID(userID int) (*PickSession, error) {
+func GetCurrentPickSessionByUserID(ctx context.Context, userID int) (*PickSession, error) {
 
 	var pickSession PickSession
-	err := PGDB.Where("user_id = ? AND completed IS NOT TRUE", userID).First(&pickSession).Error
+	err := util.DBFromContext(ctx).Where("user_id = ? AND completed IS NOT TRUE", userID).First(&pickSession).Error
 	if err != nil {
 		return nil, err
 	}
@@ -317,9 +320,9 @@ func (pssir *PickSessionSelectItemRequest) ParseAndValidateRequest(r *http.Reque
 	if err != nil {
 		return []string{"invalid user"}
 	}
-	user.GetOrganization()
+	user.GetOrganization(r.Context())
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -353,9 +356,9 @@ func (psatr *PickSessionAssignToteRequest) ParseAndValidateRequest(r *http.Reque
 	if err != nil {
 		return []string{"invalid user"}
 	}
-	user.GetOrganization()
+	user.GetOrganization(r.Context())
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -398,9 +401,9 @@ func (psctr *PickSessionConfirmToteRequest) ParseAndValidateRequest(r *http.Requ
 	if err != nil {
 		return []string{"invalid user"}
 	}
-	user.GetOrganization()
+	user.GetOrganization(r.Context())
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -443,9 +446,9 @@ func (pspr *PickSessionPickRequest) ParseAndValidateRequest(r *http.Request) []s
 	if err != nil {
 		return []string{"invalid user"}
 	}
-	user.GetOrganization()
+	user.GetOrganization(r.Context())
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}

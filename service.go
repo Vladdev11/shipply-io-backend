@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 
 	gorillaHandlers "github.com/gorilla/handlers"
@@ -11,12 +13,20 @@ import (
 
 	"github.com/shipply-io/shipply-io-backend/api"
 	SendgridAPI "github.com/shipply-io/shipply-io-backend/api/sendgrid"
+	ShipengineAPI "github.com/shipply-io/shipply-io-backend/api/shipengine/api"
+	"github.com/shipply-io/shipply-io-backend/api/shopify"
 	"github.com/shipply-io/shipply-io-backend/handlers"
 	"github.com/shipply-io/shipply-io-backend/middlewares"
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/tasks"
 	"github.com/shipply-io/shipply-io-backend/util"
+
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 )
+
+var k = koanf.New(".")
 
 func main() {
 
@@ -27,17 +37,52 @@ func main() {
 
 	flag.Parse()
 
-	util.DevelopmentMode = dev
-	util.PrintSQL = printSQL
+	var configPath string
+	if *dev {
+		configPath = "config.dev.yml"
+	} else {
+		configPath = "config.prod.yml"
+	}
 
-	models.PostgresInit()
-	api.InitAWSS3()
-	SendgridAPI.Init()
+	// TODO: Just gonna do yaml parsing from local file for now
+	// We should probably discuss what we want to do for this
+	// later with regards to proper CI/CD.
+	if err := k.Load(file.Provider(configPath), yaml.Parser()); err != nil {
+		log.Fatalf("error loading config: %v", err)
+	}
+
+	ctx := context.Background()
+	ctx = util.ContextWithAuthSecret(ctx, k.MustString("auth.secret"))
+	ctx = util.ContextWithFrontendBaseURL(ctx, k.MustString("frontend.base_url"))
+	ctx = util.ContextWithCDN(ctx, k.MustString("aws.cdn_host"))
+
+	db, err := models.NewDB(k, *printSQL)
+	if err != nil {
+		log.Fatalf("error connecting to database: %v", err)
+	}
+
+	ctx = util.ContextWithDB(ctx, db)
+
+	ctx = SendgridAPI.ContextWithSendgrindClient(ctx, k.MustString("sendgrid.api_key"), k.MustString("sendgrid.from"), k.MustStringMap("sendgrid.templates"))
+	ctx = ShipengineAPI.ContextWithShipengineClient(ctx, k.MustString("shipengine.api_host"), k.MustString("shipengine.api_key"))
+	ctx = shopify.WithContext(ctx, &shopify.ShopifyAppConfig{
+		ID:          k.MustString("shopify.client_id"),
+		Secret:      k.MustString("shopify.client_secret"),
+		RedirectURL: k.MustString("shopify.redirect_url"),
+		Scope:       k.MustString("shopify.scope"),
+		Webhooks:    k.MustStringMap("shopify.webhooks"),
+	})
+	ctx = api.ContextWithS3(ctx, &api.S3Config{
+		AccessKey: k.MustString("aws.access_key"),
+		SecretKey: k.MustString("aws.secret_key"),
+		Region:    k.MustString("aws.region"),
+		Buckets:   k.MustStringMap("aws.buckets"),
+	})
 
 	// ** START UP FUNCTIONS ** //
 
-	tasks.EnsureSeedData()
-	tasks.InitalizeTaskProcesser(1)
+	tasks.EnsureSeedData(ctx)
+	tasks.InitalizeTaskProcesser(ctx, 1)
 
 	// ** END START UP FUNCTIONS ** //
 
@@ -45,21 +90,21 @@ func main() {
 
 	c := cron.New()
 
-	if !*util.DevelopmentMode {
+	if !*dev {
 		//TODO add recurring task to pick up tasks that did not start processing
-		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionOptions)
-		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionPackageTypes)
-		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionServices)
+		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionOptions(ctx))
+		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionPackageTypes(ctx))
+		c.AddFunc("@every 1h", tasks.SyncCarrierConnectionServices(ctx))
 	}
-
 	//** END CRON JOBS **//
 
 	router := mux.NewRouter()
+	router.Use(middlewares.RouterWithContext(ctx))
 
 	v1 := router.PathPrefix("/v1").Subrouter()
 
 	protected := v1.PathPrefix("/").Subrouter()
-	protected.Use(middlewares.AuthMiddleware)
+	protected.Use(middlewares.AuthMiddleware(k.MustString("auth.secret")))
 
 	shopifyRouter := v1.PathPrefix("/shopify").Subrouter()
 	shopifyWebhookRouter := shopifyRouter.PathPrefix("/webhooks").Subrouter()
@@ -169,8 +214,27 @@ func main() {
 	//** END PRODUCT LOT ROUTES **//
 
 	//** PRODUCT ROUTES **//
-	protected.HandleFunc("/product-search", handlers.ProductSearch).Methods(http.MethodGet)
+	protected.HandleFunc("/product-search", handlers.SearchProducts).Methods(http.MethodGet)
+	protected.HandleFunc("/product/list", handlers.ListProducts).Methods(http.MethodGet)
+	//add history and images
+	protected.HandleFunc("/product/{id}", handlers.GetProduct).Methods(http.MethodGet)
+	protected.HandleFunc("/product/{id}/inventory", handlers.GetProductInventory).Methods(http.MethodGet)
+	protected.HandleFunc("/product/{id}/orders", handlers.GetProductOrders).Methods(http.MethodGet)
+	protected.HandleFunc("/product/{id}/bundles", handlers.GetProductBundles).Methods(http.MethodGet)
+	// REVIEW -- different return structure than other product routes (returns bundle instead of product)
+	protected.HandleFunc("/product/{id}/components", handlers.GetProductBundleComponents).Methods(http.MethodGet)
+	protected.HandleFunc("/product/{id}/stores", handlers.GetProductStores).Methods(http.MethodGet)
+	//create
+	//update
+	//delete
 	//** END PRODUCT ROUTES **//
+
+	//** PRODUCT ALIAS ROUTES **//
+	protected.HandleFunc("/product-aliases", handlers.ProductAliasCreate).Methods(http.MethodPost)
+	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasGetByBarcode).Methods(http.MethodGet)
+	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasUpdateByBarcode).Methods(http.MethodPatch)
+	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasDeleteByBarcode).Methods(http.MethodDelete)
+	//** END PRODUCT ALIAS ROUTES **//
 
 	//** VENDOR ROUTES **//
 	protected.HandleFunc("/vendor/list", handlers.VendorList).Methods(http.MethodGet)
@@ -257,8 +321,8 @@ func main() {
 	// protected.HandleFunc("/shipping/pick-session-order/{id}/void-label", handlers.ShippingVoidLabel).Methods(http.MethodPost)
 	// ** END SHIPPING ROUTES **//
 
-	fmt.Printf("Server starting on port %s", util.ConfigLocalPort)
-	err = http.ListenAndServe(fmt.Sprintf(":%s", util.ConfigLocalPort), gorillaHandlers.CORS(
+	fmt.Printf("Server starting on port %s", k.MustString("server.port"))
+	err = http.ListenAndServe(fmt.Sprintf(":%s", k.MustString("server.port")), gorillaHandlers.CORS(
 		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}),
 		gorillaHandlers.AllowedHeaders([]string{"Access-Control-Allow-Headers", "Content-Type", "Authorization", "Accept", "Accept-Language", "X-Authorization", "X-API", "X-REAL-IP"}),
 		gorillaHandlers.AllowedOrigins([]string{"*"}),

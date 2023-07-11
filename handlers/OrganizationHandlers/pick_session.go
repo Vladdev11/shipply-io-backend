@@ -11,6 +11,7 @@ import (
 )
 
 func CreatePickSession(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -18,7 +19,7 @@ func CreatePickSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = models.GetCurrentPickSessionByUserID(user.ID)
+	_, err = models.GetCurrentPickSessionByUserID(ctx, user.ID)
 	if err == nil {
 		util.ErrorResponse(w, "user already has an active pick session", http.StatusBadRequest)
 		return
@@ -35,7 +36,7 @@ func CreatePickSession(w http.ResponseWriter, r *http.Request) {
 		UserID:      user.ID,
 		WarehouseID: request.WarehouseID,
 	}
-	err = pickSession.Create()
+	err = pickSession.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create pick session", http.StatusInternalServerError)
 		return
@@ -44,7 +45,7 @@ func CreatePickSession(w http.ResponseWriter, r *http.Request) {
 	ordersInPickSessionCount := 0
 	for ordersInPickSessionCount < request.ToteCount {
 
-		order, err := models.GetNextOrderReadyForPicking(request.WarehouseID)
+		order, err := models.GetNextOrderReadyForPicking(ctx, request.WarehouseID)
 		if err != nil {
 			if err.Error() == "no orders ready for picking" {
 				break
@@ -57,13 +58,13 @@ func CreatePickSession(w http.ResponseWriter, r *http.Request) {
 			PickSessionID: pickSession.ID,
 			OrderID:       order.ID,
 		}
-		err = pickSessionOrder.Create()
+		err = pickSessionOrder.Create(ctx)
 		if err != nil {
 			util.ErrorResponse(w, "failed to create pick session order", http.StatusInternalServerError)
 			return
 		}
 
-		err = pickSessionOrder.CreatePickSessionOrderItems(request.WarehouseID)
+		err = pickSessionOrder.CreatePickSessionOrderItems(ctx, request.WarehouseID)
 		if err != nil {
 			util.ErrorResponse(w, "failed to create pick session order items", http.StatusInternalServerError)
 			return
@@ -72,7 +73,7 @@ func CreatePickSession(w http.ResponseWriter, r *http.Request) {
 		ordersInPickSessionCount++
 	}
 
-	pickSessionResponse, err := pickSession.ConvertToPickSessionResponse()
+	pickSessionResponse, err := pickSession.ConvertToPickSessionResponse(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert pick session to response", http.StatusInternalServerError)
 		return
@@ -83,6 +84,7 @@ func CreatePickSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetActivePickSession(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -90,13 +92,13 @@ func GetActivePickSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSession, err := models.GetCurrentPickSessionByUserID(user.ID)
+	pickSession, err := models.GetCurrentPickSessionByUserID(ctx, user.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session", http.StatusBadRequest)
 		return
 	}
 
-	pickSessionResponse, err := pickSession.ConvertToPickSessionResponse()
+	pickSessionResponse, err := pickSession.ConvertToPickSessionResponse(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to convert pick session to response", http.StatusInternalServerError)
 		return
@@ -107,6 +109,7 @@ func GetActivePickSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func PickSessionSelectItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -114,7 +117,7 @@ func PickSessionSelectItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSession, err := models.GetCurrentPickSessionByUserID(user.ID)
+	pickSession, err := models.GetCurrentPickSessionByUserID(ctx, user.ID)
 	if err != nil {
 
 		if err == gorm.ErrRecordNotFound {
@@ -134,7 +137,7 @@ func PickSessionSelectItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// This big chunk to check if the barcode scanned has a product in the pick session that has not been picked yet
-	pickSessionOrderItems, err := models.GetPickSessionOrderItemsByPickSessionID(pickSession.ID)
+	pickSessionOrderItems, err := models.GetPickSessionOrderItemsByPickSessionID(ctx, pickSession.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order items", http.StatusInternalServerError)
 		return
@@ -170,7 +173,7 @@ func PickSessionSelectItem(w http.ResponseWriter, r *http.Request) {
 	var scannedProduct *models.Product
 	for _, productID := range remainingProductIDs {
 
-		product, err := models.GetProductByID(productID)
+		product, err := models.GetProductByID(ctx, productID)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get product", http.StatusInternalServerError)
 			return
@@ -186,7 +189,7 @@ func PickSessionSelectItem(w http.ResponseWriter, r *http.Request) {
 	if scannedProduct == nil {
 		for _, productID := range fullyPickedProductIDs {
 
-			product, err := models.GetProductByID(productID)
+			product, err := models.GetProductByID(ctx, productID)
 			if err != nil {
 				util.ErrorResponse(w, "failed to get product", http.StatusInternalServerError)
 				return
@@ -206,7 +209,7 @@ func PickSessionSelectItem(w http.ResponseWriter, r *http.Request) {
 	var pickSessionOrderItemsWithScannedProductID []models.PickSessionOrderItem
 	for _, pickSessionOrderItem := range pickSessionOrderItems {
 		if pickSessionOrderItem.ProductID == scannedProduct.ID {
-			err = pickSessionOrderItem.GetPickSessionOrder()
+			err = pickSessionOrderItem.GetPickSessionOrder(ctx)
 			if err != nil {
 				util.ErrorResponse(w, "failed to get pick session order", http.StatusInternalServerError)
 				return
@@ -241,7 +244,7 @@ func PickSessionSelectItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tote, err := models.GetLocationByID(*nextPickSessionOrderItemToPick.PickSessionOrder.LocationID)
+	tote, err := models.GetLocationByID(ctx, *nextPickSessionOrderItemToPick.PickSessionOrder.LocationID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get next picking tote", http.StatusInternalServerError)
 		return
@@ -256,6 +259,7 @@ func PickSessionSelectItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func PickSessionAssignTote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -263,7 +267,7 @@ func PickSessionAssignTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSession, err := models.GetCurrentPickSessionByUserID(user.ID)
+	pickSession, err := models.GetCurrentPickSessionByUserID(ctx, user.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session", http.StatusBadRequest)
 		return
@@ -282,7 +286,7 @@ func PickSessionAssignTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tote, err := models.GetLocationByID(toteLocationID)
+	tote, err := models.GetLocationByID(ctx, toteLocationID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get tote", http.StatusBadRequest)
 		return
@@ -298,12 +302,12 @@ func PickSessionAssignTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if tote.HasActivePickSessionOrder() {
+	if tote.HasActivePickSessionOrder(ctx) {
 		util.ErrorResponse(w, "tote already assigned to a pick session order", http.StatusBadRequest)
 		return
 	}
 
-	pickSessionOrder, err := models.GetPickSessionOrderByID(request.PickSessionOrderID)
+	pickSessionOrder, err := models.GetPickSessionOrderByID(ctx, request.PickSessionOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order", http.StatusBadRequest)
 		return
@@ -321,7 +325,7 @@ func PickSessionAssignTote(w http.ResponseWriter, r *http.Request) {
 
 	// Assign Tote to Order
 	pickSessionOrder.LocationID = &tote.ID
-	err = pickSessionOrder.Update()
+	err = pickSessionOrder.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update pick session order", http.StatusInternalServerError)
 		return
@@ -332,6 +336,7 @@ func PickSessionAssignTote(w http.ResponseWriter, r *http.Request) {
 }
 
 func PickSessionConfirmTote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -339,7 +344,7 @@ func PickSessionConfirmTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSession, err := models.GetCurrentPickSessionByUserID(user.ID)
+	pickSession, err := models.GetCurrentPickSessionByUserID(ctx, user.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session", http.StatusBadRequest)
 		return
@@ -352,7 +357,7 @@ func PickSessionConfirmTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSessionOrder, err := models.GetPickSessionOrderByID(request.PickSessionOrderID)
+	pickSessionOrder, err := models.GetPickSessionOrderByID(ctx, request.PickSessionOrderID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order", http.StatusBadRequest)
 		return
@@ -374,7 +379,7 @@ func PickSessionConfirmTote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tote, err := models.GetLocationByID(toteLocationID)
+	tote, err := models.GetLocationByID(ctx, toteLocationID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get tote", http.StatusBadRequest)
 		return
@@ -400,6 +405,7 @@ func PickSessionConfirmTote(w http.ResponseWriter, r *http.Request) {
 }
 
 func PickSessionPick(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -407,7 +413,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSession, err := models.GetCurrentPickSessionByUserID(user.ID)
+	pickSession, err := models.GetCurrentPickSessionByUserID(ctx, user.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session", http.StatusBadRequest)
 		return
@@ -426,7 +432,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tote, err := models.GetLocationByID(toteLocationID)
+	tote, err := models.GetLocationByID(ctx, toteLocationID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get tote", http.StatusBadRequest)
 		return
@@ -437,12 +443,12 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !tote.HasActivePickSessionOrder() {
+	if !tote.HasActivePickSessionOrder(ctx) {
 		util.ErrorResponse(w, "tote not assigned to a pick session order", http.StatusBadRequest)
 		return
 	}
 
-	pickSessionOrder, err := tote.GetActivePickSessionOrder()
+	pickSessionOrder, err := tote.GetActivePickSessionOrder(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order", http.StatusBadRequest)
 		return
@@ -453,7 +459,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = pickSessionOrder.GetPickSessionOrderItems()
+	err = pickSessionOrder.GetPickSessionOrderItems(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order items", http.StatusBadRequest)
 		return
@@ -462,7 +468,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 	var pickSessionOrderItem *models.PickSessionOrderItem
 	for _, item := range pickSessionOrder.PickSessionOrderItems {
 
-		product, err := models.GetProductByID(item.ProductID)
+		product, err := models.GetProductByID(ctx, item.ProductID)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
 			return
@@ -486,7 +492,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// picks quantity 1
-	err = pickSessionOrderItem.Pick()
+	err = pickSessionOrderItem.Pick(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to pick product", http.StatusInternalServerError)
 		return
@@ -495,7 +501,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 	// TODO move inventory to tote location
 
 	// refresh pickSessionOrder.PickSessionOrderItems
-	err = pickSessionOrder.GetPickSessionOrderItems()
+	err = pickSessionOrder.GetPickSessionOrderItems(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order items", http.StatusInternalServerError)
 		return
@@ -512,7 +518,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 
 	if isPickSessionOrderFullyPicked {
 		pickSessionOrder.Picked = true
-		err = pickSessionOrder.Update()
+		err = pickSessionOrder.Update(ctx)
 		if err != nil {
 			util.ErrorResponse(w, "failed to update pick session order", http.StatusInternalServerError)
 			return
@@ -522,7 +528,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 	// New tote for next pick (pick session order item is fully picked)
 	if pickSessionOrderItem.QuantityPicked >= pickSessionOrderItem.QuantityToPick {
 
-		pickSessionOrderItems, err := models.GetPickSessionOrderItemsByPickSessionID(pickSession.ID)
+		pickSessionOrderItems, err := models.GetPickSessionOrderItemsByPickSessionID(ctx, pickSession.ID)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get pick session order items", http.StatusInternalServerError)
 			return
@@ -533,7 +539,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 			if item.QuantityPicked < item.QuantityToPick {
 				if pickSessionOrderItem.ProductID == item.ProductID {
 
-					err = item.GetPickSessionOrder()
+					err = item.GetPickSessionOrder(ctx)
 					if err != nil {
 						util.ErrorResponse(w, "failed to get pick session order", http.StatusInternalServerError)
 						return
@@ -579,7 +585,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		tote, err := models.GetLocationByID(*nextPickSessionOrderItemToPick.PickSessionOrder.LocationID)
+		tote, err := models.GetLocationByID(ctx, *nextPickSessionOrderItemToPick.PickSessionOrder.LocationID)
 		if err != nil {
 			util.ErrorResponse(w, "failed to get tote", http.StatusInternalServerError)
 			return
@@ -604,6 +610,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 }
 
 func PickSessionComplete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -611,7 +618,7 @@ func PickSessionComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pickSession, err := models.GetCurrentPickSessionByUserID(user.ID)
+	pickSession, err := models.GetCurrentPickSessionByUserID(ctx, user.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session", http.StatusBadRequest)
 		return
@@ -619,7 +626,7 @@ func PickSessionComplete(w http.ResponseWriter, r *http.Request) {
 
 	// TODO maybe allow user to complete pick session even if not all items picked. This would require all orders assigned to a tote to be fully picked
 
-	pickSessionOrderItems, err := models.GetPickSessionOrderItemsByPickSessionID(pickSession.ID)
+	pickSessionOrderItems, err := models.GetPickSessionOrderItemsByPickSessionID(ctx, pickSession.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get pick session order items", http.StatusInternalServerError)
 		return
@@ -632,7 +639,7 @@ func PickSessionComplete(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = pickSession.Complete()
+	err = pickSession.Complete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to complete pick session", http.StatusInternalServerError)
 		return

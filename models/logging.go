@@ -1,8 +1,11 @@
 package models
 
 import (
+	"context"
 	"net/http"
 	"time"
+
+	"github.com/shipply-io/shipply-io-backend/util"
 )
 
 type ShipEngineLog struct {
@@ -17,6 +20,6 @@ type ShipEngineLog struct {
 	CreatedAt  time.Time
 }
 
-func (log *ShipEngineLog) Create() error {
-	return PGDB.Create(log).Error
+func (log *ShipEngineLog) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(log).Error
 }

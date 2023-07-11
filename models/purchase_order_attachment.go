@@ -1,12 +1,14 @@
 package models
 
 import (
+	"context"
 	"mime/multipart"
 	"net/http"
 	"reflect"
 	"time"
 
 	"github.com/shipply-io/shipply-io-backend/api"
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -62,11 +64,11 @@ func (poacr *PurchaseOrderAttachmentCreateRequest) ParseAndValidateRequest(r *ht
 	return errors
 }
 
-func (poa *PurchaseOrderAttachment) ConvertToReturnJSON() (PurchaseOrderAttachmentReturnJSON, error) {
+func (poa *PurchaseOrderAttachment) ConvertToReturnJSON(ctx context.Context) (PurchaseOrderAttachmentReturnJSON, error) {
 
-	poa.GetAttachment()
+	poa.GetAttachment(ctx)
 
-	URL, err := api.GetAttachmentURL(poa.Attachment.UUID, poa.Attachment.Extension, poa.Attachment.FileName)
+	URL, err := api.S3FromContext(ctx).GetAttachmentURL(poa.Attachment.UUID, poa.Attachment.Extension, poa.Attachment.FileName)
 	if err != nil {
 		return PurchaseOrderAttachmentReturnJSON{}, err
 	}
@@ -78,9 +80,9 @@ func (poa *PurchaseOrderAttachment) ConvertToReturnJSON() (PurchaseOrderAttachme
 	}, nil
 }
 
-func (poa *PurchaseOrderAttachment) Delete() error {
+func (poa *PurchaseOrderAttachment) Delete(ctx context.Context) error {
 
-	err := PGDB.Delete(poa).Error
+	err := util.DBFromContext(ctx).Delete(poa).Error
 	if err != nil {
 		return err
 	}
@@ -89,9 +91,9 @@ func (poa *PurchaseOrderAttachment) Delete() error {
 
 }
 
-func (poa *PurchaseOrderAttachment) GetAttachment() error {
+func (poa *PurchaseOrderAttachment) GetAttachment(ctx context.Context) error {
 
-	err := PGDB.Model(poa).Association("Attachment").Find(&poa.Attachment)
+	err := util.DBFromContext(ctx).Model(poa).Association("Attachment").Find(&poa.Attachment)
 	if err != nil {
 		return err
 	}
@@ -100,9 +102,9 @@ func (poa *PurchaseOrderAttachment) GetAttachment() error {
 
 }
 
-func CreatePurchaseOrderAttachment(purchaseOrderAttachment *PurchaseOrderAttachment) (*PurchaseOrderAttachment, error) {
+func CreatePurchaseOrderAttachment(ctx context.Context, purchaseOrderAttachment *PurchaseOrderAttachment) (*PurchaseOrderAttachment, error) {
 
-	err := PGDB.Create(purchaseOrderAttachment).Error
+	err := util.DBFromContext(ctx).Create(purchaseOrderAttachment).Error
 	if err != nil {
 		return nil, err
 	}
@@ -111,11 +113,11 @@ func CreatePurchaseOrderAttachment(purchaseOrderAttachment *PurchaseOrderAttachm
 
 }
 
-func GetPurchaseOrderAttachmentByID(id int) (*PurchaseOrderAttachment, error) {
+func GetPurchaseOrderAttachmentByID(ctx context.Context, id int) (*PurchaseOrderAttachment, error) {
 
 	purchaseOrderAttachment := &PurchaseOrderAttachment{}
 
-	err := PGDB.First(purchaseOrderAttachment, id).Error
+	err := util.DBFromContext(ctx).First(purchaseOrderAttachment, id).Error
 	if err != nil {
 		return nil, err
 	}

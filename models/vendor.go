@@ -1,8 +1,9 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -50,12 +51,12 @@ type VendorUpdateRequest struct {
 	VendorAccountID string `json:"vendor_account_id"`
 }
 
-func (v *Vendor) Create() error {
-	return PGDB.Create(v).Error
+func (v *Vendor) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(v).Error
 }
 
-func (v *Vendor) Delete() error {
-	err := PGDB.Delete(v).Error
+func (v *Vendor) Delete(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Delete(v).Error
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func (v *Vendor) Delete() error {
 	return nil
 }
 
-func (v *Vendor) UpdateWithRequest(request *VendorUpdateRequest) error {
+func (v *Vendor) UpdateWithRequest(ctx context.Context, request *VendorUpdateRequest) error {
 
 	if request.Name != "" {
 		v.Name = request.Name
@@ -73,7 +74,7 @@ func (v *Vendor) UpdateWithRequest(request *VendorUpdateRequest) error {
 		v.VendorAccountID = request.VendorAccountID
 	}
 
-	if err := PGDB.Save(v).Error; err != nil {
+	if err := util.DBFromContext(ctx).Save(v).Error; err != nil {
 		return err
 	}
 
@@ -93,10 +94,10 @@ func (v *Vendor) ConvertToReturnJSON() *VendorReturnJSON {
 	}
 }
 
-func (v *Vendor) GetPurchaseOrders() ([]PurchaseOrder, error) {
+func (v *Vendor) GetPurchaseOrders(ctx context.Context) ([]PurchaseOrder, error) {
 	var purchaseOrders []PurchaseOrder
 
-	err := PGDB.Where("vendor_id = ?", v.ID).Find(&purchaseOrders).Error
+	err := util.DBFromContext(ctx).Where("vendor_id = ?", v.ID).Find(&purchaseOrders).Error
 	if err != nil {
 		return nil, err
 	}
@@ -179,6 +180,7 @@ func (v *VendorListRequest) ParseAndValidateRequest(r *http.Request) []string {
 }
 
 func (v *VendorCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	var errs []string
 
@@ -186,9 +188,9 @@ func (v *VendorCreateRequest) ParseAndValidateRequest(r *http.Request) []string 
 	if err != nil {
 		return []string{"invalid user"}
 	}
-	user.GetClient()
+	user.GetClient(ctx)
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -212,7 +214,7 @@ func (v *VendorCreateRequest) ParseAndValidateRequest(r *http.Request) []string 
 			if v.ClientID < 1 {
 				errs = append(errs, "client_id must be greater than 0")
 			} else {
-				_, err := GetClientByID(v.ClientID)
+				_, err := GetClientByID(ctx, v.ClientID)
 				if err != nil {
 					errs = append(errs, "client_id does not exist")
 				}
@@ -229,7 +231,7 @@ func (v *VendorCreateRequest) ParseAndValidateRequest(r *http.Request) []string 
 	} else if len(v.Name) < 1 {
 		errs = append(errs, "name must be at least 1 character")
 	} else {
-		vendors, err := GetVendorsByClientID(v.ClientID)
+		vendors, err := GetVendorsByClientID(ctx, v.ClientID)
 		if err != nil {
 			errs = append(errs, "error getting vendors")
 		}
@@ -255,6 +257,7 @@ func (v *VendorCreateRequest) ParseAndValidateRequest(r *http.Request) []string 
 }
 
 func (v *VendorUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	var errs []string
 
@@ -263,12 +266,12 @@ func (v *VendorUpdateRequest) ParseAndValidateRequest(r *http.Request) []string 
 		return []string{"invalid vendor id"}
 	}
 
-	vendor, err := GetVendorByID(vendorID)
+	vendor, err := GetVendorByID(ctx, vendorID)
 	if err != nil {
 		return []string{"vendor does not exist"}
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -288,7 +291,7 @@ func (v *VendorUpdateRequest) ParseAndValidateRequest(r *http.Request) []string 
 		} else if len(v.Name) > 255 {
 			errs = append(errs, "name must be less than 255 characters")
 		} else {
-			vendors, err := GetVendorsByClientID(vendor.ClientID)
+			vendors, err := GetVendorsByClientID(ctx, vendor.ClientID)
 			if err != nil {
 				errs = append(errs, "error getting vendors")
 			}
@@ -317,10 +320,10 @@ func (v *VendorUpdateRequest) ParseAndValidateRequest(r *http.Request) []string 
 
 }
 
-func GetVendorByID(id int) (*Vendor, error) {
+func GetVendorByID(ctx context.Context, id int) (*Vendor, error) {
 	vendor := &Vendor{}
 
-	err := PGDB.First(vendor, id).Error
+	err := util.DBFromContext(ctx).First(vendor, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -329,10 +332,10 @@ func GetVendorByID(id int) (*Vendor, error) {
 	return vendor, nil
 }
 
-func GetVendorsByClientID(clientID int) ([]*Vendor, error) {
+func GetVendorsByClientID(ctx context.Context, clientID int) ([]*Vendor, error) {
 	vendors := []*Vendor{}
 
-	err := PGDB.Where("client_id = ?", clientID).Find(&vendors).Error
+	err := util.DBFromContext(ctx).Where("client_id = ?", clientID).Find(&vendors).Error
 	if err != nil {
 		return nil, err
 	}
@@ -363,9 +366,9 @@ func ConvertVendorsToSearchResults(matchingVendors []Vendor, total int, count in
 
 }
 
-func (vlr *VendorListRequest) ConvertToOrganizationQuery() *gorm.DB {
+func (vlr *VendorListRequest) ConvertToOrganizationQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&Vendor{}).
+	query := util.DBFromContext(ctx).Model(&Vendor{}).
 		Select("DISTINCT vendors.*").
 		Joins("LEFT JOIN clients ON clients.id = vendors.client_id").
 		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
@@ -389,9 +392,9 @@ func (vlr *VendorListRequest) ConvertToOrganizationQuery() *gorm.DB {
 	return query
 }
 
-func (vlr *VendorListRequest) ConvertToClientQuery() *gorm.DB {
+func (vlr *VendorListRequest) ConvertToClientQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&Vendor{}).
+	query := util.DBFromContext(ctx).Model(&Vendor{}).
 		Select("DISTINCT vendors.*")
 
 	query = query.Where("vendors.client_id = ?", vlr.ClientID)

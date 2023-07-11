@@ -1,0 +1,38 @@
+server:
+  port: 8080
+frontend:
+  base_url: http://localhost:8000
+auth:
+  secret: super_secret
+postgres:
+  hostname: localhost
+  username: shipply
+  password: shipply
+  database: shipply
+aws:
+  access_key: ...
+  secret_key: ...
+  region: us-east-1
+  buckets:
+    attachment: shippi-attachments-development
+    cdn: warehance-cdn
+  cdn_host: https://d28avlftk21p7r.cloudfront.net
+shipengine:
+  api_key: ...
+  api_host: https://api.shipengine.com/v1
+shopify:
+  client_id: ...
+  client_secret: ...
+  redirect_url: https://appstaging.shipply.io/v1/shopify/oauth/confirmation
+  scope: read_orders, read_all_orders, read_products, read_inventory, write_inventory, write_locations
+  webhooks:
+    app_uninstalled: https://appstaging.shipply.io/v1/shopify/webhooks/app-uninstalled
+    orders_create: https://appstaging.shipply.io/v1/shopify/webhooks/orders-create
+    orders_update: https://appstaging.shipply.io/v1/shopify/webhooks/orders-update
+    products_create: https://appstaging.shipply.io/v1/shopify/webhooks/products-create
+    products_update: https://appstaging.shipply.io/v1/shopify/webhooks/products-update
+sendgrid:
+  api_key: ...
+  from: brady@shippi.io
+  templates: 
+    password_reset: d-e85f424d34f541449411393c44021bce

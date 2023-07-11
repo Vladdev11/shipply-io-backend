@@ -1,8 +1,9 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -69,8 +70,8 @@ type LocationUpdateRequest struct {
 	IsTote         bool   `json:"is_tote"`
 }
 
-func (l *Location) Create() error {
-	err := PGDB.Create(l).Error
+func (l *Location) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(l).Error
 	if err != nil {
 		return err
 	}
@@ -78,8 +79,8 @@ func (l *Location) Create() error {
 	return nil
 }
 
-func (l *Location) Delete() error {
-	err := PGDB.Delete(l).Error
+func (l *Location) Delete(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Delete(l).Error
 	if err != nil {
 		return err
 	}
@@ -87,17 +88,17 @@ func (l *Location) Delete() error {
 	return nil
 }
 
-func (l *Location) HasInventory() bool {
+func (l *Location) HasInventory(ctx context.Context) bool {
 	var count int64
-	PGDB.Model(&Inventory{}).Where("location_id = ?", l.ID).Count(&count)
+	util.DBFromContext(ctx).Model(&Inventory{}).Where("location_id = ?", l.ID).Count(&count)
 	if count > 0 {
 		return true
 	}
 	return false
 }
 
-func (l *Location) GetLocationType() error {
-	err := PGDB.Model(l).Association("LocationType").Find(&l.LocationType)
+func (l *Location) GetLocationType(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Model(l).Association("LocationType").Find(&l.LocationType)
 	if err != nil {
 		return err
 	}
@@ -105,7 +106,7 @@ func (l *Location) GetLocationType() error {
 	return nil
 }
 
-func (l *Location) UpdateWithRequest(request *LocationUpdateRequest) error {
+func (l *Location) UpdateWithRequest(ctx context.Context, request *LocationUpdateRequest) error {
 
 	if request.Name != "" {
 		l.Name = request.Name
@@ -119,7 +120,7 @@ func (l *Location) UpdateWithRequest(request *LocationUpdateRequest) error {
 	l.Sellable = request.Sellable
 	l.IsTote = request.IsTote
 
-	err := PGDB.Save(l).Error
+	err := util.DBFromContext(ctx).Save(l).Error
 	if err != nil {
 		return err
 	}
@@ -127,7 +128,7 @@ func (l *Location) UpdateWithRequest(request *LocationUpdateRequest) error {
 	return nil
 }
 
-func (l *Location) ConvertToReturnJSON() *LocationReturnJSON {
+func (l *Location) ConvertToReturnJSON(ctx context.Context) *LocationReturnJSON {
 	return &LocationReturnJSON{
 		ID:             l.ID,
 		WarehouseID:    l.WarehouseID,
@@ -217,9 +218,9 @@ func (llr *LocationListRequest) ParseAndValidateRequest(r *http.Request) []strin
 	return nil
 }
 
-func (llr *LocationListRequest) ConvertToOrganizationQuery() *gorm.DB {
+func (llr *LocationListRequest) ConvertToOrganizationQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&Location{}).
+	query := util.DBFromContext(ctx).Model(&Location{}).
 		Select("DISTINCT locations.*").
 		Joins("LEFT JOIN warehouses ON warehouses.id = locations.warehouse_id")
 
@@ -243,10 +244,11 @@ func (llr *LocationListRequest) ConvertToOrganizationQuery() *gorm.DB {
 }
 
 func (lcr *LocationCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	errors := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -276,7 +278,7 @@ func (lcr *LocationCreateRequest) ParseAndValidateRequest(r *http.Request) []str
 	} else if lcr.WarehouseID < 0 {
 		errors = append(errors, "warehouse_id must be greater than or equal to 0")
 	} else {
-		warehouse, err := GetWarehouseByID(lcr.WarehouseID)
+		warehouse, err := GetWarehouseByID(ctx, lcr.WarehouseID)
 		if err != nil {
 			errors = append(errors, "warehouse_id must be a valid warehouse")
 		} else if warehouse.OrganizationID != user.OwnerID {
@@ -291,7 +293,7 @@ func (lcr *LocationCreateRequest) ParseAndValidateRequest(r *http.Request) []str
 	} else if len(lcr.Name) > 255 {
 		errors = append(errors, "name must be less than 255 characters")
 	} else {
-		locations, err := GetLocationsByWarehouseID(lcr.WarehouseID)
+		locations, err := GetLocationsByWarehouseID(ctx, lcr.WarehouseID)
 		if err != nil {
 			return []string{"error getting locations"}
 		}
@@ -309,7 +311,7 @@ func (lcr *LocationCreateRequest) ParseAndValidateRequest(r *http.Request) []str
 	} else if err := json.Unmarshal(aux.LocationTypeID, &lcr.LocationTypeID); err != nil {
 		errors = append(errors, "location_type_id must be an integer")
 	} else {
-		locationType, err := GetLocationTypeByID(lcr.LocationTypeID)
+		locationType, err := GetLocationTypeByID(ctx, lcr.LocationTypeID)
 		if err != nil {
 			errors = append(errors, "location_type_id does not exist")
 		} else {
@@ -351,10 +353,11 @@ func (lcr *LocationCreateRequest) ParseAndValidateRequest(r *http.Request) []str
 }
 
 func (lur *LocationUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	errors := []string{}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -377,7 +380,7 @@ func (lur *LocationUpdateRequest) ParseAndValidateRequest(r *http.Request) []str
 		errors = append(errors, "invalid location id")
 	}
 
-	location, err := GetLocationByID(locationID)
+	location, err := GetLocationByID(ctx, locationID)
 	if err != nil {
 		return []string{"failed to get location"}
 	}
@@ -393,7 +396,7 @@ func (lur *LocationUpdateRequest) ParseAndValidateRequest(r *http.Request) []str
 		} else if lur.WarehouseID < 0 {
 			errors = append(errors, "warehouse_id must be greater than or equal to 0")
 		} else {
-			warehouse, err := GetWarehouseByID(lur.WarehouseID)
+			warehouse, err := GetWarehouseByID(ctx, lur.WarehouseID)
 			if err != nil {
 				errors = append(errors, "warehouse_id must be a valid warehouse")
 			} else if warehouse.OrganizationID != user.OwnerID {
@@ -410,7 +413,7 @@ func (lur *LocationUpdateRequest) ParseAndValidateRequest(r *http.Request) []str
 		} else if len(lur.Name) > 255 {
 			errors = append(errors, "name must be less than 255 characters")
 		} else {
-			locations, err := GetLocationsByWarehouseID(lur.WarehouseID)
+			locations, err := GetLocationsByWarehouseID(ctx, lur.WarehouseID)
 			if err != nil {
 				return []string{"error getting locations"}
 			}
@@ -427,7 +430,7 @@ func (lur *LocationUpdateRequest) ParseAndValidateRequest(r *http.Request) []str
 		if err := json.Unmarshal(aux.LocationTypeID, &lur.LocationTypeID); err != nil {
 			errors = append(errors, "location_type_id must be an integer")
 		} else {
-			warehouse, err := GetWarehouseByID(location.WarehouseID)
+			warehouse, err := GetWarehouseByID(ctx, location.WarehouseID)
 			if err != nil {
 				errors = append(errors, "failed to get warehouse")
 			} else {
@@ -436,7 +439,7 @@ func (lur *LocationUpdateRequest) ParseAndValidateRequest(r *http.Request) []str
 				}
 			}
 
-			locationType, err := GetLocationTypeByID(lur.LocationTypeID)
+			locationType, err := GetLocationTypeByID(ctx, lur.LocationTypeID)
 			if err != nil {
 				errors = append(errors, "location_type_id does not exist")
 			} else {
@@ -479,32 +482,32 @@ func (lur *LocationUpdateRequest) ParseAndValidateRequest(r *http.Request) []str
 
 }
 
-func GetLocationByID(locationID int) (Location, error) {
+func GetLocationByID(ctx context.Context, locationID int) (Location, error) {
 	var location Location
-	err := PGDB.Where("id = ?", locationID).First(&location).Error
+	err := util.DBFromContext(ctx).Where("id = ?", locationID).First(&location).Error
 	return location, err
 }
 
-func LocationExists(locationID int) bool {
+func LocationExists(ctx context.Context, locationID int) bool {
 	var location Location
-	err := PGDB.Where("id = ?", locationID).First(&location).Error
+	err := util.DBFromContext(ctx).Where("id = ?", locationID).First(&location).Error
 	if err != nil {
 		return false
 	}
 	return true
 }
 
-func ConvertLocationsToSearchResults(matchingLocations []Location, total int, count int) (*SearchResults, error) {
+func ConvertLocationsToSearchResults(ctx context.Context, matchingLocations []Location, total int, count int) (*SearchResults, error) {
 
 	var locations []*LocationReturnJSON
 
 	for _, location := range matchingLocations {
-		err := location.GetLocationType()
+		err := location.GetLocationType(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		locations = append(locations, location.ConvertToReturnJSON())
+		locations = append(locations, location.ConvertToReturnJSON(ctx))
 	}
 
 	results, err := util.ConvertStructsToInterfaces(locations)
@@ -522,33 +525,33 @@ func ConvertLocationsToSearchResults(matchingLocations []Location, total int, co
 
 }
 
-func GetLocationsByWarehouseID(warehouseID int) ([]Location, error) {
+func GetLocationsByWarehouseID(ctx context.Context, warehouseID int) ([]Location, error) {
 	var locations []Location
-	err := PGDB.Where("warehouse_id = ?", warehouseID).Find(&locations).Error
+	err := util.DBFromContext(ctx).Where("warehouse_id = ?", warehouseID).Find(&locations).Error
 	return locations, err
 }
 
-func (l *Location) HasActivePickSessionOrder() bool {
+func (l *Location) HasActivePickSessionOrder(ctx context.Context) bool {
 	var pickSessionOrder PickSessionOrder
-	if err := PGDB.Where("location_id = ? AND shipped IS NOT TRUE", l.ID).
+	if err := util.DBFromContext(ctx).Where("location_id = ? AND shipped IS NOT TRUE", l.ID).
 		First(&pickSessionOrder).Error; err != nil {
 		return false
 	}
 	return true
 }
 
-func (l *Location) GetActivePickSessionOrder() (*PickSessionOrder, error) {
+func (l *Location) GetActivePickSessionOrder(ctx context.Context) (*PickSessionOrder, error) {
 	var pickSessionOrder PickSessionOrder
-	if err := PGDB.Where("location_id = ? AND shipped IS NOT TRUE", l.ID).
+	if err := util.DBFromContext(ctx).Where("location_id = ? AND shipped IS NOT TRUE", l.ID).
 		First(&pickSessionOrder).Error; err != nil {
 		return nil, err
 	}
 	return &pickSessionOrder, nil
 }
 
-func (l *Location) GetWarehouse() error {
+func (l *Location) GetWarehouse(ctx context.Context) error {
 	var warehouse Warehouse
-	err := PGDB.Where("id = ?", l.WarehouseID).First(&warehouse).Error
+	err := util.DBFromContext(ctx).Where("id = ?", l.WarehouseID).First(&warehouse).Error
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 )
 
 func WarehouseList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -15,13 +16,13 @@ func WarehouseList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
 	}
 
-	err = user.Client.GetOrganization()
+	err = user.Client.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -35,7 +36,7 @@ func WarehouseList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	request.OrganizationID = user.Client.Organization.ID
-	warehouses, total, count, err := user.Client.Organization.GetWarehouses(request)
+	warehouses, total, count, err := user.Client.Organization.GetWarehouses(ctx, request)
 
 	searchResults, err := models.ConvertWarehousesToSearchResults(warehouses, total, count)
 	if err != nil {
@@ -48,6 +49,7 @@ func WarehouseList(w http.ResponseWriter, r *http.Request) {
 }
 
 func WarehouseGet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -55,7 +57,7 @@ func WarehouseGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -67,19 +69,19 @@ func WarehouseGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	warehouse, err := models.GetWarehouseByID(warehouseID)
+	warehouse, err := models.GetWarehouseByID(ctx, warehouseID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get warehouse", http.StatusBadRequest)
 		return
 	}
 
-	err = warehouse.GetShipFromAddress()
+	err = warehouse.GetShipFromAddress(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get ship from address", http.StatusBadRequest)
 		return
 	}
 
-	err = warehouse.GetReturnAddress()
+	err = warehouse.GetReturnAddress(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get return address", http.StatusBadRequest)
 		return

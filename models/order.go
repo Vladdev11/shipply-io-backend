@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -152,47 +153,47 @@ type OrdersListRequest struct {
 	SearchValue    string `json:"search_value"`
 }
 
-func (o *Order) Create() error {
-	return PGDB.Create(o).Error
+func (o *Order) Create(ctx context.Context) error {
+	return util.DBFromContext(ctx).Create(o).Error
 }
 
-func (o *Order) GetOrderItems() error {
-	return PGDB.Model(o).Association("OrderItems").Find(&o.OrderItems)
+func (o *Order) GetOrderItems(ctx context.Context) error {
+	return util.DBFromContext(ctx).Model(o).Association("OrderItems").Find(&o.OrderItems)
 }
 
-func (o *Order) GetStore() error {
-	return PGDB.Model(o).Association("Store").Find(&o.Store)
+func (o *Order) GetStore(ctx context.Context) error {
+	return util.DBFromContext(ctx).Model(o).Association("Store").Find(&o.Store)
 }
 
-func (o *Order) GetWarehouse() error {
-	return PGDB.Model(o).Association("Warehouse").Find(&o.Warehouse)
+func (o *Order) GetWarehouse(ctx context.Context) error {
+	return util.DBFromContext(ctx).Model(o).Association("Warehouse").Find(&o.Warehouse)
 }
 
-func (o *Order) GetBillToAddress() error {
-	return PGDB.Model(o).Association("BillToAddress").Find(&o.BillToAddress)
+func (o *Order) GetBillToAddress(ctx context.Context) error {
+	return util.DBFromContext(ctx).Model(o).Association("BillToAddress").Find(&o.BillToAddress)
 }
 
-func (o *Order) GetShipToAddress() error {
-	return PGDB.Model(o).Association("ShipToAddress").Find(&o.ShipToAddress)
+func (o *Order) GetShipToAddress(ctx context.Context) error {
+	return util.DBFromContext(ctx).Model(o).Association("ShipToAddress").Find(&o.ShipToAddress)
 }
 
-func (o *Order) GetShippingMethod() error {
-	return PGDB.Model(o).Association("ShippingMethod").Find(&o.ShippingMethod)
+func (o *Order) GetShippingMethod(ctx context.Context) error {
+	return util.DBFromContext(ctx).Model(o).Association("ShippingMethod").Find(&o.ShippingMethod)
 }
 
-func (o *Order) GetBox() error {
-	return PGDB.Model(o).Association("Box").Find(&o.Box)
+func (o *Order) GetBox(ctx context.Context) error {
+	return util.DBFromContext(ctx).Model(o).Association("Box").Find(&o.Box)
 }
 
-func GetNextOrderReadyForPicking(warehouseID int) (*Order, error) {
+func GetNextOrderReadyForPicking(ctx context.Context, warehouseID int) (*Order, error) {
 
-	subquery := PGDB.Model(&Inventory{}).
+	subquery := util.DBFromContext(ctx).Model(&Inventory{}).
 		Select("product_id, location_id, COUNT(*) AS available_count").
 		Where("order_item_id IS NULL").
 		Group("product_id, location_id")
 
 	var order Order
-	err := PGDB.Model(&Order{}).
+	err := util.DBFromContext(ctx).Model(&Order{}).
 		Select("orders.*").
 		Joins("JOIN order_items ON order_items.order_id = orders.id").
 		Joins("JOIN locations ON locations.warehouse_id = ? AND locations.pickable = true AND locations.is_tote IS NOT TRUE", warehouseID).
@@ -213,18 +214,18 @@ func GetNextOrderReadyForPicking(warehouseID int) (*Order, error) {
 	return &order, nil
 }
 
-func GetOrderByStoreAndAPIID(storeID int, apiID string) (*Order, error) {
+func GetOrderByStoreAndAPIID(ctx context.Context, storeID int, apiID string) (*Order, error) {
 	order := Order{}
-	err := PGDB.Where("store_id = ? AND api_id = ?", storeID, apiID).First(&order).Error
+	err := util.DBFromContext(ctx).Where("store_id = ? AND api_id = ?", storeID, apiID).First(&order).Error
 	if err != nil {
 		return nil, err
 	}
 	return &order, nil
 }
 
-func GetOrderByID(id int) (*Order, error) {
+func GetOrderByID(ctx context.Context, id int) (*Order, error) {
 	order := Order{}
-	err := PGDB.Where("id = ?", id).First(&order).Error
+	err := util.DBFromContext(ctx).Where("id = ?", id).First(&order).Error
 	if err != nil {
 		return nil, err
 	}
@@ -243,10 +244,10 @@ func (o *Order) HasHold(holdType uint64) bool {
 	return o.Holds&holdType != 0
 }
 
-func (o *Order) GetShippingAddress() error {
+func (o *Order) GetShippingAddress(ctx context.Context) error {
 	//get address by id
 	address := Address{}
-	err := PGDB.Where("id = ?", o.ShipToAddressID).First(&address).Error
+	err := util.DBFromContext(ctx).Where("id = ?", o.ShipToAddressID).First(&address).Error
 	if err != nil {
 		return err
 	}
@@ -254,11 +255,60 @@ func (o *Order) GetShippingAddress() error {
 	return nil
 }
 
-func (o *Order) Update() error {
-	return PGDB.Save(o).Error
+func (o *Order) Update(ctx context.Context) error {
+	return util.DBFromContext(ctx).Save(o).Error
 }
 
-func (o *Order) ConvertToReturnJSON() *OrderReturnJSON {
+// TODO delete this
+func (o *Order) ConvertToProductReturnJSON() *OrderReturnJSON {
+
+	// TODO add status
+	//get status
+	// status, _ := GetPurchaseOrderStatusByID(p.Status)
+
+	return &OrderReturnJSON{
+		ID:                            o.ID,
+		Priority:                      o.Priority,
+		OrderNumber:                   o.OrderNumber,
+		GiftNote:                      o.GiftNote,
+		PackingNote:                   o.PackingNote,
+		ReadyToShip:                   o.ReadyToShip,
+		Holds:                         o.Holds,
+		Subtotal:                      o.Subtotal,
+		Tax:                           o.Tax,
+		Shipping:                      o.Shipping,
+		Discount:                      o.Discount,
+		DiscountCodes:                 o.DiscountCodes,
+		Tip:                           o.Tip,
+		Total:                         o.Total,
+		OrderDate:                     o.OrderDate,
+		RequiredShipDate:              o.RequiredShipDate,
+		HoldUntilDate:                 o.HoldUntilDate,
+		FulfillmentStatus:             o.FulfillmentStatus,
+		MarketplaceFinacialStatus:     o.MarketplaceFinacialStatus,
+		AutoPrintReturnLabel:          o.AutoPrintReturnLabel,
+		CustomerEmail:                 o.CustomerEmail,
+		CustomerPhone:                 o.CustomerPhone,
+		SaturdayDelivery:              o.SaturdayDelivery,
+		IgnoreAddressValidationErrors: o.IgnoreAddressValidationErrors,
+		SkipAddressValidation:         o.SkipAddressValidation,
+		AllocationPriority:            o.AllocationPriority,
+		AllowPartial:                  o.AllowPartial,
+		GiftInvoice:                   o.GiftInvoice,
+		RequireSignature:              o.RequireSignature,
+		AdultSignatureRequired:        o.AdultSignatureRequired,
+		Alcohol:                       o.Alcohol,
+		Insurance:                     o.Insurance,
+		InsuranceValue:                o.InsuranceValue,
+		Currency:                      o.Currency,
+		HasDryIce:                     o.HasDryIce,
+		DryIceWeightInLbs:             o.DryIceWeightInLbs,
+		AllowSplit:                    o.AllowSplit,
+		FTRExemption:                  o.FTRExemption,
+	}
+}
+
+func (o *Order) ConvertToReturnJSON(ctx context.Context) *OrderReturnJSON {
 
 	//make sure order items is an empty array if it is nil
 	if o.OrderItems == nil {
@@ -270,7 +320,7 @@ func (o *Order) ConvertToReturnJSON() *OrderReturnJSON {
 		// set to 0 and nil to omit from json
 		item.OrderID = 0
 		item.ProductID = nil
-		orderItems = append(orderItems, item.ConvertToReturnJSON())
+		orderItems = append(orderItems, item.ConvertToReturnJSON(ctx))
 	}
 
 	// TODO add histories
@@ -300,26 +350,26 @@ func (o *Order) ConvertToReturnJSON() *OrderReturnJSON {
 
 	// TODO validation
 	//get store
-	o.GetStore()
+	o.GetStore(ctx)
 
 	// Get Billing Address
-	o.GetBillToAddress()
+	o.GetBillToAddress(ctx)
 
 	// Get Shipping Address
-	o.GetShippingAddress()
+	o.GetShippingAddress(ctx)
 
 	// Get Warehouse
 	if o.WarehouseID != nil {
-		o.GetWarehouse()
-		o.Warehouse.GetReturnAddress()
-		o.Warehouse.GetShipFromAddress()
+		o.GetWarehouse(ctx)
+		o.Warehouse.GetReturnAddress(ctx)
+		o.Warehouse.GetShipFromAddress(ctx)
 	}
 
 	// Get Shipping Method
-	o.GetShippingMethod()
+	o.GetShippingMethod(ctx)
 
 	// Get Box
-	o.GetBox()
+	o.GetBox(ctx)
 
 	return &OrderReturnJSON{
 		ID:                            o.ID,
@@ -454,9 +504,9 @@ func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) []string 
 
 }
 
-func (olr *OrdersListRequest) ConvertToOrganizationQuery() *gorm.DB {
+func (olr *OrdersListRequest) ConvertToOrganizationQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&Order{}).
+	query := util.DBFromContext(ctx).Model(&Order{}).
 		Select("DISTINCT orders.*").
 		Joins("LEFT JOIN order_items ON order_items.order_id = orders.id").
 		Joins("LEFT JOIN products ON products.id = order_items.product_id").
@@ -472,10 +522,10 @@ func (olr *OrdersListRequest) ConvertToOrganizationQuery() *gorm.DB {
 
 	// TODO - add the rest of the filters
 	if olr.SearchValue != "" {
-		query = query.Where(PGDB.Where("to_tsvector('english', order_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue)).
-			Or(PGDB.Where("to_tsvector('english', orders.customer_email) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', orders.customer_phone) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', order_statuses.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))))
+		query = query.Where(util.DBFromContext(ctx).Where("to_tsvector('english', order_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue)).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', orders.customer_email) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', orders.customer_phone) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', order_statuses.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))))
 	}
 
 	if olr.OrderByColumn != "" {
@@ -491,9 +541,9 @@ func (olr *OrdersListRequest) ConvertToOrganizationQuery() *gorm.DB {
 	return query
 }
 
-func (olr *OrdersListRequest) ConvertToClientQuery() *gorm.DB {
+func (olr *OrdersListRequest) ConvertToClientQuery(ctx context.Context) *gorm.DB {
 
-	query := PGDB.Model(&PurchaseOrder{}).
+	query := util.DBFromContext(ctx).Model(&PurchaseOrder{}).
 		Select("DISTINCT orders.*").
 		Joins("LEFT JOIN order_items ON order_items.order_id = orders.id").
 		Joins("LEFT JOIN products ON products.id = order_items.product_id").
@@ -504,10 +554,10 @@ func (olr *OrdersListRequest) ConvertToClientQuery() *gorm.DB {
 
 	// TODO - add the rest of the filters
 	if olr.SearchValue != "" {
-		query = query.Where(PGDB.Where("to_tsvector('english', order_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue)).
-			Or(PGDB.Where("to_tsvector('english', orders.customer_email) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', orders.customer_phone) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))).
-			Or(PGDB.Where("to_tsvector('english', order_statuses.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))))
+		query = query.Where(util.DBFromContext(ctx).Where("to_tsvector('english', order_number) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue)).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', orders.customer_email) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', orders.customer_phone) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))).
+			Or(util.DBFromContext(ctx).Where("to_tsvector('english', order_statuses.name) @@ to_tsquery('english', ?)", fmt.Sprintf("*%s:*", olr.SearchValue))))
 	}
 
 	if olr.OrderByColumn != "" {
@@ -523,12 +573,12 @@ func (olr *OrdersListRequest) ConvertToClientQuery() *gorm.DB {
 	return query
 }
 
-func ConvertOrdersToSearchResults(matchingOrders []Order, total int, count int) (*SearchResults, error) {
+func ConvertOrdersToSearchResults(ctx context.Context, matchingOrders []Order, total int, count int) (*SearchResults, error) {
 
 	var orders []*OrderReturnJSON
 
 	for _, order := range matchingOrders {
-		orders = append(orders, order.ConvertToReturnJSON())
+		orders = append(orders, order.ConvertToReturnJSON(ctx))
 	}
 
 	results, err := util.ConvertStructsToInterfaces(orders)
@@ -543,4 +593,21 @@ func ConvertOrdersToSearchResults(matchingOrders []Order, total int, count int) 
 	}
 
 	return searchResults, nil
+}
+
+func GetOrdersByProductID(ctx context.Context, productID int) ([]Order, error) {
+
+	var orders []Order
+
+	err := util.DBFromContext(ctx).Model(&Order{}).
+		Select("DISTINCT orders.*").
+		Joins("LEFT JOIN order_items ON order_items.order_id = orders.id").
+		Where("order_items.product_id = ?", productID).
+		Find(&orders).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }

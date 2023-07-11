@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -19,16 +19,40 @@ import (
 	"github.com/Yamashou/gqlgenc/clientv2"
 	"github.com/shipply-io/shipply-io-backend/api/shopify/gen"
 	"github.com/shipply-io/shipply-io-backend/models"
-	"github.com/shipply-io/shipply-io-backend/util"
 )
+
+type contextKey int
+
+const (
+	shopifyAppConfigKey contextKey = iota
+)
+
+type ShopifyAppConfig struct {
+	ID          string
+	Secret      string
+	Scope       string
+	RedirectURL string
+	Webhooks    map[string]string
+}
+
+func WithContext(ctx context.Context, sac *ShopifyAppConfig) context.Context {
+	return context.WithValue(ctx, shopifyAppConfigKey, sac)
+}
+
+func FromContext(ctx context.Context) *ShopifyAppConfig {
+	if rv := ctx.Value(shopifyAppConfigKey); rv != nil {
+		return rv.(*ShopifyAppConfig)
+	}
+	return nil
+}
 
 type AccessTokenResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
 // Verify a message against a message HMAC
-func VerifyMessage(message string, messageMAC string) bool {
-	mac := hmac.New(sha256.New, []byte(util.ShopifyClientSecret))
+func (sac *ShopifyAppConfig) VerifyMessage(message string, messageMAC string) bool {
+	mac := hmac.New(sha256.New, []byte(sac.Secret))
 	mac.Write([]byte(message))
 	expectedMAC := mac.Sum(nil)
 
@@ -38,7 +62,7 @@ func VerifyMessage(message string, messageMAC string) bool {
 	return hmac.Equal(actualMac, expectedMAC)
 }
 
-func VerifyOAuthCallback(u *url.URL, appNonce string) error {
+func (sac *ShopifyAppConfig) VerifyOAuthCallback(u *url.URL, appNonce string) error {
 
 	q := u.Query()
 	messageMAC := q.Get("hmac")
@@ -56,7 +80,7 @@ func VerifyOAuthCallback(u *url.URL, appNonce string) error {
 		return err
 	}
 
-	if !VerifyMessage(message, messageMAC) {
+	if !sac.VerifyMessage(message, messageMAC) {
 		return errors.New("failed to verify hmac")
 	}
 
@@ -73,19 +97,19 @@ func isValidShopName(shopName string) bool {
 	return regex.MatchString(hostname)
 }
 
-func AuthorizeUrl(shopName string, state string) string {
+func (sac *ShopifyAppConfig) AuthorizeUrl(shopName string, state string) string {
 	shopUrl, _ := url.Parse("https://" + shopName)
 	shopUrl.Path = "/admin/oauth/authorize"
 	query := shopUrl.Query()
-	query.Set("client_id", util.ShopifyClientID)
-	query.Set("redirect_uri", util.ShopifyRedirectURL)
-	query.Set("scope", util.ShopifyScope)
+	query.Set("client_id", sac.ID)
+	query.Set("redirect_uri", sac.RedirectURL)
+	query.Set("scope", sac.Scope)
 	query.Set("state", state)
 	shopUrl.RawQuery = query.Encode()
 	return shopUrl.String()
 }
 
-func VerifyAuthorizationURL(u *url.URL) (bool, error) {
+func (sac *ShopifyAppConfig) VerifyAuthorizationURL(u *url.URL) (bool, error) {
 	q := u.Query()
 	messageMAC := q.Get("hmac")
 
@@ -95,10 +119,10 @@ func VerifyAuthorizationURL(u *url.URL) (bool, error) {
 
 	message, err := url.QueryUnescape(q.Encode())
 
-	return VerifyMessage(message, messageMAC), err
+	return sac.VerifyMessage(message, messageMAC), err
 }
 
-func GetAccessToken(shopName string, code string) (string, error) {
+func (sac *ShopifyAppConfig) GetAccessToken(ctx context.Context, shopName string, code string) (string, error) {
 
 	// Create a POST request to the Shopify access token endpoint
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://%s/admin/oauth/access_token", shopName), nil)
@@ -108,8 +132,8 @@ func GetAccessToken(shopName string, code string) (string, error) {
 
 	// Set the query parameters for the request
 	q := req.URL.Query()
-	q.Add("client_id", util.ShopifyClientID)
-	q.Add("client_secret", util.ShopifyClientSecret)
+	q.Add("client_id", sac.ID)
+	q.Add("client_secret", sac.Secret)
 	q.Add("code", code)
 	req.URL.RawQuery = q.Encode()
 
@@ -121,7 +145,7 @@ func GetAccessToken(shopName string, code string) (string, error) {
 	defer resp.Body.Close()
 
 	// Read the response body into a []byte
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -132,7 +156,7 @@ func GetAccessToken(shopName string, code string) (string, error) {
 		return "", err
 	}
 
-	models.LogShopifyAPIEvent(&models.ShopifyApiLog{
+	models.LogShopifyAPIEvent(ctx, &models.ShopifyApiLog{
 		ShopDomain: shopName,
 		EventType:  "api_response",
 		StatusCode: resp.StatusCode,
@@ -147,7 +171,7 @@ func GetAccessToken(shopName string, code string) (string, error) {
 	return tokenResp.AccessToken, nil
 }
 
-func VerifyWebhookRequest(r *http.Request) bool {
+func (sac *ShopifyAppConfig) VerifyWebhookRequest(r *http.Request) bool {
 	shopifySha256 := r.Header.Get("X-Shopify-Hmac-Sha256")
 	actualMac, err := base64.StdEncoding.DecodeString(shopifySha256)
 	if err != nil {
@@ -157,10 +181,10 @@ func VerifyWebhookRequest(r *http.Request) bool {
 	// Convert the base64-decoded HMAC to hexadecimal
 	hexActualMac := hex.EncodeToString(actualMac)
 
-	requestBody, _ := ioutil.ReadAll(r.Body)
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
+	requestBody, _ := io.ReadAll(r.Body)
+	r.Body = io.NopCloser(bytes.NewBuffer(requestBody))
 
-	return VerifyMessage(string(requestBody), hexActualMac)
+	return sac.VerifyMessage(string(requestBody), hexActualMac)
 }
 
 func UninstallApp(shopName string, accessToken string) error {

@@ -2,6 +2,7 @@ package ShipengineAPI
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,19 +12,19 @@ import (
 	"github.com/shipply-io/shipply-io-backend/models"
 )
 
-func PurchaseLabelFromRate(plfrr ShipengineModels.PurchaseLabelFromRateRequest, RateID string) (*ShipengineModels.PurchaseLabelFromRateResponse, *ShipengineModels.ShipengineError, error) {
+func PurchaseLabelFromRate(ctx context.Context, plfrr ShipengineModels.PurchaseLabelFromRateRequest, RateID string) (*ShipengineModels.PurchaseLabelFromRateResponse, *ShipengineModels.ShipengineError, error) {
 
 	body, err := json.Marshal(plfrr)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", apiClient.GetApiHost()+fmt.Sprintf("/labels/rates/%s", RateID), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", fmt.Sprintf("/v1/labels/rates/%s", RateID), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := apiClient.Do(req)
+	resp, err := ShipengineClientFromContext(ctx).Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -34,11 +35,11 @@ func PurchaseLabelFromRate(plfrr ShipengineModels.PurchaseLabelFromRateRequest, 
 		Body:       string(body),
 		Endpoint:   fmt.Sprintf("/labels/rates/%s", RateID),
 		StatusCode: resp.StatusCode,
-		RequestURL: apiClient.GetApiHost() + fmt.Sprintf("/labels/rates/%s", RateID),
+		RequestURL: resp.Request.URL.String(),
 		Method:     "POST",
 		CreatedAt:  time.Now(),
 	}
-	log.Create()
+	log.Create(ctx)
 
 	defer resp.Body.Close()
 

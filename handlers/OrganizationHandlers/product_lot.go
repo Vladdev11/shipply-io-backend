@@ -8,6 +8,7 @@ import (
 )
 
 func ProductLotListByProduct(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -15,7 +16,7 @@ func ProductLotListByProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -27,13 +28,13 @@ func ProductLotListByProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := models.GetProductByID(productID)
+	product, err := models.GetProductByID(ctx, productID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
 		return
 	}
 
-	err = product.GetClient()
+	err = product.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 		return
@@ -44,7 +45,7 @@ func ProductLotListByProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = product.GetProductLots()
+	err = product.GetProductLots(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get product lots", http.StatusBadRequest)
 		return
@@ -52,7 +53,7 @@ func ProductLotListByProduct(w http.ResponseWriter, r *http.Request) {
 
 	productLotReturnJSON := make([]models.ProductLotReturnJSON, 0)
 	for _, productLot := range product.ProductLots {
-		productLotReturnJSON = append(productLotReturnJSON, *productLot.ConvertToReturnJSON())
+		productLotReturnJSON = append(productLotReturnJSON, *productLot.ConvertToReturnJSON(ctx))
 	}
 
 	util.JSONResponse(w, productLotReturnJSON, http.StatusOK)
@@ -60,6 +61,7 @@ func ProductLotListByProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func ProductLotCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -67,7 +69,7 @@ func ProductLotCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization()
+	err = user.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
@@ -80,7 +82,7 @@ func ProductLotCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := models.GetProductByID(request.ProductID)
+	product, err := models.GetProductByID(ctx, request.ProductID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
 		return
@@ -91,7 +93,7 @@ func ProductLotCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = product.GetClient()
+	err = product.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
 		return
@@ -111,12 +113,12 @@ func ProductLotCreate(w http.ResponseWriter, r *http.Request) {
 
 	productLot.DetermineActive()
 
-	err = productLot.Create()
+	err = productLot.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create product lot", http.StatusBadRequest)
 		return
 	}
 
-	util.JSONResponse(w, productLot.ConvertToReturnJSON(), http.StatusOK)
+	util.JSONResponse(w, productLot.ConvertToReturnJSON(ctx), http.StatusOK)
 
 }

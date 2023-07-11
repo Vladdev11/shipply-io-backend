@@ -1,9 +1,11 @@
 package models
 
 import (
+	"context"
 	"errors"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -21,19 +23,19 @@ type ShopifyLocation struct {
 	Store     Store     `json:"store" gorm:"foreignKey:StoreID"`
 }
 
-func (sl *ShopifyLocation) Create() error {
+func (sl *ShopifyLocation) Create(ctx context.Context) error {
 
 	// Check if the location already exists
 	var existingLocation ShopifyLocation
-	if err := PGDB.Where("warehouse_id = ? AND store_id = ?", sl.WarehouseID, sl.StoreID).First(&existingLocation).Error; err == nil {
+	if err := util.DBFromContext(ctx).Where("warehouse_id = ? AND store_id = ?", sl.WarehouseID, sl.StoreID).First(&existingLocation).Error; err == nil {
 		return errors.New("Location already exists")
 	}
 
-	return PGDB.Create(sl).Error
+	return util.DBFromContext(ctx).Create(sl).Error
 }
 
-func GetShopifyLocationsByStoreID(storeID int) ([]ShopifyLocation, error) {
+func GetShopifyLocationsByStoreID(ctx context.Context, storeID int) ([]ShopifyLocation, error) {
 	var locations []ShopifyLocation
-	err := PGDB.Where("store_id = ?", storeID).Find(&locations).Error
+	err := util.DBFromContext(ctx).Where("store_id = ?", storeID).Find(&locations).Error
 	return locations, err
 }

@@ -1,15 +1,15 @@
 package ShipengineHandlers
 
 import (
+	"context"
 	"fmt"
 
 	ShipengineAPI "github.com/shipply-io/shipply-io-backend/api/shipengine/api"
 	ShipengineModels "github.com/shipply-io/shipply-io-backend/api/shipengine/models"
 )
 
-func ShopRates(rsr ShipengineModels.RateShopRequest) (*ShipengineModels.RateShopResponse, error) {
-
-	ratesShopResponse, errorResponse, err := ShipengineAPI.ShopRates(rsr)
+func ShopRates(ctx context.Context, rsr ShipengineModels.RateShopRequest) (*ShipengineModels.RateShopResponse, error) {
+	ratesShopResponse, errorResponse, err := ShipengineAPI.ShopRates(ctx, rsr)
 	if err != nil {
 		return nil, err
 	}

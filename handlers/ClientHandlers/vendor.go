@@ -8,6 +8,7 @@ import (
 )
 
 func VendorList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -15,7 +16,7 @@ func VendorList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -29,7 +30,7 @@ func VendorList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	request.ClientID = user.Client.ID
-	vendors, total, count, err := user.Client.GetVendors(request)
+	vendors, total, count, err := user.Client.GetVendors(ctx, request)
 
 	searchResults, err := models.ConvertVendorsToSearchResults(vendors, total, count)
 	if err != nil {
@@ -42,6 +43,7 @@ func VendorList(w http.ResponseWriter, r *http.Request) {
 }
 
 func VendorCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -49,7 +51,7 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetClient()
+	err = user.GetClient(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -69,7 +71,7 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 		VendorAccountID: request.VendorAccountID,
 	}
 
-	err = vendor.Create()
+	err = vendor.Create(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create vendor", http.StatusBadRequest)
 		return
@@ -80,6 +82,7 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func VendorGet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -93,7 +96,7 @@ func VendorGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vendor, err := models.GetVendorByID(vendorID)
+	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get vendor", http.StatusBadRequest)
 		return
@@ -109,6 +112,7 @@ func VendorGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func VendorUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -122,7 +126,7 @@ func VendorUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vendor, err := models.GetVendorByID(vendorID)
+	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find vendor", http.StatusBadRequest)
 		return
@@ -140,7 +144,7 @@ func VendorUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = vendor.UpdateWithRequest(request)
+	err = vendor.UpdateWithRequest(ctx, request)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update vendor", http.StatusInternalServerError)
 		return
@@ -152,6 +156,7 @@ func VendorUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func VendorDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -165,7 +170,7 @@ func VendorDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vendor, err := models.GetVendorByID(vendorID)
+	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find vendor", http.StatusBadRequest)
 		return
@@ -176,7 +181,7 @@ func VendorDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = vendor.Delete()
+	err = vendor.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete vendor", http.StatusInternalServerError)
 		return

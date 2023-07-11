@@ -2,15 +2,13 @@ package shopify
 
 import (
 	"context"
-
-	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func SubscribeToAppUninstalledWebhook(shopName string, accessToken string) error {
+func SubscribeToAppUninstalledWebhook(ctx context.Context, shopName string, accessToken string) error {
 
 	client := NewClient(shopName, accessToken)
 
-	_, err := client.SubscribeToAppUninstallWebhook(context.Background(), util.ShopifyAppUninstalledWebhookURL)
+	_, err := client.SubscribeToAppUninstallWebhook(context.Background(), FromContext(ctx).Webhooks["app_uninstalled"])
 	if err != nil {
 		return err
 	}
@@ -18,11 +16,11 @@ func SubscribeToAppUninstalledWebhook(shopName string, accessToken string) error
 	return nil
 }
 
-func SubscribeToOrdersCreateWebhook(shopName string, accessToken string) error {
+func SubscribeToOrdersCreateWebhook(ctx context.Context, shopName string, accessToken string) error {
 
 	client := NewClient(shopName, accessToken)
 
-	_, err := client.SubscribeToOrdersCreateWebhook(context.Background(), util.ShopifyAppOrdersCreateWebhookURL)
+	_, err := client.SubscribeToOrdersCreateWebhook(context.Background(), FromContext(ctx).Webhooks["orders_create"])
 	if err != nil {
 		return err
 	}
@@ -30,11 +28,11 @@ func SubscribeToOrdersCreateWebhook(shopName string, accessToken string) error {
 	return nil
 }
 
-func SubscribeToOrdersUpdateWebhook(shopName string, accessToken string) error {
+func SubscribeToOrdersUpdateWebhook(ctx context.Context, shopName string, accessToken string) error {
 
 	client := NewClient(shopName, accessToken)
 
-	_, err := client.SubscribeToOrdersUpdateWebhook(context.Background(), util.ShopifyAppOrdersUpdateWebhookURL)
+	_, err := client.SubscribeToOrdersUpdateWebhook(context.Background(), FromContext(ctx).Webhooks["orders_update"])
 	if err != nil {
 		return err
 	}
@@ -42,11 +40,11 @@ func SubscribeToOrdersUpdateWebhook(shopName string, accessToken string) error {
 	return nil
 }
 
-func SubscribeToProductsCreateWebhook(shopName string, accessToken string) error {
+func SubscribeToProductsCreateWebhook(ctx context.Context, shopName string, accessToken string) error {
 
 	client := NewClient(shopName, accessToken)
 
-	_, err := client.SubscribeToProductsCreateWebhook(context.Background(), util.ShopifyAppProductsCreateWebhookURL)
+	_, err := client.SubscribeToProductsCreateWebhook(context.Background(), FromContext(ctx).Webhooks["products_create"])
 	if err != nil {
 		return err
 	}
@@ -54,11 +52,11 @@ func SubscribeToProductsCreateWebhook(shopName string, accessToken string) error
 	return nil
 }
 
-func SubscribeToProductsUpdateWebhook(shopName string, accessToken string) error {
+func SubscribeToProductsUpdateWebhook(ctx context.Context, shopName string, accessToken string) error {
 
 	client := NewClient(shopName, accessToken)
 
-	_, err := client.SubscribeToProductsUpdateWebhook(context.Background(), util.ShopifyAppProductsUpdateWebhookURL)
+	_, err := client.SubscribeToProductsUpdateWebhook(context.Background(), FromContext(ctx).Webhooks["products_create"])
 	if err != nil {
 		return err
 	}

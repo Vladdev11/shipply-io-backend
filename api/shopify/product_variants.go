@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -148,7 +148,7 @@ func ParseAndValidateProductCreateRequest(r *http.Request) (*string, []string) {
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		errs = append(errs, "failed to read body")
 		return nil, errs
@@ -181,7 +181,7 @@ func ParseAndValidateProductUpdateRequest(r *http.Request) (*string, []string) {
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		errs = append(errs, "failed to read body")
 		return nil, errs

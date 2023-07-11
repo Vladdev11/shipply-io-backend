@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
@@ -27,10 +29,11 @@ type PurchaseOrderItemRejection struct {
 	PurchaseOrderItem *PurchaseOrderItem
 
 	Attachments []PurchaseOrderItemRejectionAttachment `gorm:"-"`
+	Location    *Location                              `gorm:"-"`
 }
 
-func (poir *PurchaseOrderItemRejection) Create() error {
-	result := PGDB.Create(&poir)
+func (poir *PurchaseOrderItemRejection) Create(ctx context.Context) error {
+	result := util.DBFromContext(ctx).Create(&poir)
 	return result.Error
 }
 
@@ -128,32 +131,37 @@ func (poir *PurchaseOrderItemRejectRequest) ParseAndValidateRequest(r *http.Requ
 }
 
 type PurchaseOrderItemRejectionReturnJSON struct {
-	ID                  int            `json:"id"`
-	PurchaseOrderItemID int            `json:"purchase_order_item_id"`
-	RejectedReaseon     string         `json:"rejected_reason"`
-	Note                string         `json:"note"`
-	CreatedBy           UserReturnJSON `json:"created_by"`
-	CreatedAt           time.Time      `json:"created_at"`
-	Images              []string       `json:"images"`
-	Quantity            int            `json:"quantity"`
+	ID                  int                `json:"id"`
+	PurchaseOrderItemID int                `json:"purchase_order_item_id"`
+	RejectedReaseon     string             `json:"rejected_reason"`
+	Note                string             `json:"note"`
+	CreatedBy           UserReturnJSON     `json:"created_by"`
+	CreatedAt           time.Time          `json:"created_at"`
+	Images              []string           `json:"images"`
+	Quantity            int                `json:"quantity"`
+	Location            LocationReturnJSON `json:"location"`
 }
 
-func (poir *PurchaseOrderItemRejection) ConvertToReturnJSON() *PurchaseOrderItemRejectionReturnJSON {
-
+func (poir *PurchaseOrderItemRejection) ConvertToReturnJSON(ctx context.Context) *PurchaseOrderItemRejectionReturnJSON {
 	var createdByUser User
 	var err error
 
 	if poir.CreatedByUser == nil {
-		createdByUser, err = GetUserByID(poir.CreatedBy)
+		createdByUser, err = GetUserByID(ctx, poir.CreatedBy)
 		if err != nil {
 			return nil
 		}
 	}
 
+	locationJSON := &LocationReturnJSON{}
+	if poir.Location != nil {
+		locationJSON = poir.Location.ConvertToReturnJSON(ctx)
+	}
+
 	attachments := []string{}
 	if poir.Attachments != nil {
 		for _, attachment := range poir.Attachments {
-			returnJSON := attachment.ConvertToReturnJSON()
+			returnJSON := attachment.ConvertToReturnJSON(ctx)
 			attachments = append(attachments, returnJSON.URL)
 		}
 	}
@@ -163,22 +171,45 @@ func (poir *PurchaseOrderItemRejection) ConvertToReturnJSON() *PurchaseOrderItem
 		PurchaseOrderItemID: poir.PurchaseOrderItemID,
 		RejectedReaseon:     poir.RejectedReaseon,
 		Note:                poir.Note,
-		CreatedBy:           *createdByUser.ConvertToReturnJSON(),
+		CreatedBy:           *createdByUser.ConvertToReturnJSON(ctx),
 		CreatedAt:           poir.CreatedAt,
 		Images:              attachments,
 		Quantity:            poir.Quantity,
+		Location:            *locationJSON,
 	}
 }
 
-func (poir *PurchaseOrderItemRejection) GetImages() error {
+func (poir *PurchaseOrderItemRejection) GetImages(ctx context.Context) error {
 
 	var attachments []PurchaseOrderItemRejectionAttachment
-	result := PGDB.Where("purchase_order_item_rejection_id = ?", poir.ID).Find(&attachments)
+	result := util.DBFromContext(ctx).Where("purchase_order_item_rejection_id = ?", poir.ID).Find(&attachments)
 	if result.Error != nil {
 		return result.Error
 	}
 
 	poir.Attachments = attachments
+
+	return nil
+
+}
+
+func (poir *PurchaseOrderItemRejection) GetLocation(ctx context.Context) error {
+
+	//find inventory where rejection id = poir.ID
+	var inventory []Inventory
+	result := util.DBFromContext(ctx).Where("rejection_id = ?", poir.ID).Find(&inventory)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	//find location where inventory id = inventory.LocationID
+	var location Location
+	result1 := util.DBFromContext(ctx).Where("id = ?", inventory[0].LocationID).Find(&location)
+	if result1.Error != nil {
+		return result1.Error
+	}
+
+	poir.Location = &location
 
 	return nil
 

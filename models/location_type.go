@@ -1,8 +1,9 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -46,8 +47,8 @@ func (lt *LocationType) ConvertToReturnJSON() *LocationTypeReturnJSON {
 	}
 }
 
-func (lt *LocationType) Create() error {
-	err := PGDB.Create(lt).Error
+func (lt *LocationType) Create(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Create(lt).Error
 	if err != nil {
 		return err
 	}
@@ -55,8 +56,8 @@ func (lt *LocationType) Create() error {
 	return nil
 }
 
-func (lt *LocationType) Delete() error {
-	err := PGDB.Delete(lt).Error
+func (lt *LocationType) Delete(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Delete(lt).Error
 	if err != nil {
 		return err
 	}
@@ -64,8 +65,8 @@ func (lt *LocationType) Delete() error {
 	return nil
 }
 
-func (lt *LocationType) GetLocations() error {
-	err := PGDB.Model(lt).Association("Locations").Find(&lt.Locations)
+func (lt *LocationType) GetLocations(ctx context.Context) error {
+	err := util.DBFromContext(ctx).Model(lt).Association("Locations").Find(&lt.Locations)
 	if err != nil {
 		return err
 	}
@@ -83,10 +84,11 @@ func (lt *LocationType) UpdateWithRequest(request LocationTypeUpdateRequest) err
 }
 
 func (ltcr *LocationTypeCreateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -110,11 +112,11 @@ func (ltcr *LocationTypeCreateRequest) ParseAndValidateRequest(r *http.Request) 
 		if err != nil {
 			return []string{"invalid user"}
 		}
-		err = user.GetOrganization()
+		err = user.GetOrganization(ctx)
 		if err != nil {
 			return []string{"invalid organization"}
 		}
-		locationTypes, err := user.Organization.GetLocationTypes()
+		locationTypes, err := user.Organization.GetLocationTypes(ctx)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return []string{"invalid location types"}
 		}
@@ -134,10 +136,11 @@ func (ltcr *LocationTypeCreateRequest) ParseAndValidateRequest(r *http.Request) 
 }
 
 func (ltur *LocationTypeUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
+	ctx := r.Context()
 
 	var errs []string
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []string{"invalid JSON"}
 	}
@@ -165,11 +168,11 @@ func (ltur *LocationTypeUpdateRequest) ParseAndValidateRequest(r *http.Request) 
 			if err != nil {
 				return []string{"invalid user"}
 			}
-			err = user.GetOrganization()
+			err = user.GetOrganization(ctx)
 			if err != nil {
 				return []string{"invalid organization"}
 			}
-			locationTypes, err := user.Organization.GetLocationTypes()
+			locationTypes, err := user.Organization.GetLocationTypes(ctx)
 			if err != nil && err != gorm.ErrRecordNotFound {
 				return []string{"invalid location types"}
 			}
@@ -189,9 +192,9 @@ func (ltur *LocationTypeUpdateRequest) ParseAndValidateRequest(r *http.Request) 
 
 }
 
-func GetLocationTypeByID(id int) (*LocationType, error) {
+func GetLocationTypeByID(ctx context.Context, id int) (*LocationType, error) {
 	locationType := &LocationType{}
-	err := PGDB.First(locationType, id).Error
+	err := util.DBFromContext(ctx).First(locationType, id).Error
 	if err != nil {
 		return nil, err
 	}

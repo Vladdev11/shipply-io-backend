@@ -2,6 +2,7 @@ package ShipengineModels
 
 import (
 	"github.com/shipply-io/shipply-io-backend/models"
+
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 

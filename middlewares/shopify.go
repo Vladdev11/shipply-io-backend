@@ -11,14 +11,14 @@ import (
 func VerifyShopifyWebhook(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		if !shopify.VerifyWebhookRequest(r) {
+		if !shopify.FromContext(r.Context()).VerifyWebhookRequest(r) {
 			util.ErrorResponse(w, "invalid request", http.StatusBadRequest)
 			return
 		}
 
 		err := models.LogShopifyWebhookRequest(r)
 		if err != nil {
-			models.CreateSystemError(err.Error())
+			models.CreateSystemError(r.Context(), err.Error())
 		}
 
 		next.ServeHTTP(w, r)
