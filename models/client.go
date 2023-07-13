@@ -38,6 +38,13 @@ func (c *Client) Update(ctx context.Context) error {
 	return err
 }
 
+func (c *Client) GetAvatarFileURL(ctx context.Context) string {
+	if c.AvatarFileName == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s/%s", util.CDNFromContext(ctx), c.AvatarFileName)
+}
+
 type ClientReturnJSON struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name"`
@@ -161,32 +168,25 @@ func (client *Client) GetPurchaseOrderStatuses(ctx context.Context, poslr Purcha
 	return purchaseOrderStatuses, int(count), int(total), nil
 }
 
-func (client *Client) GetOrders(ctx context.Context, olr OrdersListRequest) ([]Order, int, int, error) {
+func (client *Client) GetOrders(ctx context.Context, olr OrdersListRequest) ([]OrdersListOrder, int, int, error) {
 
 	olr.ClientID = client.ID
 
 	query := olr.ConvertToClientQuery(ctx)
-	countQuery := olr.ConvertToClientQuery(ctx)
+	var orders []OrdersListOrder
+	if err := query.Offset(olr.Offset).Limit(olr.Limit).Find(&orders).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
 	totalQuery := util.DBFromContext(ctx).Model(&Order{}).
 		Joins("JOIN stores ON stores.id = orders.store_id").
 		Where("stores.client_id = ?", client.ID)
-
-	var Orders []Order
-	if err := query.Offset(olr.Offset).Limit(olr.Limit).Find(&Orders).Error; err != nil {
-		return nil, 0, 0, err
-	}
-
-	var count int64
-	if err := countQuery.Count(&count).Error; err != nil {
-		return nil, 0, 0, err
-	}
-
 	var total int64
 	if err := totalQuery.Count(&total).Error; err != nil {
 		return nil, 0, 0, err
 	}
 
-	return Orders, int(count), int(total), nil
+	return orders, len(orders), int(total), nil
 }
 
 func (client *Client) SearchProducts(ctx context.Context, spr ProductSearchRequest) ([]Product, error) {

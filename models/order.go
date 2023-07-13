@@ -18,7 +18,7 @@ type Order struct {
 	Priority                      int
 	OrderNumber                   string
 	StoreID                       int
-	Status                        string
+	StatusID                      int
 	WarehouseID                   *int `gorm:"foreignKey:WarehouseID;type:integer;null"`
 	GiftNote                      string
 	PackingNote                   string
@@ -71,7 +71,10 @@ type Order struct {
 	BillToAddress  Address
 	ShipToAddress  Address
 	ShippingMethod ShippingMethod
-	Store          Store `gorm:"foreignKey:StoreID;type:integer;null"`
+	Store          Store
+	Tags           []OrderTag
+	Status         OrderStatus
+	History        []OrderHistory
 }
 
 type InventoryCount struct {
@@ -410,7 +413,7 @@ func (o *Order) ConvertToReturnJSON(ctx context.Context) *OrderReturnJSON {
 		DryIceWeightInLbs:             o.DryIceWeightInLbs,
 		AllowSplit:                    o.AllowSplit,
 		FTRExemption:                  o.FTRExemption,
-		Store:                         o.Store.ConvertToReturnJSON(),
+		Store:                         o.Store.ConvertToReturnJSON(ctx),
 		ShipToAddress:                 *o.ShipToAddress.ConvertToReturnJSON(),
 		BillToAddress:                 *o.BillToAddress.ConvertToReturnJSON(),
 		Warehouse:                     *o.Warehouse.ConvertToReturnJSON(),
@@ -504,15 +507,58 @@ func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) []string 
 
 }
 
+type OrdersListOrder struct {
+	ID               int
+	Priority         int
+	OrderNumber      string
+	ReadyToShip      bool
+	Holds            uint64
+	Total            float64
+	OrderDate        time.Time
+	RequiredShipDate time.Time
+	HoldUntilDate    time.Time
+	Status           string
+	ShipToName       string
+	ShipToAddress1   string
+	ShipToAddress2   string
+	ShipToCity       string
+	ShipToState      string
+	ShipToPostalCode string
+	ShipToCountry    string
+	Warehouse        string
+	StoreName        string
+}
+
 func (olr *OrdersListRequest) ConvertToOrganizationQuery(ctx context.Context) *gorm.DB {
 
 	query := util.DBFromContext(ctx).Model(&Order{}).
-		Select("DISTINCT orders.*").
+		Select(`DISTINCT orders.id,
+				orders.priority,
+				orders.order_number,
+				orders.ready_to_ship,
+				orders.holds,
+				orders.total,
+				orders.order_date,
+				orders.required_ship_date,
+				orders.hold_until_date,
+				order_statuses.name AS status,
+				CONCAT(addresses.first_name, ' ', addresses.last_name) AS ship_to_name,
+				addresses.street1 AS ship_to_address1,
+				addresses.street2 AS ship_to_address2,
+				addresses.city AS ship_to_city,
+				addresses.state AS ship_to_state,
+				addresses.postal_code AS ship_to_postal_code,
+				addresses.country AS ship_to_country,
+				warehouses.name AS warehouse,
+				stores.name AS store_name`).
 		Joins("LEFT JOIN order_items ON order_items.order_id = orders.id").
 		Joins("LEFT JOIN products ON products.id = order_items.product_id").
 		Joins("LEFT JOIN stores ON stores.id = orders.store_id").
 		Joins("LEFT JOIN clients ON clients.id = stores.client_id").
-		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
+		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id").
+		Joins("LEFT JOIN warehouses ON warehouses.id = orders.warehouse_id").
+		Joins("LEFT JOIN addresses ON addresses.id = orders.ship_to_address_id").
+		Joins("LEFT JOIN order_statuses ON order_statuses.id = orders.status_id")
 
 	query = query.Where("organizations.id = ?", olr.OrganizationID)
 
@@ -543,14 +589,35 @@ func (olr *OrdersListRequest) ConvertToOrganizationQuery(ctx context.Context) *g
 
 func (olr *OrdersListRequest) ConvertToClientQuery(ctx context.Context) *gorm.DB {
 
-	query := util.DBFromContext(ctx).Model(&PurchaseOrder{}).
-		Select("DISTINCT orders.*").
+	query := util.DBFromContext(ctx).Model(&Order{}).
+		Select(`DISTINCT orders.id,
+				orders.priority,
+				orders.order_number,
+				orders.ready_to_ship,
+				orders.holds,
+				orders.total,
+				orders.order_date,
+				orders.required_ship_date,
+				orders.hold_until_date,
+				order_statuses.name AS status,
+				CONCAT(addresses.first_name, ' ', addresses.last_name) AS ship_to_name,
+				addresses.street1 AS ship_to_address1,
+				addresses.street2 AS ship_to_address2,
+				addresses.city AS ship_to_city,
+				addresses.state AS ship_to_state,
+				addresses.postal_code AS ship_to_postal_code,
+				addresses.country AS ship_to_country,
+				warehouses.name AS warehouse,
+				stores.name AS store_name`).
 		Joins("LEFT JOIN order_items ON order_items.order_id = orders.id").
 		Joins("LEFT JOIN products ON products.id = order_items.product_id").
 		Joins("LEFT JOIN stores ON stores.id = orders.store_id").
-		Joins("LEFT JOIN clients ON clients.id = stores.client_id")
+		Joins("LEFT JOIN clients ON clients.id = stores.client_id").
+		Joins("LEFT JOIN warehouses ON warehouses.id = orders.warehouse_id").
+		Joins("LEFT JOIN addresses ON addresses.id = orders.ship_to_address_id").
+		Joins("LEFT JOIN order_statuses ON order_statuses.id = orders.status_id")
 
-	query = query.Where("client.id = ?", olr.ClientID)
+	query = query.Where("clients.id = ?", olr.ClientID)
 
 	// TODO - add the rest of the filters
 	if olr.SearchValue != "" {
@@ -609,5 +676,64 @@ func GetOrdersByProductID(ctx context.Context, productID int) ([]Order, error) {
 		return nil, err
 	}
 
+	//TODO - handle limits
+	//TODO - handle order status
+
 	return orders, nil
+}
+
+func (o *Order) GetTags(ctx context.Context) error {
+
+	var orderTags []OrderTag
+
+	err := util.DBFromContext(ctx).Where("order_id = ?", o.ID).Find(&orderTags).Error
+	if err != nil {
+		return err
+	}
+
+	o.Tags = orderTags
+
+	return nil
+
+}
+
+func (o *Order) GetStatus(ctx context.Context) error {
+
+	var OrderStatus OrderStatus
+
+	err := util.DBFromContext(ctx).Where("id = ?", o.StatusID).Find(&OrderStatus).Error
+	if err != nil {
+		return err
+	}
+
+	o.Status = OrderStatus
+
+	return nil
+
+}
+
+func (o *Order) HasTag(ctx context.Context, tag string) bool {
+
+	var orderTags OrderTag
+
+	err := util.DBFromContext(ctx).Where("order_id = ? AND tag = ?", o.ID, tag).First(&orderTags).Error
+
+	return err == nil
+
+}
+
+func (o *Order) AddTag(ctx context.Context, tag string) error {
+
+	orderTag := &OrderTag{
+		OrderID: o.ID,
+		Tag:     tag,
+	}
+
+	err := util.DBFromContext(ctx).Create(orderTag).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }

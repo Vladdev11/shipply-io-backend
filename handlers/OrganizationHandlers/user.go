@@ -7,10 +7,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/shipply-io/shipply-io-backend/api"
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func UserGet(w http.ResponseWriter, r *http.Request) {
+func GetUserSelf(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -31,12 +33,12 @@ func UserGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON(ctx)
-
-	util.JSONResponse(w, userJSON, http.StatusOK)
+	response := responses.GenerateOrganizationalGetUserSelfResponse(ctx, *user)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func UserGetByID(w http.ResponseWriter, r *http.Request) {
+func GetUser(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	requestingUser, err := models.GetRequestingUser(r)
@@ -57,21 +59,18 @@ func UserGetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// REVIEW should an organizational user be able to see users owned by their clients? If so, we need to add a check here that allows that
 	if requestingUser.OwnerID != user.OwnerID {
 		util.ErrorResponse(w, "user does not belong to your organization", http.StatusForbidden)
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, userJSON, http.StatusOK)
+	response := responses.GenerateGetUserResponse(ctx, user)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func UserCreate(w http.ResponseWriter, r *http.Request) {
+func CreateUser(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	requestingUser, err := models.GetRequestingUser(r)
@@ -116,16 +115,12 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, userJSON, http.StatusOK)
+	response := responses.GenerateCreateUserResponse(*user)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -136,7 +131,7 @@ func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetOrganization(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
 	}
 
@@ -146,54 +141,51 @@ func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFromRequest, err := models.GetUserByID(ctx, userID)
+	userBeingUpdated, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	if userFromRequest.OwnerID != user.OwnerID {
-		util.ErrorResponse(w, "user does not belong to your organization", http.StatusForbidden)
-		return
-	}
-
-	request := models.UserUpdateAvatarRequest{}
+	request := models.UserUpdateRequest{}
 	errors := request.ParseAndValidateRequest(r)
 	if errors != nil {
 		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
-	if request.File != nil {
-		fileUUID := uuid.New()
-		fileExtension := strings.Split(request.FileType, "/")[1]
-
-		err = api.S3FromContext(ctx).UploadFileToCDN(request.File, fileUUID.String(), fileExtension, request.FileType)
-		if err != nil {
-			util.ErrorResponse(w, "failed to upload attachment to s3", http.StatusInternalServerError)
-			return
-		}
-
-		userFromRequest.AvatarFileName = fileUUID.String() + "." + fileExtension
+	if request.FirstName != "" {
+		userBeingUpdated.FirstName = request.FirstName
 	}
 
-	err = userFromRequest.Update(ctx)
+	if request.LastName != "" {
+		userBeingUpdated.LastName = request.LastName
+	}
+
+	if request.Admin != nil {
+		if *request.Admin {
+			userBeingUpdated.Role = util.OrganizationAdminInt
+		} else {
+			if userBeingUpdated.ID == user.ID {
+				util.ErrorResponse(w, "cannot change your own admin status", http.StatusBadRequest)
+				return
+			}
+			userBeingUpdated.Role = util.OrganizationUserInt
+		}
+	}
+
+	err = userBeingUpdated.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update user", http.StatusBadRequest)
 		return
 	}
 
-	userJSON := userFromRequest.ConvertToReturnJSON(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, userJSON, http.StatusOK)
-
+	response := responses.GenerateUpdateUserResponse(ctx, userBeingUpdated)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func UserDelete(w http.ResponseWriter, r *http.Request) {
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -214,23 +206,23 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFromRequest, err := models.GetUserByID(ctx, userID)
+	userForDeletion, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	if userFromRequest.ID == user.ID {
+	if userForDeletion.ID == user.ID {
 		util.ErrorResponse(w, "cannot delete yourself", http.StatusBadRequest)
 		return
 	}
 
-	if userFromRequest.OwnerID != user.OwnerID {
+	if userForDeletion.OwnerID != user.OwnerID {
 		util.ErrorResponse(w, "user does not belong to your organization", http.StatusForbidden)
 		return
 	}
 
-	err = userFromRequest.Delete(ctx)
+	err = userForDeletion.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete user", http.StatusBadRequest)
 		return
@@ -239,7 +231,8 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 	util.SuccessResponse(w, http.StatusOK)
 }
 
-func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
+func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -286,7 +279,8 @@ func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func UserUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdateUserAvatar(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -297,7 +291,7 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetOrganization(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
 	}
 
@@ -307,51 +301,43 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFromRequest, err := models.GetUserByID(ctx, userID)
+	userForAvatorUpdate, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	request := models.UserUpdateRequest{}
+	if userForAvatorUpdate.OwnerID != user.OwnerID {
+		util.ErrorResponse(w, "user does not belong to your organization", http.StatusForbidden)
+		return
+	}
+
+	request := models.UserUpdateAvatarRequest{}
 	errors := request.ParseAndValidateRequest(r)
 	if errors != nil {
 		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
-	if request.FirstName != "" {
-		userFromRequest.FirstName = request.FirstName
-	}
+	if request.File != nil {
+		fileUUID := uuid.New()
+		fileExtension := strings.Split(request.FileType, "/")[1]
 
-	if request.LastName != "" {
-		userFromRequest.LastName = request.LastName
-	}
-
-	if request.Admin != nil {
-		if *request.Admin {
-			userFromRequest.Role = util.OrganizationAdminInt
-		} else {
-			if userFromRequest.ID == user.ID {
-				util.ErrorResponse(w, "cannot change your own admin status", http.StatusBadRequest)
-				return
-			}
-			userFromRequest.Role = util.OrganizationUserInt
+		err = api.S3FromContext(ctx).UploadFileToCDN(request.File, fileUUID.String(), fileExtension, request.FileType)
+		if err != nil {
+			util.ErrorResponse(w, "failed to upload attachment to s3", http.StatusInternalServerError)
+			return
 		}
+
+		userForAvatorUpdate.AvatarFileName = fileUUID.String() + "." + fileExtension
 	}
 
-	err = userFromRequest.Update(ctx)
+	err = userForAvatorUpdate.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update user", http.StatusBadRequest)
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, userJSON, http.StatusOK)
-
+	response := responses.GenerateUpdateUserAvatarResponse(ctx, userForAvatorUpdate)
+	util.JSONResponse(w, response, http.StatusOK)
 }

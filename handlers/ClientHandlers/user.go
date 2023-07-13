@@ -7,10 +7,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/shipply-io/shipply-io-backend/api"
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func UserGet(w http.ResponseWriter, r *http.Request) {
+func GetUserSelf(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -19,24 +20,24 @@ func UserGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization(ctx)
+	err = user.GetClient(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
+		return
+	}
+
+	err = user.Client.GetOrganization(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
 	}
 
-	client, err := models.GetClientByID(ctx, user.OwnerID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
-		return
-	}
-	user.Organization.Clients = append(user.Organization.Clients, client)
-
-	userJSON := user.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, userJSON, http.StatusOK)
+	response := responses.GenerateClientGetUserSelfResponse(ctx, *user)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func UserGetByID(w http.ResponseWriter, r *http.Request) {
+func GetUser(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	requestingUser, err := models.GetRequestingUser(r)
@@ -57,21 +58,16 @@ func UserGetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if requestingUser.OwnerID != user.OwnerID {
+	if requestingUser.OwnerID != user.OwnerID || (user.Role != util.ClientAdminInt && user.Role != util.ClientUserInt) {
 		util.ErrorResponse(w, "user does not belong to this client", http.StatusForbidden)
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert user to json", http.StatusInternalServerError)
-		return
-	}
-
-	util.JSONResponse(w, userJSON, http.StatusOK)
+	response := responses.GenerateGetUserResponse(ctx, user)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func UserCreate(w http.ResponseWriter, r *http.Request) {
+func CreateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	requestingUser, err := models.GetRequestingUser(r)
@@ -116,17 +112,12 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, userJSON, http.StatusOK)
-
+	response := responses.GenerateCreateUserResponse(*user)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -137,7 +128,7 @@ func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
 		return
 	}
 
@@ -147,59 +138,52 @@ func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFromRequest, err := models.GetUserByID(ctx, userID)
+	userForUpdate, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	err = userFromRequest.GetClient(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
+	if userForUpdate.OwnerID != user.OwnerID || (userForUpdate.Role != util.ClientAdminInt && userForUpdate.Role != util.ClientUserInt) {
+		util.ErrorResponse(w, "user does not belong to this client", http.StatusForbidden)
 		return
 	}
 
-	if userFromRequest.Client.ID != user.Client.ID {
-		util.ErrorResponse(w, "users don't belong to same organization", http.StatusForbidden)
-		return
-	}
-
-	request := models.UserUpdateAvatarRequest{}
+	request := models.UserUpdateRequest{}
 	errors := request.ParseAndValidateRequest(r)
 	if errors != nil {
 		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
-	if request.File != nil {
-		fileUUID := uuid.New()
-		fileExtension := strings.Split(request.FileType, "/")[1]
+	if request.FirstName != "" {
+		userForUpdate.FirstName = request.FirstName
+	}
 
-		err = api.S3FromContext(ctx).UploadFileToCDN(request.File, fileUUID.String(), fileExtension, request.FileType)
-		if err != nil {
-			util.ErrorResponse(w, "failed to upload attachment to s3", http.StatusInternalServerError)
-			return
+	if request.LastName != "" {
+		userForUpdate.LastName = request.LastName
+	}
+
+	if request.Admin != nil {
+		if *request.Admin {
+			userForUpdate.Role = util.ClientAdminInt
+		} else {
+			if userForUpdate.ID == user.ID {
+				util.ErrorResponse(w, "cannot change your own admin status", http.StatusBadRequest)
+				return
+			}
+			userForUpdate.Role = util.ClientUserInt
 		}
-
-		userFromRequest.AvatarFileName = fileUUID.String() + "." + fileExtension
 	}
 
-	err = userFromRequest.Update(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to update user", http.StatusBadRequest)
-		return
-	}
+	err = userForUpdate.Update(ctx)
 
-	userJSON := userFromRequest.ConvertToReturnJSON(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, userJSON, http.StatusOK)
+	response := responses.GenerateUpdateUserResponse(ctx, userForUpdate)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func UserDelete(w http.ResponseWriter, r *http.Request) {
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -220,38 +204,34 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFromRequest, err := models.GetUserByID(ctx, userID)
+	userForDeletion, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	if userFromRequest.ID == user.ID {
+	if userForDeletion.ID == user.ID {
 		util.ErrorResponse(w, "cannot delete self", http.StatusBadRequest)
 		return
 	}
 
-	err = userFromRequest.GetClient(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
+	if userForDeletion.OwnerID != user.OwnerID || (userForDeletion.Role != util.ClientAdminInt && userForDeletion.Role != util.ClientUserInt) {
+		util.ErrorResponse(w, "user does not belong to this client", http.StatusForbidden)
 		return
 	}
 
-	if userFromRequest.Client.ID != user.Client.ID {
-		util.ErrorResponse(w, "users don't belong to same organization", http.StatusForbidden)
-		return
-	}
-
-	err = userFromRequest.Delete(ctx)
+	err = userForDeletion.Delete(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to delete user", http.StatusBadRequest)
 		return
 	}
 
-	util.JSONResponse(w, nil, http.StatusOK)
+	util.SuccessResponse(w, http.StatusOK)
+
 }
 
-func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
+func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -298,7 +278,8 @@ func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func UserUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdateUserAvatar(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -309,7 +290,7 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
+		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
 	}
 
@@ -319,51 +300,43 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFromRequest, err := models.GetUserByID(ctx, userID)
+	userForAvatarUpdate, err := models.GetUserByID(ctx, userID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 		return
 	}
 
-	request := models.UserUpdateRequest{}
+	if userForAvatarUpdate.OwnerID != user.OwnerID || (userForAvatarUpdate.Role != util.ClientAdminInt && userForAvatarUpdate.Role != util.ClientUserInt) {
+		util.ErrorResponse(w, "user does not belong to this client", http.StatusForbidden)
+		return
+	}
+
+	request := models.UserUpdateAvatarRequest{}
 	errors := request.ParseAndValidateRequest(r)
 	if errors != nil {
 		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
-	if request.FirstName != "" {
-		userFromRequest.FirstName = request.FirstName
-	}
+	if request.File != nil {
+		fileUUID := uuid.New()
+		fileExtension := strings.Split(request.FileType, "/")[1]
 
-	if request.LastName != "" {
-		userFromRequest.LastName = request.LastName
-	}
-
-	if request.Admin != nil {
-		if *request.Admin {
-			userFromRequest.Role = util.OrganizationAdminInt
-		} else {
-			if userFromRequest.ID == user.ID {
-				util.ErrorResponse(w, "cannot change your own admin status", http.StatusBadRequest)
-				return
-			}
-			userFromRequest.Role = util.OrganizationUserInt
+		err = api.S3FromContext(ctx).UploadFileToCDN(request.File, fileUUID.String(), fileExtension, request.FileType)
+		if err != nil {
+			util.ErrorResponse(w, "failed to upload attachment to s3", http.StatusInternalServerError)
+			return
 		}
+
+		userForAvatarUpdate.AvatarFileName = fileUUID.String() + "." + fileExtension
 	}
 
-	err = userFromRequest.Update(ctx)
+	err = userForAvatarUpdate.Update(ctx)
 	if err != nil {
 		util.ErrorResponse(w, "failed to update user", http.StatusBadRequest)
 		return
 	}
 
-	userJSON := user.ConvertToReturnJSON(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert user to json", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, userJSON, http.StatusOK)
-
+	response := responses.GenerateUpdateUserAvatarResponse(ctx, userForAvatarUpdate)
+	util.JSONResponse(w, response, http.StatusOK)
 }

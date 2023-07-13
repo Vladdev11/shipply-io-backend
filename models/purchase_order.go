@@ -17,7 +17,7 @@ type PurchaseOrder struct {
 	ID             int       `json:"id"`
 	ClientID       int       `json:"client_id"`
 	PONumber       string    `json:"po_number"`
-	Status         int       `json:"status"`
+	StatusID       int       `json:"status_id"`
 	ExpectedDate   time.Time `json:"expected_date"`
 	ShipDate       time.Time `json:"ship_date"`
 	ClosedDate     time.Time `json:"closed_date"`
@@ -36,11 +36,23 @@ type PurchaseOrder struct {
 	Tags        []PurchaseOrderTag        `json:"tags"`
 	History     []PurchaseOrderHistory    `gorm:"-"`
 	Attachments []PurchaseOrderAttachment `json:"attachments" gorm:"-"`
+	Status      PurchaseOrderStatus       `json:"status" gorm:"-"`
 	UniqueItems int                       `json:"unique_items" gorm:"-"`
 	TotalItems  int                       `json:"total_items" gorm:"-"`
 
 	Client    Client    `json:"client"`
 	Warehouse Warehouse `json:"warehouse"`
+}
+
+func (po *PurchaseOrder) GetStatus(ctx context.Context) error {
+
+	err := util.DBFromContext(ctx).Where("id = ?", po.StatusID).First(&po.Status).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }
 
 // PurchaseOrderJSON represents a purchase order in json format
@@ -73,7 +85,7 @@ type PurchaseOrderCreateRequest struct {
 	VendorID       int        `json:"vendor_id"`
 	WarehouseID    int        `json:"warehouse_id"`
 	PONumber       string     `json:"po_number"`
-	Status         int        `json:"status"`
+	StatusID       int        `json:"status_id"`
 	ExpectedDate   SingleDate `json:"expected_date"`
 	ShipDate       SingleDate `json:"ship_date"`
 	ClosedDate     SingleDate `json:"closed_date"`
@@ -85,7 +97,7 @@ type PurchaseOrderCreateRequest struct {
 // PurchaseOrderUpdateRequest represents a update request we receive from the client
 type PurchaseOrderUpdateRequest struct {
 	PONumber       string     `json:"po_number"`
-	Status         int        `json:"status"`
+	StatusID       int        `json:"status_id"`
 	ExpectedDate   SingleDate `json:"expected_date"`
 	ShipDate       SingleDate `json:"ship_date"`
 	ClosedDate     SingleDate `json:"closed_date"`
@@ -162,7 +174,7 @@ func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request)
 
 	aux := &struct {
 		PONumber       json.RawMessage `json:"po_number"`
-		Status         json.RawMessage `json:"status"`
+		StatusID       json.RawMessage `json:"status_id"`
 		ExpectedDate   json.RawMessage `json:"expected_date"`
 		ShipDate       json.RawMessage `json:"ship_date"`
 		ClosedDate     json.RawMessage `json:"closed_date"`
@@ -201,13 +213,13 @@ func (pour *PurchaseOrderUpdateRequest) ParseAndValidateRequest(r *http.Request)
 		}
 	}
 
-	if aux.Status != nil {
-		if err := json.Unmarshal(aux.Status, &pour.Status); err != nil {
-			errs = append(errs, "status must be an integer")
+	if aux.StatusID != nil {
+		if err := json.Unmarshal(aux.StatusID, &pour.StatusID); err != nil {
+			errs = append(errs, "status_id must be an integer")
 		} else {
-			status, err := GetPurchaseOrderStatusByID(ctx, pour.Status)
+			status, err := GetPurchaseOrderStatusByID(ctx, pour.StatusID)
 			if err != nil {
-				errs = append(errs, "invalid status")
+				errs = append(errs, "invalid status_id")
 			} else {
 				if status.ClientID != purchaseOrder.ClientID {
 					errs = append(errs, "status does not belong to the client")
@@ -339,12 +351,19 @@ func (po *PurchaseOrder) Update(ctx context.Context) error {
 
 func (po *PurchaseOrder) GetHistory(ctx context.Context) error {
 
-	history, err := GetPurchaseOrderHistorysByID(ctx, po.ID)
+	histories, err := GetPurchaseOrderHistorysByID(ctx, po.ID)
 	if err != nil {
 		return err
 	}
 
-	po.History = history
+	for i := range histories {
+		err = histories[i].GetCreatedByUser(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	po.History = histories
 
 	return nil
 
@@ -385,6 +404,17 @@ func (p *PurchaseOrder) GetAttachments(ctx context.Context) error {
 
 }
 
+func (p *PurchaseOrder) GetClient(ctx context.Context) error {
+
+	err := util.DBFromContext(ctx).Where("id = ?", p.ClientID).First(&p.Client).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 func (p *PurchaseOrder) GetTags(ctx context.Context) error {
 
 	var purchaseOrderTags []PurchaseOrderTag
@@ -404,11 +434,7 @@ func (p *PurchaseOrder) HasTag(ctx context.Context, tagName string) bool {
 	var purchaseOrderTag PurchaseOrderTag
 
 	err := util.DBFromContext(ctx).Where("tag = ?", tagName).Where("purchase_order_id = ?", p.ID).First(&purchaseOrderTag).Error
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 func (p *PurchaseOrder) AddTag(ctx context.Context, tagName string) error {
@@ -461,7 +487,7 @@ func (p *PurchaseOrderCreateRequest) ParseAndValidateRequest(r *http.Request) []
 		WarehouseID    json.RawMessage `json:"warehouse_id"`
 		VendorID       json.RawMessage `json:"vendor_id"`
 		PONumber       json.RawMessage `json:"po_number"`
-		Status         json.RawMessage `json:"status"`
+		StatusID       json.RawMessage `json:"status_id"`
 		ExpectedDate   json.RawMessage `json:"expected_date"`
 		ShipDate       json.RawMessage `json:"ship_date"`
 		ClosedDate     json.RawMessage `json:"closed_date"`
@@ -536,11 +562,11 @@ func (p *PurchaseOrderCreateRequest) ParseAndValidateRequest(r *http.Request) []
 		}
 	}
 
-	if aux.Status != nil {
-		if err := json.Unmarshal(aux.Status, &p.Status); err != nil {
-			errs = append(errs, "status must be an int")
+	if aux.StatusID != nil {
+		if err := json.Unmarshal(aux.StatusID, &p.StatusID); err != nil {
+			errs = append(errs, "status_id must be an int")
 		} else {
-			status, err := GetPurchaseOrderStatusByID(ctx, p.Status)
+			status, err := GetPurchaseOrderStatusByID(ctx, p.StatusID)
 			if err != nil {
 				errs = append(errs, "invalid status")
 			} else {
@@ -604,7 +630,7 @@ func (p *PurchaseOrderCreateRequest) ParseAndValidateRequest(r *http.Request) []
 func (p *PurchaseOrder) UpdateWithPurchaseOrderUpdateRequest(poRequest *PurchaseOrderUpdateRequest) *PurchaseOrder {
 	//update purchase order
 	p.PONumber = poRequest.PONumber
-	p.Status = poRequest.Status
+	p.StatusID = poRequest.StatusID
 	p.ExpectedDate = poRequest.ExpectedDate.Time
 	p.ShipDate = poRequest.ShipDate.Time
 	p.ClosedDate = poRequest.ClosedDate.Time
@@ -651,7 +677,7 @@ func (p *PurchaseOrder) ConvertToReturnJSON(ctx context.Context) *PurchaseOrderR
 	}
 
 	//get status
-	status, _ := GetPurchaseOrderStatusByID(ctx, p.Status)
+	status, _ := GetPurchaseOrderStatusByID(ctx, p.StatusID)
 
 	//get client
 	client, _ := GetClientByID(ctx, p.ClientID)
@@ -777,7 +803,7 @@ func (por *PurchaseOrderListRequest) ConvertToClientQuery(ctx context.Context) *
 		Joins("LEFT JOIN purchase_order_items ON purchase_order_items.purchase_order_id = purchase_orders.id").
 		Joins("LEFT JOIN products ON products.id = purchase_order_items.product_id").
 		Joins("LEFT JOIN vendors ON vendors.id = purchase_orders.vendor_id").
-		Joins("LEFT JOIN purchase_order_statuses ON purchase_order_statuses.id = purchase_orders.status")
+		Joins("LEFT JOIN purchase_order_statuses ON purchase_order_statuses.id = purchase_orders.status_id")
 
 	query = query.Where("purchase_orders.client_id = ?", por.ClientID)
 
@@ -812,7 +838,7 @@ func (por *PurchaseOrderListRequest) ConvertToOrganizationQuery(ctx context.Cont
 		Joins("LEFT JOIN purchase_order_items ON purchase_order_items.purchase_order_id = purchase_orders.id").
 		Joins("LEFT JOIN products ON products.id = purchase_order_items.product_id").
 		Joins("LEFT JOIN vendors ON vendors.id = purchase_orders.vendor_id").
-		Joins("LEFT JOIN purchase_order_statuses ON purchase_order_statuses.id = purchase_orders.status").
+		Joins("LEFT JOIN purchase_order_statuses ON purchase_order_statuses.id = purchase_orders.status_id").
 		Joins("LEFT JOIN clients ON clients.id = purchase_orders.client_id").
 		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
 
@@ -899,8 +925,8 @@ func (por *PurchaseOrder) UpdateWithRequest(ctx context.Context, request Purchas
 		por.PONumber = request.PONumber
 	}
 
-	if request.Status != 0 {
-		por.Status = request.Status
+	if request.StatusID != 0 {
+		por.StatusID = request.StatusID
 	}
 
 	if !request.ExpectedDate.Time.IsZero() {

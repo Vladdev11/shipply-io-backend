@@ -344,7 +344,6 @@ func (p *Product) UpdateIPA(ctx context.Context) error {
 	return nil
 }
 
-// TODO add context
 func (p *Product) IsBundle(ctx context.Context) (bool, error) {
 	var productBundle ProductBundle
 	err := util.DBFromContext(ctx).Where("product_id = ?", p.ID).First(&productBundle).Error

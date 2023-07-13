@@ -1,8 +1,38 @@
 package responses
 
-type ChangedByUserHistory struct {
+// ChangedByUser represents the expected response body for the ChangedByUser used by multiple endpoints
+type ChangedByUser struct {
 	ID        int    `json:"id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	ImageURL  string `json:"image_url"`
+}
+
+// Dimensions represents the expected response body for the Dimensions used by multiple endpoints
+type Dimensions struct {
+	Length float64 `json:"length"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
+// Weight represents the expected response body for the Weight used by multiple endpoints
+type Weight struct {
+	Value float64 `json:"value"`
+	Unit  string  `json:"unit"`
+}
+
+// Address represents the expected response body for the Address used by multiple endpoints
+type Address struct {
+	ID           int    `json:"id"`
+	Address1     string `json:"address_1"`
+	Address2     string `json:"address_2"`
+	Address3     string `json:"address_3"`
+	City         string `json:"city"`
+	State        string `json:"state"`
+	PostalCode   string `json:"postal_code"`
+	Country      string `json:"country"`
+	CompanyName  string `json:"company_name"`
+	ContactName  string `json:"contact_name"`
+	PhoneNumber  string `json:"phone_number"`
+	EmailAddress string `json:"email_address"`
 }

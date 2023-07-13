@@ -7,10 +7,69 @@ import (
 	"github.com/google/uuid"
 	"github.com/shipply-io/shipply-io-backend/api"
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func ClientCreate(w http.ResponseWriter, r *http.Request) {
+func GetClient(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		return
+	}
+
+	clientID, err := util.GetIntFromPath(r, "client_id")
+	if err != nil {
+		util.ErrorResponse(w, "failed to get client id", http.StatusBadRequest)
+		return
+	}
+
+	client, err := models.GetClientByID(ctx, clientID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		return
+	}
+
+	if client.OrganizationID != user.Organization.ID {
+		util.ErrorResponse(w, "client does not belong to organization", http.StatusUnauthorized)
+		return
+	}
+
+	response := responses.GenerateGetClientResponse(ctx, client)
+	util.JSONResponse(w, response, http.StatusOK)
+}
+
+func ListClients(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	clients, err := models.GetClientsByOrganizationID(ctx, user.Organization.ID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get clients", http.StatusUnauthorized)
+		return
+	}
+
+	response := responses.GenerateListClientsResponse(ctx, clients)
+	util.JSONResponse(w, response, http.StatusOK)
+}
+
+func CreateClient(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -46,10 +105,12 @@ func ClientCreate(w http.ResponseWriter, r *http.Request) {
 
 	//TODO create all initial things for client
 
-	util.JSONResponse(w, client.ConvertToReturnJSON(ctx), http.StatusOK)
+	response := responses.GenerateCreateClientResponse(ctx, client)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func GetClient(w http.ResponseWriter, r *http.Request) {
+func UpdateClient(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -81,36 +142,26 @@ func GetClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, client.ConvertToReturnJSON(ctx), http.StatusOK)
-}
-
-func ListClients(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+	request := models.ClientUpdateRequest{}
+	errors := request.ParseAndValidateRequest(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetOrganization(ctx)
+	if request.Name != "" {
+		client.Name = request.Name
+	}
+
+	err = client.Update(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		util.ErrorResponse(w, "failed to update client", http.StatusBadRequest)
 		return
 	}
 
-	clients, err := models.GetClientsByOrganizationID(ctx, user.Organization.ID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get clients", http.StatusUnauthorized)
-		return
-	}
+	response := responses.GenerateUpdateClientResponse(ctx, client)
+	util.JSONResponse(w, response, http.StatusOK)
 
-	clientsJSON := []*models.ClientReturnJSON{}
-	for _, client := range clients {
-		clientsJSON = append(clientsJSON, client.ConvertToReturnJSON(ctx))
-	}
-
-	util.JSONResponse(w, clientsJSON, http.StatusOK)
 }
 
 func UpdateClientAvatar(w http.ResponseWriter, r *http.Request) {
@@ -171,57 +222,6 @@ func UpdateClientAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, client.ConvertToReturnJSON(ctx), http.StatusOK)
-}
-
-func UpdateClient(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	clientID, err := util.GetIntFromPath(r, "client_id")
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client id", http.StatusBadRequest)
-		return
-	}
-
-	client, err := models.GetClientByID(ctx, clientID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
-		return
-	}
-
-	if client.OrganizationID != user.Organization.ID {
-		util.ErrorResponse(w, "client does not belong to organization", http.StatusUnauthorized)
-		return
-	}
-
-	request := models.ClientUpdateRequest{}
-	errors := request.ParseAndValidateRequest(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
-		return
-	}
-
-	if request.Name != "" {
-		client.Name = request.Name
-	}
-
-	err = client.Update(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to update client", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, client.ConvertToReturnJSON(ctx), http.StatusOK)
+	response := responses.GenerateUpdateClientResponse(ctx, client)
+	util.JSONResponse(w, response, http.StatusOK)
 }

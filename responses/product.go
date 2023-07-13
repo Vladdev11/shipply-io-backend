@@ -2,11 +2,9 @@ package responses
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/shipply-io/shipply-io-backend/models"
-	"github.com/shipply-io/shipply-io-backend/util"
 )
 
 /* ----------------------------- SearchProducts ----------------------------- */
@@ -30,10 +28,8 @@ type ProductResponseForSearchProducts struct {
 
 // GenerateSearchProductsResponse converts a product to a SearchProductsResponse
 func GenerateSearchProductsResponse(products []models.Product) *SearchProductsResponse {
-	// Initialize a slice to hold the product responses
-	productResponses := make([]ProductResponseForSearchProducts, len(products))
 
-	// Iterate over the products and convert each to a ProductResponseForSearchProducts
+	productResponses := make([]ProductResponseForSearchProducts, len(products))
 	for i, product := range products {
 		productResponses[i] = ProductResponseForSearchProducts{
 			ID:          product.ID,
@@ -47,7 +43,6 @@ func GenerateSearchProductsResponse(products []models.Product) *SearchProductsRe
 		}
 	}
 
-	// Return the final response
 	return &SearchProductsResponse{
 		Products: productResponses,
 	}
@@ -76,10 +71,7 @@ type ProductResponseForListProducts struct {
 
 // GenerateListProductsResponse converts a product to a ListProductsResponse
 func GenerateListProductsResponse(products []models.Product, count int, total int) *ListProductsResponse {
-	// Initialize a slice to hold the product responses
 	productResponses := make([]ProductResponseForListProducts, len(products))
-
-	// Iterate over the products and convert each to a ProductResponseForListProducts
 	for i, product := range products {
 		productResponses[i] = ProductResponseForListProducts{
 			ID:          product.ID,
@@ -93,7 +85,6 @@ func GenerateListProductsResponse(products []models.Product, count int, total in
 		}
 	}
 
-	// Return the final response
 	return &ListProductsResponse{
 		TotalCount:    total,
 		FilteredCount: count,
@@ -140,7 +131,6 @@ type GetProductResponse struct {
 // GenerateGetProductResponse converts a product to a GetProductResponse
 func GenerateGetProductResponse(product *models.Product) *GetProductResponse {
 
-	// Initialize a slice to hold the additional image urls
 	additionalImageUrls := make([]string, len(product.AdditionalImageUrls))
 
 	// Use copy to copy the values from product.AdditionalImageUrls to additionalImageUrls
@@ -203,20 +193,17 @@ type ProductOrderResponseForGetProductOrders struct {
 
 // GenerateGetProductOrdersResponse converts a product to a GetProductOrdersResponse
 func GenerateGetProductOrdersResponse(orders []models.Order) *GetProductOrdersResponse {
-	// Initialize a slice to hold the product responses
-	productOrderResponses := make([]ProductOrderResponseForGetProductOrders, len(orders))
 
-	// Iterate over the products and convert each to a ProductResponseForListProducts
+	productOrderResponses := make([]ProductOrderResponseForGetProductOrders, len(orders))
 	for i, order := range orders {
 		productOrderResponses[i] = ProductOrderResponseForGetProductOrders{
 			ID:          order.ID,
 			OrderDate:   order.OrderDate,
-			Status:      order.Status,
+			Status:      order.Status.Name,
 			OrderNumber: order.OrderNumber,
 		}
 	}
 
-	// Return the final response
 	return &GetProductOrdersResponse{
 		Orders: productOrderResponses,
 	}
@@ -250,12 +237,12 @@ type ProductAliasResponseForGetProductInventory struct {
 
 // ProductInventoryHistoryResponseForGetProductInventory represents the response body for an individual product inventory history for GetProductInventory endpoint
 type ProductInventoryHistoryResponseForGetProductInventory struct {
-	ID            int                  `json:"id"`
-	LocationID    int                  `json:"location_id"`
-	ProductID     int                  `json:"product_id"`
-	Delta         int                  `json:"delta"`
-	Note          string               `json:"note"`
-	ChangedByUser ChangedByUserHistory `json:"changed_by_user"`
+	ID            int           `json:"id"`
+	LocationID    int           `json:"location_id"`
+	ProductID     int           `json:"product_id"`
+	Delta         int           `json:"delta"`
+	Note          string        `json:"note"`
+	ChangedByUser ChangedByUser `json:"changed_by_user"`
 }
 
 // ProductLotResponseForGetProductInventory represents the response body for an individual product lot for GetProductInventory endpoint
@@ -268,7 +255,7 @@ type ProductLotResponseForGetProductInventory struct {
 
 // GenerateGetProductInventoryResponse converts a product to a GetProductInventoryResponse
 func GenerateGetProductInventoryResponse(ctx context.Context, product *models.Product) *GetProductInventoryResponse {
-	// Converting each InventoryLocation
+
 	inventoryLocations := make([]ProductInventoryLocationResponseForGetProductInventory, len(product.InventoryLocations))
 	for i, loc := range product.InventoryLocations {
 		inventoryLocations[i] = ProductInventoryLocationResponseForGetProductInventory{
@@ -280,7 +267,6 @@ func GenerateGetProductInventoryResponse(ctx context.Context, product *models.Pr
 		}
 	}
 
-	// Converting each Alias
 	aliases := make([]ProductAliasResponseForGetProductInventory, len(product.Aliases))
 	for i, alias := range product.Aliases {
 		aliases[i] = ProductAliasResponseForGetProductInventory{
@@ -290,7 +276,6 @@ func GenerateGetProductInventoryResponse(ctx context.Context, product *models.Pr
 		}
 	}
 
-	// Converting each InventoryHistory
 	inventoryHistories := make([]ProductInventoryHistoryResponseForGetProductInventory, len(product.InventoryHistory))
 	for i, history := range product.InventoryHistory {
 		inventoryHistories[i] = ProductInventoryHistoryResponseForGetProductInventory{
@@ -299,16 +284,15 @@ func GenerateGetProductInventoryResponse(ctx context.Context, product *models.Pr
 			ProductID:  history.ProductID,
 			Delta:      history.Delta,
 			Note:       history.Note,
-			ChangedByUser: ChangedByUserHistory{
+			ChangedByUser: ChangedByUser{
 				ID:        history.User.ID,
 				FirstName: history.User.FirstName,
 				LastName:  history.User.LastName,
-				ImageURL:  fmt.Sprintf("%s/%s", util.CDNFromContext(ctx), history.User.AvatarFileName),
+				ImageURL:  history.User.GetAvatarFileURL(ctx),
 			},
 		}
 	}
 
-	// Converting each ProductLot
 	productLots := make([]ProductLotResponseForGetProductInventory, len(product.ProductLots))
 	for i, lot := range product.ProductLots {
 		productLots[i] = ProductLotResponseForGetProductInventory{
@@ -436,5 +420,19 @@ func GenerateGetProductStoresResponse(product *models.Product) *GetProductStores
 
 	return &GetProductStoresResponse{
 		Stores: storeResponses,
+	}
+}
+
+/* ------------------------------ CreateProduct ----------------------------- */
+
+// CreateProductResponse represents the response body for the CreateProduct endpoint
+type CreateProductResponse struct {
+	ID int `json:"id"`
+}
+
+// GenerateCreateProductResponse converts a product to a CreateProductResponse
+func GenerateCreateProductResponse(product models.Product) *CreateProductResponse {
+	return &CreateProductResponse{
+		ID: product.ID,
 	}
 }

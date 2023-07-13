@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 
 	SendgridAPI "github.com/shipply-io/shipply-io-backend/api/sendgrid"
@@ -58,7 +59,8 @@ func AuthLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, map[string]string{"token": tokenString}, http.StatusOK)
+	response := responses.GenerateAuthLoginResponse(tokenString)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
 func AuthNoExpirationToken(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +101,8 @@ func AuthNoExpirationToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, map[string]string{"token": tokenString}, http.StatusOK)
+	response := responses.GenerateAuthNoExpirationTokenResponse(tokenString)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
 func ResetPassword(w http.ResponseWriter, r *http.Request) {

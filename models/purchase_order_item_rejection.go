@@ -52,16 +52,6 @@ type PurchaseOrderItemRejectImage struct {
 
 type PurchaseOrderItemRejectRequest struct {
 	Data   PurchaseOrderItemRejectRequestData `json:"data"`
-	File1  multipart.File                     `json:"file_1"`
-	File2  multipart.File                     `json:"file_2"`
-	File3  multipart.File                     `json:"file_3"`
-	File4  multipart.File                     `json:"file_4"`
-	File5  multipart.File                     `json:"file_5"`
-	File6  multipart.File                     `json:"file_6"`
-	File7  multipart.File                     `json:"file_7"`
-	File8  multipart.File                     `json:"file_8"`
-	File9  multipart.File                     `json:"file_9"`
-	File10 multipart.File                     `json:"file_10"`
 	Images []PurchaseOrderItemRejectImage
 }
 

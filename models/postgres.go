@@ -92,6 +92,9 @@ func NewDB(k *koanf.Koanf, debug bool) (*gorm.DB, error) {
 		&PurchaseOrderItemRejection{},
 		&PurchaseOrderItemRejectionAttachment{},
 		&PurchaseOrderItemHistory{},
+		&OrderTag{},
+		&OrderStatus{},
+		&OrderHistory{},
 	)
 	// TODO: ADD CHECKS FOR THE ABOVE MIGRATION, AND RETURN AN ERROR IF IT FAILS
 	// Right now it just fails silently, and the app will crash later on when it tries to access a table that doesn't exist

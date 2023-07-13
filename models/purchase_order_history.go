@@ -25,6 +25,18 @@ type PurchaseOrderHistory struct {
 	CreatedByUser *User          `json:"created_by_user" gorm:"foreignKey:CreatedBy"`
 }
 
+func (poh *PurchaseOrderHistory) GetCreatedByUser(ctx context.Context) error {
+	user, err := GetUserByID(ctx, poh.CreatedBy)
+	if err != nil {
+		return err
+	}
+
+	poh.CreatedByUser = &user
+
+	return nil
+
+}
+
 type PurchaseOrderHistoryReturnJSON struct {
 	Id              int            `json:"id"`
 	PurchaseOrderId int            `json:"purchase_order_id,omitempty"`

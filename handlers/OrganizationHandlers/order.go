@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
@@ -36,13 +37,10 @@ func ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	searchResults, err := models.ConvertOrdersToSearchResults(ctx, orders, total, count)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert orders to search results", http.StatusBadRequest)
-		return
-	}
+	response := responses.GenerateListOrdersResponse(orders, count, total)
 
-	util.JSONResponse(w, searchResults, http.StatusOK)
+	util.JSONResponse(w, response, http.StatusOK)
+
 }
 
 func GetOrder(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +81,50 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, order.ConvertToReturnJSON(ctx), http.StatusOK)
+	err = order.GetOrderItems(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get order items", http.StatusBadRequest)
+		return
+	}
+
+	err = order.GetBillToAddress(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get bill to address", http.StatusBadRequest)
+		return
+	}
+
+	err = order.GetShipToAddress(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get ship to address", http.StatusBadRequest)
+		return
+	}
+
+	err = order.GetWarehouse(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get warehouse", http.StatusBadRequest)
+		return
+	}
+
+	err = order.GetShippingMethod(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get shipping method", http.StatusBadRequest)
+		return
+	}
+
+	err = order.GetTags(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get tags", http.StatusBadRequest)
+		return
+	}
+
+	err = order.GetStatus(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get status", http.StatusBadRequest)
+		return
+	}
+
+	response := responses.GenerateGetOrderResponse(*order)
+
+	util.JSONResponse(w, response, http.StatusOK)
 
 }
