@@ -3,6 +3,7 @@ package ShipengineAPI
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -18,7 +19,11 @@ type APIClient struct {
 	apiKey     string
 }
 
-func ContextWithShipengineClient(ctx context.Context, host string, key string) context.Context {
+func ContextWithShipengineClient(ctx context.Context, host string, key string) (context.Context, error) {
+	u, err := url.Parse(host)
+	if err != nil {
+		return ctx, err
+	}
 	client := &APIClient{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
@@ -29,10 +34,10 @@ func ContextWithShipengineClient(ctx context.Context, host string, key string) c
 				ResponseHeaderTimeout: time.Second * 10,
 			},
 		},
-		apiHost: host,
+		apiHost: u.Host,
 		apiKey:  key,
 	}
-	return context.WithValue(ctx, shipengineKey, client)
+	return context.WithValue(ctx, shipengineKey, client), nil
 }
 
 func (c *APIClient) Do(req *http.Request) (*http.Response, error) {

@@ -66,3 +66,15 @@ func GetBoolQueryParam(r *http.Request, param string) (bool, error) {
 	}
 	return value, nil
 }
+
+func GetOptionalBoolQueryParam(r *http.Request, param string) (*bool, error) {
+	stringValue := r.URL.Query().Get(param)
+	if stringValue == "" {
+		return nil, nil
+	}
+	value, err := strconv.ParseBool(stringValue)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", param, err)
+	}
+	return &value, nil
+}

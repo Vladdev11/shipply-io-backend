@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -266,7 +267,7 @@ type ProductLotResponseForGetProductInventory struct {
 }
 
 // GenerateGetProductInventoryResponse converts a product to a GetProductInventoryResponse
-func GenerateGetProductInventoryResponse(product *models.Product) *GetProductInventoryResponse {
+func GenerateGetProductInventoryResponse(ctx context.Context, product *models.Product) *GetProductInventoryResponse {
 	// Converting each InventoryLocation
 	inventoryLocations := make([]ProductInventoryLocationResponseForGetProductInventory, len(product.InventoryLocations))
 	for i, loc := range product.InventoryLocations {
@@ -302,7 +303,7 @@ func GenerateGetProductInventoryResponse(product *models.Product) *GetProductInv
 				ID:        history.User.ID,
 				FirstName: history.User.FirstName,
 				LastName:  history.User.LastName,
-				ImageURL:  fmt.Sprintf("%s/%s", util.ConfigCDNHost, history.User.AvatarFileName),
+				ImageURL:  fmt.Sprintf("%s/%s", util.CDNFromContext(ctx), history.User.AvatarFileName),
 			},
 		}
 	}

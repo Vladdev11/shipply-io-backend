@@ -221,7 +221,7 @@ func GetProductInventory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := responses.GenerateGetProductInventoryResponse(product)
+	response := responses.GenerateGetProductInventoryResponse(ctx, product)
 	util.JSONResponse(w, response, http.StatusOK)
 
 }

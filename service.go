@@ -64,7 +64,10 @@ func main() {
 	ctx = util.ContextWithDB(ctx, db)
 
 	ctx = SendgridAPI.ContextWithSendgrindClient(ctx, k.MustString("sendgrid.api_key"), k.MustString("sendgrid.from"), k.MustStringMap("sendgrid.templates"))
-	ctx = ShipengineAPI.ContextWithShipengineClient(ctx, k.MustString("shipengine.api_host"), k.MustString("shipengine.api_key"))
+	ctx, err = ShipengineAPI.ContextWithShipengineClient(ctx, k.MustString("shipengine.api_host"), k.MustString("shipengine.api_key"))
+	if err != nil {
+		log.Fatalf("error configuring shipengine client: %v", err)
+	}
 	ctx = shopify.WithContext(ctx, &shopify.ShopifyAppConfig{
 		ID:          k.MustString("shopify.client_id"),
 		Secret:      k.MustString("shopify.client_secret"),
@@ -99,7 +102,6 @@ func main() {
 	//** END CRON JOBS **//
 
 	router := mux.NewRouter()
-	router.Use(middlewares.RouterWithContext(ctx))
 
 	v1 := router.PathPrefix("/v1").Subrouter()
 
@@ -163,6 +165,13 @@ func main() {
 	protected.HandleFunc("/user/{user_id}/update-avatar", handlers.UserUpdateAvatar).Methods(http.MethodPost)
 	protected.HandleFunc("/user/{user_id}/delete", handlers.UserDelete).Methods(http.MethodDelete)
 	//**  END USER ROUTES **//
+
+	//** USER SAVED FILTER ROUTES **//
+	protected.HandleFunc("/user/saved-filters/{table}", handlers.UserSavedFilterList).Methods(http.MethodGet)
+	protected.HandleFunc("/user/saved-filters/{table}", handlers.UserSavedFilterCreate).Methods(http.MethodPost)
+	protected.HandleFunc("/user/saved-filters/{table}/{filter_id}", handlers.UserSavedFilterDelete).Methods(http.MethodDelete)
+	protected.HandleFunc("/user/saved-filters/{table}/{filter_id}", handlers.UserSavedFilterUpdate).Methods(http.MethodPatch)
+	//** END USER SAVED FILTER ROUTES **//
 
 	//**  PURCHASE ORDER ROUTES **//
 	protected.HandleFunc("/purchase-order/list", handlers.PurchaseOrderList).Methods(http.MethodGet)

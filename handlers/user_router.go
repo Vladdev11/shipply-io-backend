@@ -167,6 +167,94 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 
 // ** END USER ROUTES ** //
 
+// ** USER SAVED FILTERS ** //
+
+func UserSavedFilterCreate(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.UserSavedFilterCreate(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.UserSavedFilterCreate(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.UserSavedFilterCreate(w, r)
+	case util.ClientUser:
+		ClientHandlers.UserSavedFilterCreate(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func UserSavedFilterList(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.UserSavedFilterList(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.UserSavedFilterList(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.UserSavedFilterList(w, r)
+	case util.ClientUser:
+		ClientHandlers.UserSavedFilterList(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func UserSavedFilterUpdate(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.UserSavedFilterUpdate(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.UserSavedFilterUpdate(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.UserSavedFilterUpdate(w, r)
+	case util.ClientUser:
+		ClientHandlers.UserSavedFilterUpdate(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func UserSavedFilterDelete(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.UserSavedFilterDelete(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.UserSavedFilterDelete(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.UserSavedFilterDelete(w, r)
+	case util.ClientUser:
+		ClientHandlers.UserSavedFilterDelete(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+// ** END USER SAVED FILTERS ** //
+
 // ** PRODUCT ROUTES ** //
 
 func SearchProducts(w http.ResponseWriter, r *http.Request) {
