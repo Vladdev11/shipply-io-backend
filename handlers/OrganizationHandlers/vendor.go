@@ -4,8 +4,46 @@ import (
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
+
+func GetVendor(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		return
+	}
+
+	vendorID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "failed to get vendor id", http.StatusBadRequest)
+		return
+	}
+
+	vendor, err := models.GetVendorByID(ctx, vendorID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get vendor", http.StatusBadRequest)
+		return
+	}
+
+	if !user.Organization.IsClientOwner(ctx, vendor.ClientID) {
+		util.ErrorResponse(w, "user does not have access to client", http.StatusForbidden)
+		return
+	}
+
+	response := responses.GenerateGetVendorResponse(*vendor)
+	util.JSONResponse(w, response, http.StatusOK)
+}
 
 func VendorList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -82,42 +120,6 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.JSONResponse(w, vendor.ConvertToReturnJSON(), http.StatusOK)
-
-}
-
-func VendorGet(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	vendorID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "failed to get vendor id", http.StatusBadRequest)
-		return
-	}
-
-	vendor, err := models.GetVendorByID(ctx, vendorID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get vendor", http.StatusBadRequest)
-		return
-	}
-
-	if !user.Organization.IsClientOwner(ctx, vendor.ClientID) {
-		util.ErrorResponse(w, "user does not have access to client", http.StatusForbidden)
-		return
-	}
-
-	util.JSONResponse(w, vendor, http.StatusOK)
 
 }
 

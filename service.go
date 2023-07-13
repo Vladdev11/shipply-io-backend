@@ -99,7 +99,6 @@ func main() {
 	//** END CRON JOBS **//
 
 	router := mux.NewRouter()
-	router.Use(middlewares.RouterWithContext(ctx))
 
 	v1 := router.PathPrefix("/v1").Subrouter()
 
@@ -139,7 +138,8 @@ func main() {
 
 	//**  CLIENT ROUTES **//
 	protected.HandleFunc("/client/list", handlers.ListClients).Methods(http.MethodGet)
-	protected.HandleFunc("/client/create", handlers.ClientCreate).Methods(http.MethodPost)
+	protected.HandleFunc("/client/{client_id}", handlers.GetClient).Methods(http.MethodGet)
+	protected.HandleFunc("/client/create", handlers.CreateClient).Methods(http.MethodPost)
 	protected.HandleFunc("/client/{client_id}", handlers.GetClient).Methods(http.MethodGet)
 	protected.HandleFunc("/client/{client_id}/update", handlers.UpdateClient).Methods(http.MethodPatch)
 	protected.HandleFunc("/client/{client_id}/update-avatar", handlers.UpdateClientAvatar).Methods(http.MethodPost)
@@ -155,20 +155,20 @@ func main() {
 	// ** END STORE ROUTES **//
 
 	//**  USER ROUTES **//
-	protected.HandleFunc("/user/self", handlers.UserGet).Methods(http.MethodGet)
-	protected.HandleFunc("/user/self/update-password", handlers.UserUpdatePassword).Methods(http.MethodPatch)
-	protected.HandleFunc("/user/{id}", handlers.UserGetByID).Methods(http.MethodGet)
-	protected.HandleFunc("/user/create", handlers.UserCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/user/{user_id}/update", handlers.UserUpdate).Methods(http.MethodPatch)
-	protected.HandleFunc("/user/{user_id}/update-avatar", handlers.UserUpdateAvatar).Methods(http.MethodPost)
-	protected.HandleFunc("/user/{user_id}/delete", handlers.UserDelete).Methods(http.MethodDelete)
+	protected.HandleFunc("/user/self", handlers.GetUserSelf).Methods(http.MethodGet)
+	protected.HandleFunc("/user/self/update-password", handlers.UpdateUserPassword).Methods(http.MethodPatch)
+	protected.HandleFunc("/user/create", handlers.CreateUser).Methods(http.MethodPost)
+	protected.HandleFunc("/user/{id}", handlers.GetUser).Methods(http.MethodGet)
+	protected.HandleFunc("/user/{user_id}/update", handlers.UpdateUser).Methods(http.MethodPatch)
+	protected.HandleFunc("/user/{user_id}/delete", handlers.DeleteUser).Methods(http.MethodDelete)
+	protected.HandleFunc("/user/{user_id}/update-avatar", handlers.UpdateUserAvatar).Methods(http.MethodPost)
 	//**  END USER ROUTES **//
 
 	//**  PURCHASE ORDER ROUTES **//
-	protected.HandleFunc("/purchase-order/list", handlers.PurchaseOrderList).Methods(http.MethodGet)
-	protected.HandleFunc("/purchase-order/create", handlers.PurchaseOrderCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/purchase-order/{id}", handlers.PurchaseOrderGet).Methods(http.MethodGet)
-	protected.HandleFunc("/purchase-order/{id}/update", handlers.PurchaseOrderUpdate).Methods(http.MethodPatch)
+	protected.HandleFunc("/purchase-order/list", handlers.ListPurchaseOrders).Methods(http.MethodGet)
+	protected.HandleFunc("/purchase-order/{id}", handlers.GetPurchaseOrder).Methods(http.MethodGet)
+	protected.HandleFunc("/purchase-order/create", handlers.CreatePurchaseOrder).Methods(http.MethodPost)
+	protected.HandleFunc("/purchase-order/{id}/update", handlers.UpdatePurchaseOrder).Methods(http.MethodPatch)
 	protected.HandleFunc("/purchase-order/{id}/delete", handlers.PurchaseOrderDelete).Methods(http.MethodDelete)
 	//**  END PURCHASE ORDER ROUTES **//
 
@@ -216,17 +216,13 @@ func main() {
 	//** PRODUCT ROUTES **//
 	protected.HandleFunc("/product-search", handlers.SearchProducts).Methods(http.MethodGet)
 	protected.HandleFunc("/product/list", handlers.ListProducts).Methods(http.MethodGet)
-	//add history and images
 	protected.HandleFunc("/product/{id}", handlers.GetProduct).Methods(http.MethodGet)
 	protected.HandleFunc("/product/{id}/inventory", handlers.GetProductInventory).Methods(http.MethodGet)
 	protected.HandleFunc("/product/{id}/orders", handlers.GetProductOrders).Methods(http.MethodGet)
 	protected.HandleFunc("/product/{id}/bundles", handlers.GetProductBundles).Methods(http.MethodGet)
-	// REVIEW -- different return structure than other product routes (returns bundle instead of product)
 	protected.HandleFunc("/product/{id}/components", handlers.GetProductBundleComponents).Methods(http.MethodGet)
 	protected.HandleFunc("/product/{id}/stores", handlers.GetProductStores).Methods(http.MethodGet)
-	//create
-	//update
-	//delete
+	protected.HandleFunc("/product/create", handlers.CreateProduct).Methods(http.MethodPost)
 	//** END PRODUCT ROUTES **//
 
 	//** PRODUCT ALIAS ROUTES **//
@@ -238,8 +234,9 @@ func main() {
 
 	//** VENDOR ROUTES **//
 	protected.HandleFunc("/vendor/list", handlers.VendorList).Methods(http.MethodGet)
+	protected.HandleFunc("/vendor/{id}", handlers.GetVendor).Methods(http.MethodGet)
 	protected.HandleFunc("/vendor/create", handlers.VendorCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/vendor/{id}", handlers.VendorGet).Methods(http.MethodGet)
+	protected.HandleFunc("/vendor/{id}", handlers.GetVendor).Methods(http.MethodGet)
 	protected.HandleFunc("/vendor/{id}/update", handlers.VendorUpdate).Methods(http.MethodPatch)
 	protected.HandleFunc("/vendor/{id}/delete", handlers.VendorDelete).Methods(http.MethodDelete)
 	//** END VENDOR ROUTES **//
@@ -270,7 +267,7 @@ func main() {
 
 	//** ORDER ROUTES **//
 	protected.HandleFunc("/orders/list", handlers.ListOrders).Methods(http.MethodGet)
-	protected.HandleFunc("/order/{id}", handlers.GetOrder).Methods(http.MethodGet)
+	protected.HandleFunc("/orders/{id}", handlers.GetOrder).Methods(http.MethodGet)
 	//** END ORDER ROUTES **//
 
 	//** ORDER ITEM ROUTES **//

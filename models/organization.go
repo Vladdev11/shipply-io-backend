@@ -33,7 +33,12 @@ func (o *Organization) GetClients(ctx context.Context) error {
 	return nil
 }
 
+func (organization *Organization) GetType() string {
+	return util.OrganizationType[organization.Type]
+}
+
 func (o *Organization) ConvertToReturnJSON(ctx context.Context) *OrganizationReturnJSON {
+
 	if o == nil {
 		return nil
 	}
@@ -143,33 +148,26 @@ func (organization *Organization) GetProducts(ctx context.Context, plr ProductLi
 	return products, int(count), int(total), nil
 }
 
-func (organization *Organization) GetOrders(ctx context.Context, olr OrdersListRequest) ([]Order, int, int, error) {
+func (organization *Organization) GetOrders(ctx context.Context, olr OrdersListRequest) ([]OrdersListOrder, int, int, error) {
 
 	query := olr.ConvertToOrganizationQuery(ctx)
-	countQuery := olr.ConvertToOrganizationQuery(ctx)
+	var orders []OrdersListOrder
+	if err := query.Offset(olr.Offset).Limit(olr.Limit).Find(&orders).Error; err != nil {
+		return nil, 0, 0, err
+	}
 
 	totalQuery := util.DBFromContext(ctx).Model(&Order{}).
 		Joins("LEFT JOIN stores ON stores.id = orders.store_id").
 		Joins("LEFT JOIN clients ON clients.id = stores.client_id").
 		Joins("LEFT JOIN organizations ON organizations.id = clients.organization_id")
-	query = query.Where("organizations.id = ?", organization.ID)
-
-	var orders []Order
-	if err := query.Offset(olr.Offset).Limit(olr.Limit).Find(&orders).Error; err != nil {
-		return nil, 0, 0, err
-	}
-
-	var count int64
-	if err := countQuery.Count(&count).Error; err != nil {
-		return nil, 0, 0, err
-	}
+	totalQuery = totalQuery.Where("organizations.id = ?", organization.ID)
 
 	var total int64
 	if err := totalQuery.Count(&total).Error; err != nil {
 		return nil, 0, 0, err
 	}
 
-	return orders, int(count), int(total), nil
+	return orders, len(orders), int(total), nil
 }
 
 func (organization *Organization) SearchProducts(ctx context.Context, spr ProductSearchRequest) ([]Product, error) {

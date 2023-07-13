@@ -7,89 +7,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/shipply-io/shipply-io-backend/api"
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func PurchaseOrderList(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+func GetPurchaseOrder(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	request := models.PurchaseOrderListRequest{}
-	request.OrganizationID = user.Organization.ID
-	errors := request.ParseAndValidateRequest(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
-		return
-	}
-
-	purchaseOrders, count, total, err := user.Organization.GetPurchaseOrders(ctx, request)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get purchase orders", http.StatusInternalServerError)
-		return
-	}
-
-	searchResults, err := models.ConvertPurchaseOrdersToSearchResults(ctx, purchaseOrders, total, count)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert purchase orders to search results", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, searchResults, http.StatusOK)
-
-}
-
-func PurchaseOrderCreate(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	_, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	request := models.PurchaseOrderCreateRequest{}
-	errors := request.ParseAndValidateRequest(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
-		return
-	}
-
-	purchaseOrder := &models.PurchaseOrder{
-		ClientID:       request.ClientID,
-		PONumber:       request.PONumber,
-		Status:         request.Status,
-		ExpectedDate:   request.ExpectedDate.Time,
-		ShipDate:       request.ShipDate.Time,
-		ClosedDate:     request.ClosedDate.Time,
-		VendorID:       request.VendorID,
-		WarehouseID:    request.WarehouseID,
-		TrackingNumber: request.TrackingNumber,
-		TrackingURL:    request.TrackingURL,
-	}
-
-	err = purchaseOrder.Create(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to create purchase order", http.StatusInternalServerError)
-		return
-	}
-
-	purchaseOrderJSON := purchaseOrder.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, purchaseOrderJSON, http.StatusOK)
-
-}
-
-func PurchaseOrderGet(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -121,30 +44,98 @@ func PurchaseOrderGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = purchaseOrder.GetItems(ctx)
+	purchaseOrder.GetStatus(ctx)
+	purchaseOrder.GetItems(ctx)
+	purchaseOrder.GetTags(ctx)
+	purchaseOrder.GetHistory(ctx)
+	purchaseOrder.GetClient(ctx)
+
+	response := responses.GenerateGetPurchaseOrderResponse(ctx, *purchaseOrder)
+	util.JSONResponse(w, response, http.StatusOK)
+}
+
+func ListPurchaseOrders(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get purchase order items", http.StatusBadRequest)
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	err = purchaseOrder.GetTags(ctx)
+	err = user.GetOrganization(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get purchase order tags", http.StatusBadRequest)
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
 		return
 	}
 
-	err = purchaseOrder.GetHistory(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get purchase order notes", http.StatusBadRequest)
+	request := models.PurchaseOrderListRequest{}
+	request.OrganizationID = user.Organization.ID
+	errors := request.ParseAndValidateRequest(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
-	purchaseOrderJSON := purchaseOrder.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, purchaseOrderJSON, http.StatusOK)
+	purchaseOrders, count, total, err := user.Organization.GetPurchaseOrders(ctx, request)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get purchase orders", http.StatusInternalServerError)
+		return
+	}
+
+	for i := range purchaseOrders {
+		purchaseOrders[i].GetStatus(ctx)
+	}
+
+	response := responses.GenerateListPurchaseOrdersResponse(purchaseOrders, count, total)
+	util.JSONResponse(w, response, http.StatusOK)
 
 }
 
-func PurchaseOrderUpdate(w http.ResponseWriter, r *http.Request) {
+func CreatePurchaseOrder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	_, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	request := models.PurchaseOrderCreateRequest{}
+	errors := request.ParseAndValidateRequest(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		return
+	}
+
+	purchaseOrder := &models.PurchaseOrder{
+		ClientID:       request.ClientID,
+		PONumber:       request.PONumber,
+		StatusID:       request.StatusID,
+		ExpectedDate:   request.ExpectedDate.Time,
+		ShipDate:       request.ShipDate.Time,
+		ClosedDate:     request.ClosedDate.Time,
+		VendorID:       request.VendorID,
+		WarehouseID:    request.WarehouseID,
+		TrackingNumber: request.TrackingNumber,
+		TrackingURL:    request.TrackingURL,
+	}
+
+	err = purchaseOrder.Create(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to create purchase order", http.StatusInternalServerError)
+		return
+	}
+
+	purchaseOrder.GetStatus(ctx)
+
+	response := responses.GenerateCreatePurchaseOrderResponse(*purchaseOrder)
+	util.JSONResponse(w, response, http.StatusOK)
+
+}
+
+func UpdatePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -178,14 +169,14 @@ func PurchaseOrderUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = purchaseOrder.UpdateWithRequest(ctx, request)
-	if err != nil {
-		util.ErrorResponse(w, "failed to update purchase order", http.StatusInternalServerError)
+	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
+		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(ctx, purchaseOrder.ClientID) {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+	err = purchaseOrder.UpdateWithRequest(ctx, request)
+	if err != nil {
+		util.ErrorResponse(w, "failed to update purchase order", http.StatusInternalServerError)
 		return
 	}
 
@@ -207,8 +198,14 @@ func PurchaseOrderUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderJSON := purchaseOrder.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, purchaseOrderJSON, http.StatusOK)
+	err = purchaseOrder.GetStatus(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get purchase order status", http.StatusBadRequest)
+		return
+	}
+
+	response := responses.GenerateUpdatePurchaseOrderResponse(ctx, *purchaseOrder)
+	util.JSONResponse(w, response, http.StatusOK)
 
 }
 

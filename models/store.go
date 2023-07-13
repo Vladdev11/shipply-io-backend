@@ -65,7 +65,7 @@ func (s *Store) GetMarketplace() error {
 	return nil
 }
 
-func (s *Store) ConvertToReturnJSON() *StoreReturnJSON {
+func (s *Store) ConvertToReturnJSON(ctx context.Context) *StoreReturnJSON {
 
 	if s == nil {
 		return nil

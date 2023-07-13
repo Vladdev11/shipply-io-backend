@@ -5,8 +5,77 @@ import (
 
 	"github.com/shipply-io/shipply-io-backend/api/shopify"
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
+
+func GetStore(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		return
+	}
+
+	storeID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
+		return
+	}
+
+	store, err := models.GetStoreByID(ctx, storeID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
+		return
+	}
+
+	if user.OwnerID != store.ClientID {
+		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
+		return
+	}
+
+	store.GetMarketplace()
+
+	response := responses.GenerateGetStoreResponse(*store)
+	util.JSONResponse(w, response, http.StatusOK)
+}
+
+func ListStores(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.Client.GetStores(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find shipping methods", http.StatusBadRequest)
+		return
+	}
+
+	for i := range user.Client.Stores {
+		user.Client.Stores[i].GetMarketplace()
+	}
+
+	response := responses.GenerateListStoresResponse(user.Client.Stores)
+	util.JSONResponse(w, response, http.StatusOK)
+
+}
 
 func ActivateStore(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -90,6 +159,58 @@ func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 	util.SuccessResponse(w, http.StatusOK)
 }
 
+func UpdateStore(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		return
+	}
+
+	storeID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "invalid store id", http.StatusBadRequest)
+		return
+	}
+
+	store, err := models.GetStoreByID(ctx, storeID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find store", http.StatusBadRequest)
+		return
+	}
+
+	if user.OwnerID != store.ClientID {
+		util.ErrorResponse(w, "user does not have access to this store", http.StatusForbidden)
+		return
+	}
+
+	request := &models.StoreUpdateRequest{}
+	errors := request.ParseAndValidateRequest(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		return
+	}
+
+	err = store.UpdateWithRequest(ctx, request)
+	if err != nil {
+		util.ErrorResponse(w, "failed to update store", http.StatusInternalServerError)
+		return
+	}
+
+	store.GetMarketplace()
+
+	response := responses.GenerateUpdateStoreResponse(*store)
+	util.JSONResponse(w, response, http.StatusOK)
+
+}
+
 func DeleteStore(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -148,120 +269,4 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.SuccessResponse(w, http.StatusOK)
-}
-
-func UpdateStore(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetClient(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "invalid store id", http.StatusBadRequest)
-		return
-	}
-
-	store, err := models.GetStoreByID(ctx, storeID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find store", http.StatusBadRequest)
-		return
-	}
-
-	if user.OwnerID != store.ClientID {
-		util.ErrorResponse(w, "user does not have access to this store", http.StatusForbidden)
-		return
-	}
-
-	request := &models.StoreUpdateRequest{}
-	errors := request.ParseAndValidateRequest(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
-		return
-	}
-
-	err = store.UpdateWithRequest(ctx, request)
-	if err != nil {
-		util.ErrorResponse(w, "failed to update store", http.StatusInternalServerError)
-		return
-	}
-
-	storeJSON := store.ConvertToReturnJSON()
-	util.JSONResponse(w, storeJSON, http.StatusOK)
-
-}
-
-func ListStores(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetClient(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.Client.GetStores(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find shipping methods", http.StatusBadRequest)
-		return
-	}
-
-	storesJSON := []models.StoreReturnJSON{}
-
-	for _, store := range user.Client.Stores {
-		storesJSON = append(storesJSON, *store.ConvertToReturnJSON())
-	}
-
-	util.JSONResponse(w, storesJSON, http.StatusOK)
-
-}
-
-func GetStore(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetClient(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
-		return
-	}
-
-	store, err := models.GetStoreByID(ctx, storeID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
-		return
-	}
-
-	if user.OwnerID != store.ClientID {
-		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
-		return
-	}
-
-	util.JSONResponse(w, *store.ConvertToReturnJSON(), http.StatusOK)
 }

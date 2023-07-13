@@ -54,6 +54,22 @@ func (u *User) GetRole() string {
 	return util.UserRoleMap[u.Role]
 }
 
+func (u *User) IsClientRole() bool {
+	if u.Role == util.ClientAdminInt || u.Role == util.ClientUserInt {
+		return true
+	}
+	return false
+}
+
+func (u *User) GetAvatarFileURL(ctx context.Context) string {
+
+	if u.AvatarFileName == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("%s/%s", util.CDNFromContext(ctx), u.AvatarFileName)
+}
+
 func (u *User) GetOrganization(ctx context.Context) error {
 
 	organization, err := GetOrganizationByID(ctx, u.OwnerID)

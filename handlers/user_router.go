@@ -10,7 +10,7 @@ import (
 )
 
 // ** USER ROUTES ** //
-func UserGet(w http.ResponseWriter, r *http.Request) {
+func GetUserSelf(w http.ResponseWriter, r *http.Request) {
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
@@ -19,19 +19,19 @@ func UserGet(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.UserGet(w, r)
+		OrganizationHandlers.GetUserSelf(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.UserGet(w, r)
+		OrganizationHandlers.GetUserSelf(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.UserGet(w, r)
+		ClientHandlers.GetUserSelf(w, r)
 	case util.ClientUser:
-		ClientHandlers.UserGet(w, r)
+		ClientHandlers.GetUserSelf(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
 }
 
-func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
+func GetUser(w http.ResponseWriter, r *http.Request) {
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
@@ -40,32 +40,11 @@ func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.UserUpdatePassword(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.UserUpdatePassword(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.UserUpdatePassword(w, r)
-	case util.ClientUser:
-		ClientHandlers.UserUpdatePassword(w, r)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-}
-
-func UserGetByID(w http.ResponseWriter, r *http.Request) {
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.UserGetByID(w, r)
+		OrganizationHandlers.GetUser(w, r)
 	case util.OrganizationUser:
 		util.ErrorResponse(w, "user does not have access to other users", http.StatusForbidden)
 	case util.ClientAdmin:
-		ClientHandlers.UserGetByID(w, r)
+		ClientHandlers.GetUser(w, r)
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access to other users", http.StatusForbidden)
 	default:
@@ -73,7 +52,7 @@ func UserGetByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UserCreate(w http.ResponseWriter, r *http.Request) {
+func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -83,11 +62,11 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.UserCreate(w, r)
+		OrganizationHandlers.CreateUser(w, r)
 	case util.OrganizationUser:
 		util.ErrorResponse(w, "user does not have access to create users", http.StatusForbidden)
 	case util.ClientAdmin:
-		ClientHandlers.UserCreate(w, r)
+		ClientHandlers.CreateUser(w, r)
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access to create users", http.StatusForbidden)
 	default:
@@ -96,7 +75,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func UserUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -106,11 +85,11 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.UserUpdate(w, r)
+		OrganizationHandlers.UpdateUser(w, r)
 	case util.OrganizationUser:
 		util.ErrorResponse(w, "user does not have access to update users", http.StatusForbidden)
 	case util.ClientAdmin:
-		ClientHandlers.UserUpdate(w, r)
+		ClientHandlers.UpdateUser(w, r)
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access to update users", http.StatusForbidden)
 	default:
@@ -119,7 +98,7 @@ func UserUpdate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -129,20 +108,41 @@ func UserUpdateAvatar(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.UserUpdateAvatar(w, r)
+		OrganizationHandlers.DeleteUser(w, r)
 	case util.OrganizationUser:
-		util.ErrorResponse(w, "user does not have access to update avatar", http.StatusForbidden)
+		util.ErrorResponse(w, "user does not have access to delete users", http.StatusForbidden)
 	case util.ClientAdmin:
-		ClientHandlers.UserUpdateAvatar(w, r)
+		ClientHandlers.DeleteUser(w, r)
 	case util.ClientUser:
-		util.ErrorResponse(w, "user does not have access to update avatar", http.StatusForbidden)
+		util.ErrorResponse(w, "user does not have access to delete users", http.StatusForbidden)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
 
 }
 
-func UserDelete(w http.ResponseWriter, r *http.Request) {
+func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.UpdateUserPassword(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.UpdateUserPassword(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.UpdateUserPassword(w, r)
+	case util.ClientUser:
+		ClientHandlers.UpdateUserPassword(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func UpdateUserAvatar(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -152,13 +152,13 @@ func UserDelete(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.UserDelete(w, r)
+		OrganizationHandlers.UpdateUserAvatar(w, r)
 	case util.OrganizationUser:
-		util.ErrorResponse(w, "user does not have access to delete users", http.StatusForbidden)
+		util.ErrorResponse(w, "user does not have access to update avatar", http.StatusForbidden)
 	case util.ClientAdmin:
-		ClientHandlers.UserDelete(w, r)
+		ClientHandlers.UpdateUserAvatar(w, r)
 	case util.ClientUser:
-		util.ErrorResponse(w, "user does not have access to delete users", http.StatusForbidden)
+		util.ErrorResponse(w, "user does not have access to update avatar", http.StatusForbidden)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
@@ -351,10 +351,33 @@ func GetProductStores(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func CreateProduct(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusBadRequest)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.CreateProduct(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.CreateProduct(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.CreateProduct(w, r)
+	case util.ClientUser:
+		ClientHandlers.CreateProduct(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
 // ** END PRODUCT ROUTES ** //
 
 // ** PURCHASE ORDER ROUTES ** //
-func PurchaseOrderList(w http.ResponseWriter, r *http.Request) {
+
+func GetPurchaseOrder(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -364,20 +387,42 @@ func PurchaseOrderList(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderList(w, r)
+		OrganizationHandlers.GetPurchaseOrder(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderList(w, r)
+		OrganizationHandlers.GetPurchaseOrder(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderList(w, r)
+		ClientHandlers.GetPurchaseOrder(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderList(w, r)
+		ClientHandlers.GetPurchaseOrder(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func ListPurchaseOrders(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.ListPurchaseOrders(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.ListPurchaseOrders(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.ListPurchaseOrders(w, r)
+	case util.ClientUser:
+		ClientHandlers.ListPurchaseOrders(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
 
 }
 
-func PurchaseOrderCreate(w http.ResponseWriter, r *http.Request) {
+func CreatePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -387,19 +432,19 @@ func PurchaseOrderCreate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderCreate(w, r)
+		OrganizationHandlers.CreatePurchaseOrder(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderCreate(w, r)
+		OrganizationHandlers.CreatePurchaseOrder(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderCreate(w, r)
+		ClientHandlers.CreatePurchaseOrder(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderCreate(w, r)
+		ClientHandlers.CreatePurchaseOrder(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
 }
 
-func PurchaseOrderGet(w http.ResponseWriter, r *http.Request) {
+func UpdatePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -409,35 +454,13 @@ func PurchaseOrderGet(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderGet(w, r)
+		OrganizationHandlers.UpdatePurchaseOrder(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderGet(w, r)
+		OrganizationHandlers.UpdatePurchaseOrder(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderGet(w, r)
+		ClientHandlers.UpdatePurchaseOrder(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderGet(w, r)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-}
-
-func PurchaseOrderUpdate(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderUpdate(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderUpdate(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderUpdate(w, r)
-	case util.ClientUser:
-		ClientHandlers.PurchaseOrderUpdate(w, r)
+		ClientHandlers.UpdatePurchaseOrder(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
@@ -869,6 +892,29 @@ func PurchaseOrderAttachmentDelete(w http.ResponseWriter, r *http.Request) {
 // ** END PURCHASE ORDER ATTACHMENTS ROUTES ** //
 
 // ** VENDOR ROUTES **//
+
+func GetVendor(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.GetVendor(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.GetVendor(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.GetVendor(w, r)
+	case util.ClientUser:
+		ClientHandlers.GetVendor(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
 func VendorList(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
@@ -908,28 +954,6 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 		ClientHandlers.VendorCreate(w, r)
 	case util.ClientUser:
 		ClientHandlers.VendorCreate(w, r)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-}
-
-func VendorGet(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.VendorGet(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.VendorGet(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.VendorGet(w, r)
-	case util.ClientUser:
-		ClientHandlers.VendorGet(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
@@ -2001,28 +2025,6 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 
 // ** CLIENT ROUTES ** //
 
-func ClientCreate(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.ClientCreate(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.ClientCreate(w, r)
-	case util.ClientAdmin:
-		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
-	case util.ClientUser:
-		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
-	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
-	}
-
-}
-
 func GetClient(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
@@ -2058,6 +2060,28 @@ func ListClients(w http.ResponseWriter, r *http.Request) {
 		OrganizationHandlers.ListClients(w, r)
 	case util.OrganizationUser:
 		OrganizationHandlers.ListClients(w, r)
+	case util.ClientAdmin:
+		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
+	case util.ClientUser:
+		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
+	default:
+		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func CreateClient(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.CreateClient(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.CreateClient(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
 	case util.ClientUser:
