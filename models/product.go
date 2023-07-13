@@ -374,6 +374,67 @@ type ProductListRequest struct {
 	OrderBy        string `json:"order_by"`
 	OrderByColumn  string `json:"order_by_column"`
 	SearchValue    string `json:"search_value"`
+
+	*ProductListFilters
+}
+
+type ProductListFilters struct {
+	Backorder *bool `json:"backorder"`
+	Allocated *bool `json:"allocated"`
+	Bundle    *bool `json:"bundle"`
+	Active    *bool `json:"active"`
+	Lot       *bool `json:"lot"`
+}
+
+func (plf *ProductListFilters) ParseAndValidateRequest(r *http.Request) []error {
+	errs := []error{}
+
+	backorder, err := util.GetOptionalBoolQueryParam(r, "backorder")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			plf.Backorder = backorder
+		}
+	}
+
+	allocated, err := util.GetOptionalBoolQueryParam(r, "allocated")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			plf.Allocated = allocated
+		}
+	}
+
+	bundle, err := util.GetOptionalBoolQueryParam(r, "bundle")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			plf.Bundle = bundle
+		}
+	}
+
+	active, err := util.GetOptionalBoolQueryParam(r, "active")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			plf.Active = active
+		}
+	}
+
+	lot, err := util.GetOptionalBoolQueryParam(r, "lot")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			plf.Lot = lot
+		}
+	}
+
+	return errs
 }
 
 func (plr *ProductListRequest) ParseAndValidateRequest(r *http.Request) []string {
@@ -443,10 +504,36 @@ func (plr *ProductListRequest) ParseAndValidateRequest(r *http.Request) []string
 		}
 	}
 
+	saved_filter, err := util.GetIntQueryParam(r, "saved_filter")
+	if err != util.ErrMissingQueryParam {
+		if err != nil {
+			errors = append(errors, "saved_filter must be an integer id")
+		}
+	}
+	if saved_filter != 0 {
+		user, err := GetRequestingUser(r)
+		if err != nil {
+			errors = append(errors, err.Error())
+		} else {
+			var filter ProductListFilters
+			if err := LoadUserSavedFilter(r.Context(), user.ID, "products", saved_filter, &filter); err != nil {
+				errors = append(errors, err.Error())
+			}
+			plr.ProductListFilters = &filter
+		}
+	}
+	if plr.ProductListFilters == nil {
+		plr.ProductListFilters = &ProductListFilters{}
+		if errs := plr.ProductListFilters.ParseAndValidateRequest(r); len(errs) > 0 {
+			for _, err := range errs {
+				errors = append(errors, err.Error())
+			}
+		}
+	}
+
 	if len(errors) > 0 {
 		return errors
 	}
-
 	return nil
 }
 
@@ -480,6 +567,42 @@ func (por *ProductListRequest) ConvertToOrganizationQuery(ctx context.Context) *
 		}
 	}
 
+	if por.ProductListFilters != nil {
+		if por.ProductListFilters.Backorder != nil {
+			if *por.ProductListFilters.Backorder {
+				query = query.Where("products.backordered >= 1")
+			} else {
+				query = query.Where("products.backordered = 0")
+			}
+		}
+
+		if por.ProductListFilters.Allocated != nil {
+			if *por.ProductListFilters.Allocated {
+				query = query.Where("products.allocated >= 1")
+			} else {
+				query = query.Where("products.allocated = 0")
+			}
+		}
+
+		// TODO: Need to test this one throughly, I am not sure if this is correct
+		// And setting up products for testing is a pain...
+		if por.ProductListFilters.Bundle != nil {
+			if *por.ProductListFilters.Bundle {
+				query = query.Where("EXISTS (SELECT 1 from bundle_products where bundle_products.product_id = products.id)")
+			} else {
+				query = query.Where("NOT EXISTS (SELECT 1 from bundle_products where bundle_products.product_id = products.id)")
+			}
+		}
+
+		if por.ProductListFilters.Active != nil {
+			query = query.Where("products.active = ?", *por.ProductListFilters.Active)
+		}
+
+		if por.ProductListFilters.Lot != nil {
+			query = query.Where("products.needs_lot_number = ?", *por.ProductListFilters.Lot)
+		}
+	}
+
 	return query
 }
 
@@ -505,6 +628,41 @@ func (por *ProductListRequest) ConvertToClientQuery(ctx context.Context) *gorm.D
 			query = query.Order("id asc")
 		} else {
 			query = query.Order("id desc")
+		}
+	}
+
+	if por.ProductListFilters != nil {
+		if por.ProductListFilters.Backorder != nil {
+			if *por.ProductListFilters.Backorder {
+				query = query.Where("products.backordered >= 1")
+			} else {
+				query = query.Where("products.backordered = 0")
+			}
+		}
+
+		if por.ProductListFilters.Allocated != nil {
+			if *por.ProductListFilters.Allocated {
+				query = query.Where("products.allocated >= 1")
+			} else {
+				query = query.Where("products.allocated = 0")
+			}
+		}
+
+		// TODO: Need to test this one throughly, same issue as the org one
+		if por.ProductListFilters.Bundle != nil {
+			if *por.ProductListFilters.Bundle {
+				query = query.Where("EXISTS (SELECT 1 from bundle_products where bundle_products.product_id = products.id)")
+			} else {
+				query = query.Where("NOT EXISTS (SELECT 1 from bundle_products where bundle_products.product_id = products.id)")
+			}
+		}
+
+		if por.ProductListFilters.Active != nil {
+			query = query.Where("products.active = ?", *por.ProductListFilters.Active)
+		}
+
+		if por.ProductListFilters.Lot != nil {
+			query = query.Where("products.needs_lot_number = ?", *por.ProductListFilters.Lot)
 		}
 	}
 
@@ -544,6 +702,7 @@ func (client *Client) GetProducts(ctx context.Context, polr ProductListRequest) 
 		return nil, 0, 0, err
 	}
 
+	// TODO: why are we doing a second query here for count when you can just use len(products)?
 	var count int64
 	if err := countQuery.Count(&count).Error; err != nil {
 		return nil, 0, 0, err
