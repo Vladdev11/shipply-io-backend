@@ -461,6 +461,29 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func UpdateProduct(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.UpdateProduct(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.UpdateProduct(w, r)
+	case util.ClientAdmin:
+		// ClientHandlers.UpdateProduct(w, r)
+	case util.ClientUser:
+		// ClientHandlers.UpdateProduct(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
 // ** END PRODUCT ROUTES ** //
 
 // ** PURCHASE ORDER ROUTES ** //
@@ -555,7 +578,7 @@ func UpdatePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func PurchaseOrderDelete(w http.ResponseWriter, r *http.Request) {
+func DeletePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -565,13 +588,13 @@ func PurchaseOrderDelete(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderDelete(w, r)
+		OrganizationHandlers.DeletePurchaseOrder(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderDelete(w, r)
+		OrganizationHandlers.DeletePurchaseOrder(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderDelete(w, r)
+		ClientHandlers.DeletePurchaseOrder(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderDelete(w, r)
+		ClientHandlers.DeletePurchaseOrder(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
@@ -791,6 +814,28 @@ func PurchaseOrderItemScanInput(w http.ResponseWriter, r *http.Request) {
 // ** END PURCHASE ORDER ITEM ROUTES ** //
 
 // ** PURCHASE ORDER STATUS ROUTES ** //
+func ListPurchaseOrderStatuses(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.ListPurchaseOrderStatuses(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.ListPurchaseOrderStatuses(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.ListPurchaseOrderStatuses(w, r)
+	case util.ClientUser:
+		ClientHandlers.ListPurchaseOrderStatuses(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
 func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
@@ -808,28 +853,6 @@ func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 		ClientHandlers.PurchaseOrderStatusCreate(w, r)
 	case util.ClientUser:
 		ClientHandlers.PurchaseOrderStatusCreate(w, r)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-}
-
-func PurchaseOrderStatusList(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderStatusList(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderStatusList(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderStatusList(w, r)
-	case util.ClientUser:
-		ClientHandlers.PurchaseOrderStatusList(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}

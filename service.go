@@ -179,9 +179,10 @@ func main() {
 	protected.HandleFunc("/purchase-order/{id}", handlers.GetPurchaseOrder).Methods(http.MethodGet)
 	protected.HandleFunc("/purchase-order/create", handlers.CreatePurchaseOrder).Methods(http.MethodPost)
 	protected.HandleFunc("/purchase-order/{id}/update", handlers.UpdatePurchaseOrder).Methods(http.MethodPatch)
-	protected.HandleFunc("/purchase-order/{id}/delete", handlers.PurchaseOrderDelete).Methods(http.MethodDelete)
+	protected.HandleFunc("/purchase-order/{id}/delete", handlers.DeletePurchaseOrder).Methods(http.MethodDelete)
 	//**  END PURCHASE ORDER ROUTES **//
 
+	// TODO - update to new response structure
 	//**  PURCHASE ORDER ITEM ROUTES **//
 	protected.HandleFunc("/purchase-order/{id}/items/bulk-update", handlers.PurchaseOrderItemUpdateBulk).Methods(http.MethodPatch)
 	protected.HandleFunc("/purchase-order/{id}/item/create", handlers.PurchaseOrderItemCreate).Methods(http.MethodPost)
@@ -191,8 +192,8 @@ func main() {
 	//** END PURCHASE ORDER ITEM ROUTES **//
 
 	//**  PURCHASE ORDER STATUS ROUTES **//
+	protected.HandleFunc("/purchase-order-status/list", handlers.ListPurchaseOrderStatuses).Methods(http.MethodGet)
 	protected.HandleFunc("/purchase-order-status/create", handlers.PurchaseOrderStatusCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/purchase-order-status/list", handlers.PurchaseOrderStatusList).Methods(http.MethodGet)
 	protected.HandleFunc("/purchase-order-status/{id}/update", handlers.PurchaseOrderStatusUpdate).Methods(http.MethodPatch)
 	protected.HandleFunc("/purchase-order-status/{id}/delete", handlers.PurchaseOrderStatusDelete).Methods(http.MethodDelete)
 	//** END PURCHASE ORDER STATUS ROUTES **//
@@ -233,6 +234,7 @@ func main() {
 	protected.HandleFunc("/product/{id}/components", handlers.GetProductBundleComponents).Methods(http.MethodGet)
 	protected.HandleFunc("/product/{id}/stores", handlers.GetProductStores).Methods(http.MethodGet)
 	protected.HandleFunc("/product/create", handlers.CreateProduct).Methods(http.MethodPost)
+	protected.HandleFunc("/product/{id}/update", handlers.UpdateProduct).Methods(http.MethodPatch)
 	//** END PRODUCT ROUTES **//
 
 	//** PRODUCT ALIAS ROUTES **//

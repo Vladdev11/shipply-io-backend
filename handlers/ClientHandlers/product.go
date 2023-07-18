@@ -1,12 +1,8 @@
 package ClientHandlers
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
 
-	"github.com/google/uuid"
-	"github.com/shipply-io/shipply-io-backend/api"
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
@@ -422,18 +418,13 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createProductInput, errors := validation.ParseRequestToCreateProductInput(r)
+	createProductRequestData, errors := validation.ParseRequestToCreateProductRequestData(r)
 	if errors != nil {
 		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
-	if !user.Client.Organization.IsWarehouseOwner(ctx, createProductInput.WarehouseID) {
-		util.ErrorResponse(w, "user does not have access to this warehouse", http.StatusForbidden)
-		return
-	}
-
-	existingProductByClientIDAndSku, err := models.GetProductByClientIDAndSku(ctx, user.Client.ID, createProductInput.Sku)
+	existingProductByClientIDAndSku, err := models.GetProductByClientIDAndSku(ctx, user.Client.ID, createProductRequestData.Sku)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		util.ErrorResponse(w, "failed to check if product sku is unique", http.StatusBadRequest)
 		return
@@ -444,7 +435,7 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingProductByBarcodeAndClientID, err := models.GetProductByBarcodeAndClientID(ctx, createProductInput.Barcode, user.Client.ID)
+	existingProductByBarcodeAndClientID, err := models.GetProductByBarcodeAndClientID(ctx, *createProductRequestData.Barcode, user.Client.ID)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		util.ErrorResponse(w, "failed to check if product barcode is unique", http.StatusBadRequest)
 		return
@@ -455,55 +446,56 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO add warehouse id?
-	// TODO add description?
-	product := models.Product{
-		ClientID:            createProductInput.ClientID,
-		Sku:                 createProductInput.Sku,
-		Barcode:             createProductInput.Barcode,
-		Name:                createProductInput.Name,
-		Value:               createProductInput.Value,
-		AdditionalImageUrls: models.StringSlice{},
+	createProductInput := models.CreateProductInput{
+		Name:     createProductRequestData.Name,
+		ClientID: user.Client.ID,
+		Sku:      createProductRequestData.Sku,
+		Barcode:  createProductRequestData.Barcode,
+		Value:    createProductRequestData.Value,
 	}
 
-	if createProductInput.Weight != nil {
-		product.Weight = createProductInput.Weight.Value
-		product.WeightUnit = createProductInput.Weight.Unit
-	}
-
-	if createProductInput.Dimensions != nil {
-		product.Length = createProductInput.Dimensions.Length
-		product.Width = createProductInput.Dimensions.Width
-		product.Height = createProductInput.Dimensions.Height
-	}
-
-	for i, image := range createProductInput.Images {
-
-		fileUUID := uuid.New().String()
-		fileExtension := strings.Split(image.FileType, "/")[1]
-
-		err = api.S3FromContext(ctx).UploadFileToCDN(image.ImageData, fileUUID, fileExtension, image.FileType)
-		if err != nil {
-			util.ErrorResponse(w, "failed to upload image to s3", http.StatusInternalServerError)
-			return
+	if createProductRequestData.Weight != nil {
+		createProductInput.Weight = &models.Weight{
+			Value: createProductRequestData.Weight.Value,
+			Unit:  createProductRequestData.Weight.Unit,
 		}
-
-		imageURL := fmt.Sprintf("%s/%s.%s", util.CDNFromContext(ctx), fileUUID, fileExtension)
-		if i == 0 {
-			product.ImageURL = imageURL
-		} else {
-			product.AdditionalImageUrls = append(product.AdditionalImageUrls, imageURL)
-		}
-
 	}
 
-	err = product.Create(ctx)
+	if createProductRequestData.Dimensions != nil {
+		createProductInput.Dimensions = &models.Dimensions{
+			Length: createProductRequestData.Dimensions.Length,
+			Width:  createProductRequestData.Dimensions.Width,
+			Height: createProductRequestData.Dimensions.Height,
+		}
+	}
+
+	product, err := models.CreateProduct(ctx, createProductInput)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create product", http.StatusBadRequest)
 		return
 	}
 
-	response := responses.GenerateCreateProductResponse(product)
+	// for i, image := range createProductInput.Images {
+
+	// 	fileUUID := uuid.New().String()
+	// 	fileExtension := strings.Split(image.FileType, "/")[1]
+
+	// 	err = api.S3FromContext(ctx).UploadFileToCDN(image.ImageData, fileUUID, fileExtension, image.FileType)
+	// 	if err != nil {
+	// 		util.ErrorResponse(w, "failed to upload image to s3", http.StatusInternalServerError)
+	// 		return
+	// 	}
+
+	// 	imageURL := fmt.Sprintf("%s/%s.%s", util.CDNFromContext(ctx), fileUUID, fileExtension)
+	// 	if i == 0 {
+	// 		product.ImageURL = imageURL
+	// 	} else {
+	// 		product.AdditionalImageUrls = append(product.AdditionalImageUrls, imageURL)
+	// 	}
+
+	// }
+
+	response := responses.GenerateCreateProductResponse(*product)
 	util.JSONResponse(w, response, http.StatusOK)
 
 }

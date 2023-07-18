@@ -1,12 +1,8 @@
 package OrganizationHandlers
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
 
-	"github.com/google/uuid"
-	"github.com/shipply-io/shipply-io-backend/api"
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
@@ -437,23 +433,18 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createProductInput, errors := validation.ParseRequestToCreateProductInput(r)
+	createProductRequestData, errors := validation.ParseRequestToCreateProductRequestData(r)
 	if errors != nil {
 		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
-	if !user.Organization.IsClientOwner(ctx, createProductInput.ClientID) {
+	if !user.Organization.IsClientOwner(ctx, createProductRequestData.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
 		return
 	}
 
-	if !user.Organization.IsWarehouseOwner(ctx, createProductInput.WarehouseID) {
-		util.ErrorResponse(w, "user does not have access to this warehouse", http.StatusForbidden)
-		return
-	}
-
-	existingProductByClientIDAndSku, err := models.GetProductByClientIDAndSku(ctx, createProductInput.ClientID, createProductInput.Sku)
+	existingProductByClientIDAndSku, err := models.GetProductByClientIDAndSku(ctx, createProductRequestData.ClientID, createProductRequestData.Sku)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		util.ErrorResponse(w, "failed to check if product sku is unique", http.StatusBadRequest)
 		return
@@ -464,66 +455,167 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingProductByBarcodeAndClientID, err := models.GetProductByBarcodeAndClientID(ctx, createProductInput.Barcode, createProductInput.ClientID)
-	if err != nil && err != gorm.ErrRecordNotFound {
-		util.ErrorResponse(w, "failed to check if product barcode is unique", http.StatusBadRequest)
-		return
-	}
-
-	if existingProductByBarcodeAndClientID != nil {
-		util.ErrorResponse(w, "product barcode is not unique", http.StatusBadRequest)
-		return
-	}
-
-	// TODO add warehouse id?
-	// TODO add description?
-	product := models.Product{
-		ClientID:            createProductInput.ClientID,
-		Sku:                 createProductInput.Sku,
-		Barcode:             createProductInput.Barcode,
-		Name:                createProductInput.Name,
-		Value:               createProductInput.Value,
-		AdditionalImageUrls: models.StringSlice{},
-	}
-
-	if createProductInput.Weight != nil {
-		product.Weight = createProductInput.Weight.Value
-		product.WeightUnit = createProductInput.Weight.Unit
-	}
-
-	if createProductInput.Dimensions != nil {
-		product.Length = createProductInput.Dimensions.Length
-		product.Width = createProductInput.Dimensions.Width
-		product.Height = createProductInput.Dimensions.Height
-	}
-
-	for i, image := range createProductInput.Images {
-
-		fileUUID := uuid.New().String()
-		fileExtension := strings.Split(image.FileType, "/")[1]
-
-		err = api.S3FromContext(ctx).UploadFileToCDN(image.ImageData, fileUUID, fileExtension, image.FileType)
-		if err != nil {
-			util.ErrorResponse(w, "failed to upload image to s3", http.StatusInternalServerError)
+	if createProductRequestData.Barcode != nil {
+		existingProductByBarcodeAndClientID, err := models.GetProductByBarcodeAndClientID(ctx, *createProductRequestData.Barcode, createProductRequestData.ClientID)
+		if err != nil && err != gorm.ErrRecordNotFound {
+			util.ErrorResponse(w, "failed to check if product barcode is unique", http.StatusBadRequest)
 			return
 		}
 
-		imageURL := fmt.Sprintf("%s/%s.%s", util.CDNFromContext(ctx), fileUUID, fileExtension)
-		if i == 0 {
-			product.ImageURL = imageURL
-		} else {
-			product.AdditionalImageUrls = append(product.AdditionalImageUrls, imageURL)
+		if existingProductByBarcodeAndClientID != nil {
+			util.ErrorResponse(w, "product barcode is not unique", http.StatusBadRequest)
+			return
 		}
-
 	}
 
-	err = product.Create(ctx)
+	createProductInput := models.CreateProductInput{
+		Name:     createProductRequestData.Name,
+		ClientID: createProductRequestData.ClientID,
+		Sku:      createProductRequestData.Sku,
+		Barcode:  createProductRequestData.Barcode,
+		Value:    createProductRequestData.Value,
+	}
+
+	if createProductRequestData.Weight != nil {
+		createProductInput.Weight = &models.Weight{
+			Value: createProductRequestData.Weight.Value,
+			Unit:  createProductRequestData.Weight.Unit,
+		}
+	}
+
+	if createProductRequestData.Dimensions != nil {
+		createProductInput.Dimensions = &models.Dimensions{
+			Length: createProductRequestData.Dimensions.Length,
+			Width:  createProductRequestData.Dimensions.Width,
+			Height: createProductRequestData.Dimensions.Height,
+		}
+	}
+
+	product, err := models.CreateProduct(ctx, createProductInput)
 	if err != nil {
 		util.ErrorResponse(w, "failed to create product", http.StatusBadRequest)
 		return
 	}
 
-	response := responses.GenerateCreateProductResponse(product)
+	// for i, image := range createProductInput.Images {
+
+	// 	fileUUID := uuid.New().String()
+	// 	fileExtension := strings.Split(image.FileType, "/")[1]
+
+	// 	err = api.S3FromContext(ctx).UploadFileToCDN(image.ImageData, fileUUID, fileExtension, image.FileType)
+	// 	if err != nil {
+	// 		util.ErrorResponse(w, "failed to upload image to s3", http.StatusInternalServerError)
+	// 		return
+	// 	}
+
+	// 	imageURL := fmt.Sprintf("%s/%s.%s", util.CDNFromContext(ctx), fileUUID, fileExtension)
+	// 	if i == 0 {
+	// 		product.ImageURL = imageURL
+	// 	} else {
+	// 		product.AdditionalImageUrls = append(product.AdditionalImageUrls, imageURL)
+	// 	}
+
+	// }
+
+	response := responses.GenerateCreateProductResponse(*product)
+	util.JSONResponse(w, response, http.StatusOK)
+
+}
+
+func UpdateProduct(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "invalid product id", http.StatusBadRequest)
+		return
+	}
+
+	product, err := models.GetProductByID(ctx, productID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
+		return
+	}
+
+	if !user.Organization.IsClientOwner(ctx, product.ClientID) {
+		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		return
+	}
+
+	updateProductRequestData, errors := validation.ParseRequestToUpdateProductRequestData(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		return
+	}
+
+	if updateProductRequestData.Sku != nil {
+		existingProductByClientIDAndSku, err := models.GetProductByClientIDAndSku(ctx, product.ClientID, *updateProductRequestData.Sku)
+		if err != nil && err != gorm.ErrRecordNotFound {
+			util.ErrorResponse(w, "failed to check if product sku is unique", http.StatusBadRequest)
+			return
+		}
+
+		if existingProductByClientIDAndSku != nil && existingProductByClientIDAndSku.ID != product.ID {
+			util.ErrorResponse(w, "product sku is not unique", http.StatusBadRequest)
+			return
+		}
+	}
+
+	if updateProductRequestData.Barcode != nil {
+		existingProductByBarcodeAndClientID, err := models.GetProductByBarcodeAndClientID(ctx, *updateProductRequestData.Barcode, product.ClientID)
+		if err != nil && err != gorm.ErrRecordNotFound {
+			util.ErrorResponse(w, "failed to check if product barcode is unique", http.StatusBadRequest)
+			return
+		}
+
+		if existingProductByBarcodeAndClientID != nil && existingProductByBarcodeAndClientID.ID != product.ID {
+			util.ErrorResponse(w, "product barcode is not unique", http.StatusBadRequest)
+			return
+		}
+	}
+
+	updateProductInput := models.UpdateProductInput{
+		ID:      product.ID,
+		Name:    updateProductRequestData.Name,
+		Sku:     updateProductRequestData.Sku,
+		Barcode: updateProductRequestData.Barcode,
+		Value:   updateProductRequestData.Value,
+	}
+
+	if updateProductRequestData.Weight != nil {
+		updateProductInput.Weight = &models.Weight{
+			Value: updateProductRequestData.Weight.Value,
+			Unit:  updateProductRequestData.Weight.Unit,
+		}
+	}
+
+	if updateProductRequestData.Dimensions != nil {
+		updateProductInput.Dimensions = &models.Dimensions{
+			Length: updateProductRequestData.Dimensions.Length,
+			Width:  updateProductRequestData.Dimensions.Width,
+			Height: updateProductRequestData.Dimensions.Height,
+		}
+	}
+
+	product, err = models.UpdateProduct(ctx, updateProductInput)
+	if err != nil {
+		util.ErrorResponse(w, "failed to update product", http.StatusBadRequest)
+	}
+
+	response := responses.GenerateUpdateProductResponse(*product)
 	util.JSONResponse(w, response, http.StatusOK)
 
 }

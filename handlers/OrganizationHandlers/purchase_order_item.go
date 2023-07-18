@@ -213,7 +213,7 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	util.JSONResponse(w, util.JSONSuccess(), http.StatusOK)
+	util.SuccessResponse(w, http.StatusOK)
 }
 
 func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {

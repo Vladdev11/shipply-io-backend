@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
+/* --------------------------- Main Product Model --------------------------- */
 type Product struct {
 	ID                   int
 	Name                 string
@@ -70,6 +71,104 @@ type Product struct {
 	Components         []Product                  `gorm:"-"`
 	Stores             []Store                    `gorm:"-"`
 }
+
+/* ----------------------------- Create Product ----------------------------- */
+type CreateProductInput struct {
+	ClientID   int
+	Sku        string
+	Barcode    *string
+	Name       string
+	Value      float64
+	Weight     *Weight
+	Dimensions *Dimensions
+}
+
+func CreateProduct(ctx context.Context, input CreateProductInput) (*Product, error) {
+
+	product := Product{
+		ClientID: input.ClientID,
+		Sku:      input.Sku,
+		Name:     input.Name,
+		Value:    input.Value,
+	}
+
+	if input.Barcode != nil {
+		product.Barcode = *input.Barcode
+	}
+
+	if input.Weight != nil {
+		product.Weight = input.Weight.Value
+		product.WeightUnit = input.Weight.Unit
+	}
+
+	if input.Dimensions != nil {
+		product.Length = input.Dimensions.Length
+		product.Width = input.Dimensions.Width
+		product.Height = input.Dimensions.Height
+	}
+
+	if err := util.DBFromContext(ctx).Create(&product).Error; err != nil {
+		return nil, err
+	}
+
+	return &product, nil
+
+}
+
+/* ------------------------------ Update Product ----------------------------- */
+type UpdateProductInput struct {
+	ID         int
+	Sku        *string
+	Barcode    *string
+	Name       *string
+	Value      *float64
+	Weight     *Weight
+	Dimensions *Dimensions
+}
+
+func UpdateProduct(ctx context.Context, input UpdateProductInput) (*Product, error) {
+
+	var product Product
+	if err := util.DBFromContext(ctx).First(&product, input.ID).Error; err != nil {
+		return nil, err
+	}
+
+	if input.Sku != nil {
+		product.Sku = *input.Sku
+	}
+
+	if input.Barcode != nil {
+		product.Barcode = *input.Barcode
+	}
+
+	if input.Name != nil {
+		product.Name = *input.Name
+	}
+
+	if input.Value != nil {
+		product.Value = *input.Value
+	}
+
+	if input.Weight != nil {
+		product.Weight = input.Weight.Value
+		product.WeightUnit = input.Weight.Unit
+	}
+
+	if input.Dimensions != nil {
+		product.Length = input.Dimensions.Length
+		product.Width = input.Dimensions.Width
+		product.Height = input.Dimensions.Height
+	}
+
+	if err := util.DBFromContext(ctx).Save(&product).Error; err != nil {
+		return nil, err
+	}
+
+	return &product, nil
+
+}
+
+/* ----------------------------- End of new code ---------------------------- */
 
 type ProductReturnJSON struct {
 	ID                   int       `json:"id,omitempty"`

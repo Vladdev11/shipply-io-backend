@@ -436,3 +436,17 @@ func GenerateCreateProductResponse(product models.Product) *CreateProductRespons
 		ID: product.ID,
 	}
 }
+
+/* ------------------------------ UpdateProduct ----------------------------- */
+
+// UpdateProductResponse represents the response body for the UpdateProduct endpoint
+type UpdateProductResponse struct {
+	ID int `json:"id"`
+}
+
+// GenerateUpdateProductResponse converts a product to a UpdateProductResponse
+func GenerateUpdateProductResponse(product models.Product) *UpdateProductResponse {
+	return &UpdateProductResponse{
+		ID: product.ID,
+	}
+}

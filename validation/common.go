@@ -3,6 +3,8 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 )
 
 /* --------------------------------- Custom Type Structs and Validation Functions -------------------------------- */
@@ -74,16 +76,16 @@ func validateRequiredIntField(raw json.RawMessage, fieldName string, min int) (i
 }
 
 // validateOptionalIntField validates an optional int field
-func validateOptionalIntField(raw json.RawMessage, fieldName string, min int) (int, error) {
+func validateOptionalIntField(raw json.RawMessage, fieldName string, min int) (*int, error) {
 	var value int
-	if raw == nil {
-		return 0, nil
+	if len(raw) == 0 {
+		return nil, nil
 	} else if err := json.Unmarshal(raw, &value); err != nil {
-		return 0, fmt.Errorf("%s must be an integer", fieldName)
+		return nil, fmt.Errorf("%s must be an integer", fieldName)
 	} else if value < min {
-		return 0, fmt.Errorf("%s must be greater than %d", fieldName, min-1)
+		return nil, fmt.Errorf("%s must be greater than %d", fieldName, min-1)
 	} else {
-		return value, nil
+		return &value, nil
 	}
 }
 
@@ -102,16 +104,16 @@ func validateRequiredFloatField(raw json.RawMessage, fieldName string, min float
 }
 
 // validateOptionalFloatField validates an optional float field
-func validateOptionalFloatField(raw json.RawMessage, fieldName string, min float64) (float64, error) {
+func validateOptionalFloatField(raw json.RawMessage, fieldName string, min float64) (*float64, error) {
 	var value float64
-	if raw == nil {
-		return 0, nil
+	if len(raw) == 0 {
+		return nil, nil
 	} else if err := json.Unmarshal(raw, &value); err != nil {
-		return 0, fmt.Errorf("%s must be a number", fieldName)
+		return nil, fmt.Errorf("%s must be a number", fieldName)
 	} else if value < min {
-		return 0, fmt.Errorf("%s must be greater than or equal to %f", fieldName, min)
+		return nil, fmt.Errorf("%s must be greater than or equal to %f", fieldName, min)
 	} else {
-		return value, nil
+		return &value, nil
 	}
 }
 
@@ -132,17 +134,34 @@ func validateRequiredStringField(raw json.RawMessage, fieldName string, minLen i
 }
 
 // validateOptionalStringField validates an optional string field
-func validateOptionalStringField(raw json.RawMessage, fieldName string, minLen int, maxLen ...int) (string, error) {
+func validateOptionalStringField(raw json.RawMessage, fieldName string, minLen int, maxLen ...int) (*string, error) {
 	var value string
-	if raw == nil {
-		return "", nil
+	if len(raw) == 0 {
+		return nil, nil
 	} else if err := json.Unmarshal(raw, &value); err != nil {
-		return "", fmt.Errorf("%s must be a string", fieldName)
+		return nil, fmt.Errorf("%s must be a string", fieldName)
 	} else if len(value) < minLen {
-		return "", fmt.Errorf("%s must be at least %d characters", fieldName, minLen)
+		return nil, fmt.Errorf("%s must be at least %d characters", fieldName, minLen)
 	} else if len(maxLen) > 0 && len(value) > maxLen[0] {
-		return "", fmt.Errorf("%s must be less than or equal to %d characters", fieldName, maxLen[0])
+		return nil, fmt.Errorf("%s must be less than or equal to %d characters", fieldName, maxLen[0])
 	} else {
-		return value, nil
+		return &value, nil
 	}
+}
+
+/* ---------------------------- Common Functions ---------------------------- */
+func ParseJSONRequestBody(r *http.Request) (map[string]json.RawMessage, error) {
+	// Read the request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read request body: %w", err)
+	}
+
+	// Parse the JSON data into a map
+	var rawData map[string]json.RawMessage
+	if err := json.Unmarshal(body, &rawData); err != nil {
+		return nil, fmt.Errorf("invalid JSON data: %w", err)
+	}
+
+	return rawData, nil
 }

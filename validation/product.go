@@ -2,7 +2,6 @@ package validation
 
 import (
 	"encoding/json"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 
@@ -11,34 +10,34 @@ import (
 
 /* ------------------------------ CreateProduct ----------------------------- */
 
-// CreateProductInput represents the formatted and validated input for the CreateProduct endpoint
-type CreateProductInput struct {
-	Name        string `json:"name"`
-	ClientID    int    `json:"client_id"`
-	Description string `json:"description"`
+// CreateProductRequestData represents the formatted and validated data for the CreateProduct endpoint
+type CreateProductRequestData struct {
+	Name        string  `json:"name"`
+	ClientID    int     `json:"client_id"`
+	Description *string `json:"description"`
 
-	Value       float64 `json:"value"`
-	Sku         string  `json:"sku"`
-	Barcode     string  `json:"barcode"`
-	WarehouseID int     `json:"warehouse_id"`
+	Value   float64 `json:"value"`
+	Sku     string  `json:"sku"`
+	Barcode *string `json:"barcode"`
 
-	Images []ImageForCreateProductInput `json:"images"`
+	// TODO - Add support for images
+	// Images []ImageForCreateProductRequestData `json:"images"`
 
 	Dimensions *Dimensions `json:"dimensions"`
 	Weight     *Weight     `json:"weight"`
 }
 
-// ImageForCreateProductInput represents the formatted and validated input for an individual image in the CreateProduct endpoint
-type ImageForCreateProductInput struct {
+// ImageForCreateProductRequestData represents the formatted and validated input for an individual image in the CreateProduct endpoint
+type ImageForCreateProductRequestData struct {
 	ImageData multipart.File `json:"image_data"`
 	FileType  string         `json:"file_type"`
 	FileName  string         `json:"file_name"`
 }
 
-// ParseRequestToCreateProductInput parses and validates the request body for the CreateProduct endpoint
-func ParseRequestToCreateProductInput(r *http.Request) (*CreateProductInput, []string) {
+// ParseRequestToCreateProductRequestData parses and validates the request body for the CreateProduct endpoint
+func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequestData, []string) {
 
-	createProductInput := CreateProductInput{}
+	createProductRequestData := CreateProductRequestData{}
 	errors := []string{}
 
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -46,31 +45,32 @@ func ParseRequestToCreateProductInput(r *http.Request) (*CreateProductInput, []s
 		return nil, errors
 	}
 
-	var images []ImageForCreateProductInput
-	i := 1
-	for {
-		imageKey := fmt.Sprintf("file%d", i)
-		file, fileHeader, err := r.FormFile(imageKey)
-		if err == nil {
-			defer file.Close()
-			if fileHeader.Header.Get("Content-Type") != "image/jpeg" && fileHeader.Header.Get("Content-Type") != "image/png" {
-				errors = append(errors, "file must be a valid image")
-				i++
-				continue
-			}
+	// TODO - Add support for images
+	// var images []ImageForCreateProductRequestData
+	// i := 1
+	// for {
+	// 	imageKey := fmt.Sprintf("file%d", i)
+	// 	file, fileHeader, err := r.FormFile(imageKey)
+	// 	if err == nil {
+	// 		defer file.Close()
+	// 		if fileHeader.Header.Get("Content-Type") != "image/jpeg" && fileHeader.Header.Get("Content-Type") != "image/png" {
+	// 			errors = append(errors, "file must be a valid image")
+	// 			i++
+	// 			continue
+	// 		}
 
-			images = append(images, ImageForCreateProductInput{
-				ImageData: file,
-				FileType:  fileHeader.Header.Get("Content-Type"),
-				FileName:  fileHeader.Filename,
-			})
-		} else {
-			break
-		}
-		i++
-	}
+	// 		images = append(images, ImageForCreateProductRequestData{
+	// 			ImageData: file,
+	// 			FileType:  fileHeader.Header.Get("Content-Type"),
+	// 			FileName:  fileHeader.Filename,
+	// 		})
+	// 	} else {
+	// 		break
+	// 	}
+	// 	i++
+	// }
 
-	createProductInput.Images = images
+	// createProductRequestData.Images = images
 
 	// Retrieve non-image JSON data (stored within the data field)
 	dataField := r.FormValue("data")
@@ -87,45 +87,41 @@ func ParseRequestToCreateProductInput(r *http.Request) (*CreateProductInput, []s
 
 	user, _ := models.GetRequestingUser(r)
 	if !user.IsClientRole() {
-		if createProductInput.ClientID, err = validateRequiredIntField(rawData["client_id"], "client_id", 1); err != nil {
+		if createProductRequestData.ClientID, err = validateRequiredIntField(rawData["client_id"], "client_id", 1); err != nil {
 			errors = append(errors, err.Error())
 		}
 	} else {
-		createProductInput.ClientID = user.OwnerID
+		createProductRequestData.ClientID = user.OwnerID
 	}
 
-	if createProductInput.Name, err = validateRequiredStringField(rawData["name"], "name", 1); err != nil {
+	if createProductRequestData.Name, err = validateRequiredStringField(rawData["name"], "name", 1); err != nil {
 		errors = append(errors, err.Error())
 	}
 
-	if createProductInput.Description, err = validateOptionalStringField(rawData["description"], "description", 1); err != nil {
+	if createProductRequestData.Description, err = validateOptionalStringField(rawData["description"], "description", 1); err != nil {
 		errors = append(errors, err.Error())
 	}
 
-	if createProductInput.Value, err = validateRequiredFloatField(rawData["value"], "value", 0); err != nil {
+	if createProductRequestData.Value, err = validateRequiredFloatField(rawData["value"], "value", 0); err != nil {
 		errors = append(errors, err.Error())
 	}
 
-	if createProductInput.Sku, err = validateRequiredStringField(rawData["sku"], "sku", 1, 255); err != nil {
+	if createProductRequestData.Sku, err = validateRequiredStringField(rawData["sku"], "sku", 1, 255); err != nil {
 		errors = append(errors, err.Error())
 	}
 
-	if createProductInput.Barcode, err = validateOptionalStringField(rawData["barcode"], "barcode", 1, 255); err != nil {
-		errors = append(errors, err.Error())
-	}
-
-	if createProductInput.WarehouseID, err = validateOptionalIntField(rawData["warehouse_id"], "warehouse_id", 1); err != nil {
+	if createProductRequestData.Barcode, err = validateOptionalStringField(rawData["barcode"], "barcode", 1, 255); err != nil {
 		errors = append(errors, err.Error())
 	}
 
 	if rawData["dimensions"] != nil {
-		if createProductInput.Dimensions, err = validateDimensionsField(rawData["dimensions"]); err != nil {
+		if createProductRequestData.Dimensions, err = validateDimensionsField(rawData["dimensions"]); err != nil {
 			errors = append(errors, err.Error())
 		}
 	}
 
 	if rawData["weight"] != nil {
-		if createProductInput.Weight, err = validateWeightField(rawData["weight"]); err != nil {
+		if createProductRequestData.Weight, err = validateWeightField(rawData["weight"]); err != nil {
 			errors = append(errors, err.Error())
 		}
 	}
@@ -134,6 +130,66 @@ func ParseRequestToCreateProductInput(r *http.Request) (*CreateProductInput, []s
 		return nil, errors
 	}
 
-	return &createProductInput, nil
+	return &createProductRequestData, nil
+
+}
+
+/* ------------------------------ UpdateProduct ----------------------------- */
+type UpdateProductRequestData struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+
+	Value   *float64 `json:"value"`
+	Sku     *string  `json:"sku"`
+	Barcode *string  `json:"barcode"`
+
+	Dimensions *Dimensions `json:"dimensions"`
+	Weight     *Weight     `json:"weight"`
+}
+
+func ParseRequestToUpdateProductRequestData(r *http.Request) (*UpdateProductRequestData, []string) {
+
+	updateProductRequestData := UpdateProductRequestData{}
+	errors := []string{}
+
+	rawData, err := ParseJSONRequestBody(r)
+
+	if updateProductRequestData.Name, err = validateOptionalStringField(rawData["name"], "name", 1); err != nil {
+		errors = append(errors, err.Error())
+	}
+
+	if updateProductRequestData.Description, err = validateOptionalStringField(rawData["description"], "description", 1); err != nil {
+		errors = append(errors, err.Error())
+	}
+
+	if updateProductRequestData.Value, err = validateOptionalFloatField(rawData["value"], "value", 0); err != nil {
+		errors = append(errors, err.Error())
+	}
+
+	if updateProductRequestData.Sku, err = validateOptionalStringField(rawData["sku"], "sku", 1, 255); err != nil {
+		errors = append(errors, err.Error())
+	}
+
+	if updateProductRequestData.Barcode, err = validateOptionalStringField(rawData["barcode"], "barcode", 1, 255); err != nil {
+		errors = append(errors, err.Error())
+	}
+
+	if rawData["dimensions"] != nil {
+		if updateProductRequestData.Dimensions, err = validateDimensionsField(rawData["dimensions"]); err != nil {
+			errors = append(errors, err.Error())
+		}
+	}
+
+	if rawData["weight"] != nil {
+		if updateProductRequestData.Weight, err = validateWeightField(rawData["weight"]); err != nil {
+			errors = append(errors, err.Error())
+		}
+	}
+
+	if len(errors) > 0 {
+		return nil, errors
+	}
+
+	return &updateProductRequestData, nil
 
 }
