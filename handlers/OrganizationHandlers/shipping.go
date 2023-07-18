@@ -177,12 +177,11 @@ func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := models.ShippingGetPickSessionOrderResponse{
-		PickSessionOrderID:      pickSessionOrder.ID,
-		OrderID:                 order.ID,
-		ToteID:                  *pickSessionOrder.LocationID,
-		HasError:                pickSessionOrder.HasError,
-		PickSessionOrderErrorID: pickSessionOrder.PickSessionOrderErrorID,
-		Order:                   *order.ConvertToReturnJSON(ctx),
+		PickSessionOrderID: pickSessionOrder.ID,
+		OrderID:            order.ID,
+		ToteID:             *pickSessionOrder.LocationID,
+		HasError:           pickSessionOrder.HasError,
+		Order:              *order.ConvertToReturnJSON(ctx),
 	}
 
 	if pickSessionOrder.ShippingRateID != 0 {

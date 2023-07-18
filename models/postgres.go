@@ -77,31 +77,25 @@ func NewDB(k *koanf.Koanf, debug bool) (*gorm.DB, error) {
 		&SystemTask{},
 		&SystemError{},
 		&ShipEngineLog{},
-		&Shipment{},
 		&AutomationRule{},
-		&ProductBundle{},
 		&PickSession{},
 		&PickSessionOrder{},
 		&PickSessionOrderItem{},
-		&PickSessionOrderError{},
 		&ShippingRate{},
 		&ShippingMethod{},
+		&Shipment{},
 		&PasswordResetToken{},
 		&InventoryAuditLog{},
 		&ProductLot{},
 		&PurchaseOrderItemRejection{},
 		&PurchaseOrderItemRejectionAttachment{},
 		&PurchaseOrderItemHistory{},
+		&ProductBundle{},
+		&ProductImage{},
 		&OrderTag{},
 		&OrderStatus{},
 		&OrderHistory{},
 	)
-	// TODO: ADD CHECKS FOR THE ABOVE MIGRATION, AND RETURN AN ERROR IF IT FAILS
-	// Right now it just fails silently, and the app will crash later on when it tries to access a table that doesn't exist
-	// It's actually already failing as can be seen by the first log message you get when the app is started.
-	// Also the failure here is kind of complicated as the pick_session_order stuff seems to have a circular dependency with pick_session_order_{item,error} tables.
-	// I'm not sure how to fix this, but I think it's a good idea to fix it before we go to production...
-	// The only reason this probably doesn't happen in your local environment is because you have the tables already created from the previous version of the app.
 
 	return db, nil
 }

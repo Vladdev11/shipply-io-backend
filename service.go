@@ -235,6 +235,9 @@ func main() {
 	protected.HandleFunc("/product/{id}/stores", handlers.GetProductStores).Methods(http.MethodGet)
 	protected.HandleFunc("/product/create", handlers.CreateProduct).Methods(http.MethodPost)
 	protected.HandleFunc("/product/{id}/update", handlers.UpdateProduct).Methods(http.MethodPatch)
+	protected.HandleFunc("/product/{id}/image/add", handlers.AddProductImage).Methods(http.MethodPost)
+	protected.HandleFunc("/product/{id}/image/{product_image_id}/delete", handlers.DeleteProductImage).Methods(http.MethodDelete)
+	protected.HandleFunc("/product/{id}/update-image-order", handlers.UpdateProductImageOrder).Methods(http.MethodPatch)
 	//** END PRODUCT ROUTES **//
 
 	//** PRODUCT ALIAS ROUTES **//

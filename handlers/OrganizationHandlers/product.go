@@ -1,8 +1,12 @@
 package OrganizationHandlers
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/google/uuid"
+	"github.com/shipply-io/shipply-io-backend/api"
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
@@ -82,7 +86,15 @@ func ListProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := responses.GenerateListProductsResponse(products, count, total)
+	for i := range products {
+		err = products[i].GetProductImages(ctx)
+		if err != nil {
+			util.ErrorResponse(w, "failed to get product images", http.StatusBadRequest)
+			return
+		}
+	}
+
+	response := responses.GenerateListProductsResponse(ctx, products, count, total)
 	util.JSONResponse(w, response, http.StatusOK)
 
 }
@@ -126,7 +138,13 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := responses.GenerateGetProductResponse(product)
+	err = product.GetProductImages(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get product images", http.StatusBadRequest)
+		return
+	}
+
+	response := responses.GenerateGetProductResponse(ctx, product)
 	util.JSONResponse(w, response, http.StatusOK)
 
 }
@@ -304,9 +322,15 @@ func GetProductBundles(w http.ResponseWriter, r *http.Request) {
 			util.ErrorResponse(w, "failed to get bundle product", http.StatusBadRequest)
 			return
 		}
+
+		err = product.ProductBundles[i].Product.GetProductImages(ctx)
+		if err != nil {
+			util.ErrorResponse(w, "failed to get bundle product images", http.StatusBadRequest)
+			return
+		}
 	}
 
-	response := responses.GenerateGetProductBundlesResponse(product)
+	response := responses.GenerateGetProductBundlesResponse(ctx, product)
 	util.JSONResponse(w, response, http.StatusOK)
 
 }
@@ -469,11 +493,12 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	createProductInput := models.CreateProductInput{
-		Name:     createProductRequestData.Name,
-		ClientID: createProductRequestData.ClientID,
-		Sku:      createProductRequestData.Sku,
-		Barcode:  createProductRequestData.Barcode,
-		Value:    createProductRequestData.Value,
+		Name:        createProductRequestData.Name,
+		ClientID:    createProductRequestData.ClientID,
+		Sku:         createProductRequestData.Sku,
+		Barcode:     createProductRequestData.Barcode,
+		Value:       createProductRequestData.Value,
+		Description: createProductRequestData.Description,
 	}
 
 	if createProductRequestData.Weight != nil {
@@ -497,25 +522,49 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// for i, image := range createProductInput.Images {
+	if createProductRequestData.MainImage != nil {
+		mainImageUUID := uuid.New().String()
+		mainImageExtension := strings.Split(createProductRequestData.MainImage.FileType, "/")[1]
 
-	// 	fileUUID := uuid.New().String()
-	// 	fileExtension := strings.Split(image.FileType, "/")[1]
+		err = api.S3FromContext(ctx).UploadFileToCDN(createProductRequestData.MainImage.ImageData, mainImageUUID, mainImageExtension, createProductRequestData.MainImage.FileType)
+		if err != nil {
+			util.ErrorResponse(w, "failed to upload image to s3", http.StatusInternalServerError)
+			return
+		}
 
-	// 	err = api.S3FromContext(ctx).UploadFileToCDN(image.ImageData, fileUUID, fileExtension, image.FileType)
-	// 	if err != nil {
-	// 		util.ErrorResponse(w, "failed to upload image to s3", http.StatusInternalServerError)
-	// 		return
-	// 	}
+		_, err := models.CreateProductImage(ctx, models.CreateProductImageInput{
+			ProductID: product.ID,
+			FileName:  fmt.Sprintf("%s.%s", mainImageUUID, mainImageExtension),
+			Order:     0,
+		})
+		if err != nil {
+			util.ErrorResponse(w, "failed to create product image", http.StatusInternalServerError)
+			return
+		}
+	}
 
-	// 	imageURL := fmt.Sprintf("%s/%s.%s", util.CDNFromContext(ctx), fileUUID, fileExtension)
-	// 	if i == 0 {
-	// 		product.ImageURL = imageURL
-	// 	} else {
-	// 		product.AdditionalImageUrls = append(product.AdditionalImageUrls, imageURL)
-	// 	}
+	for i, image := range createProductRequestData.AdditionalImages {
 
-	// }
+		fileUUID := uuid.New().String()
+		fileExtension := strings.Split(image.FileType, "/")[1]
+
+		err = api.S3FromContext(ctx).UploadFileToCDN(image.ImageData, fileUUID, fileExtension, image.FileType)
+		if err != nil {
+			util.ErrorResponse(w, "failed to upload image to s3", http.StatusInternalServerError)
+			return
+		}
+
+		_, err := models.CreateProductImage(ctx, models.CreateProductImageInput{
+			ProductID: product.ID,
+			FileName:  fmt.Sprintf("%s.%s", fileUUID, fileExtension),
+			Order:     i + 1,
+		})
+		if err != nil {
+			util.ErrorResponse(w, "failed to create product image", http.StatusInternalServerError)
+			return
+		}
+
+	}
 
 	response := responses.GenerateCreateProductResponse(*product)
 	util.JSONResponse(w, response, http.StatusOK)
@@ -588,11 +637,12 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updateProductInput := models.UpdateProductInput{
-		ID:      product.ID,
-		Name:    updateProductRequestData.Name,
-		Sku:     updateProductRequestData.Sku,
-		Barcode: updateProductRequestData.Barcode,
-		Value:   updateProductRequestData.Value,
+		ID:          product.ID,
+		Name:        updateProductRequestData.Name,
+		Sku:         updateProductRequestData.Sku,
+		Barcode:     updateProductRequestData.Barcode,
+		Value:       updateProductRequestData.Value,
+		Description: updateProductRequestData.Description,
 	}
 
 	if updateProductRequestData.Weight != nil {
@@ -617,5 +667,250 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	response := responses.GenerateUpdateProductResponse(*product)
 	util.JSONResponse(w, response, http.StatusOK)
+
+}
+
+func AddProductImage(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "invalid product id", http.StatusBadRequest)
+		return
+	}
+
+	product, err := models.GetProductByID(ctx, productID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
+		return
+	}
+
+	if !user.Organization.IsClientOwner(ctx, product.ClientID) {
+		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		return
+	}
+
+	err = product.GetProductImages(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get product images", http.StatusBadRequest)
+		return
+	}
+
+	addProductImageRequestData, errors := validation.ParseRequestToAddProductImageRequestData(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		return
+	}
+
+	fileUUID := uuid.New().String()
+	fileExtension := strings.Split(addProductImageRequestData.Image.FileType, "/")[1]
+
+	err = api.S3FromContext(ctx).UploadFileToCDN(addProductImageRequestData.Image.ImageData, fileUUID, fileExtension, addProductImageRequestData.Image.FileType)
+	if err != nil {
+		util.ErrorResponse(w, "failed to upload image to s3", http.StatusInternalServerError)
+		return
+	}
+
+	currentlyLargestOrder := 0
+	for _, productImage := range product.ProductImages {
+		if productImage.Order > currentlyLargestOrder {
+			currentlyLargestOrder = productImage.Order
+		}
+	}
+
+	productImage, err := models.CreateProductImage(ctx, models.CreateProductImageInput{
+		ProductID: product.ID,
+		FileName:  fmt.Sprintf("%s.%s", fileUUID, fileExtension),
+		Order:     currentlyLargestOrder + 1,
+	})
+	if err != nil {
+		util.ErrorResponse(w, "failed to create product image", http.StatusInternalServerError)
+		return
+	}
+
+	response := responses.GenerateAddProductImageResponse(ctx, *productImage)
+	util.JSONResponse(w, response, http.StatusOK)
+
+}
+
+func DeleteProductImage(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "invalid product id", http.StatusBadRequest)
+		return
+	}
+
+	product, err := models.GetProductByID(ctx, productID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
+		return
+	}
+
+	if !user.Organization.IsClientOwner(ctx, product.ClientID) {
+		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		return
+	}
+
+	productImageID, err := util.GetIntFromPath(r, "product_image_id")
+	if err != nil {
+		util.ErrorResponse(w, "invalid product image id", http.StatusBadRequest)
+		return
+	}
+
+	productImage, err := models.GetProductImageByID(ctx, productImageID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get product image", http.StatusBadRequest)
+		return
+	}
+
+	if productImage.ProductID != product.ID {
+		util.ErrorResponse(w, "product image does not belong to product", http.StatusBadRequest)
+		return
+	}
+
+	err = models.DeleteProductImage(ctx, productImageID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to delete product image", http.StatusBadRequest)
+		return
+	}
+
+	// Reorder product images
+	err = product.GetProductImages(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get product images", http.StatusBadRequest)
+		return
+	}
+
+	for i := range product.ProductImages {
+		_, err = models.UpdateProductImage(ctx, models.UpdateProductImageInput{
+			ID:    product.ProductImages[i].ID,
+			Order: i,
+		})
+
+		if err != nil {
+			util.ErrorResponse(w, "failed to update product image", http.StatusBadRequest)
+			return
+		}
+	}
+
+	util.SuccessResponse(w, http.StatusOK)
+}
+
+func UpdateProductImageOrder(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "invalid product id", http.StatusBadRequest)
+		return
+	}
+
+	product, err := models.GetProductByID(ctx, productID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
+		return
+	}
+
+	if !user.Organization.IsClientOwner(ctx, product.ClientID) {
+		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		return
+	}
+
+	updateProductImageOrderRequestData, errors := validation.ParseRequestToUpdateProductImageOrderRequestData(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		return
+	}
+
+	err = product.GetProductImages(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get product images", http.StatusBadRequest)
+		return
+	}
+
+	// make sure all id's are unique
+	uniqueOrder := []int{}
+	for _, order := range updateProductImageOrderRequestData.Order {
+		for _, uniqueOrderItem := range uniqueOrder {
+			if order == uniqueOrderItem {
+				util.ErrorResponse(w, "duplicate product image ids provided", http.StatusBadRequest)
+				return
+			}
+		}
+
+		uniqueOrder = append(uniqueOrder, order)
+	}
+
+	if len(updateProductImageOrderRequestData.Order) != len(product.ProductImages) {
+		util.ErrorResponse(w, "invalid number of product images", http.StatusBadRequest)
+		return
+	}
+
+	for i, productImageID := range updateProductImageOrderRequestData.Order {
+
+		productImage, err := models.GetProductImageByID(ctx, productImageID)
+		if err != nil {
+			util.ErrorResponse(w, "failed to get product image", http.StatusBadRequest)
+			return
+		}
+
+		if productImage.ProductID != product.ID {
+			util.ErrorResponse(w, "product image does not belong to product", http.StatusBadRequest)
+			return
+		}
+
+		_, err = models.UpdateProductImage(ctx, models.UpdateProductImageInput{
+			ID:    productImageID,
+			Order: i,
+		})
+		if err != nil {
+			util.ErrorResponse(w, "failed to update product image", http.StatusBadRequest)
+			return
+		}
+
+	}
+
+	util.SuccessResponse(w, http.StatusOK)
 
 }

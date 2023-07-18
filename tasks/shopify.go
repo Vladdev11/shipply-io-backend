@@ -441,8 +441,9 @@ func SyncShopifyGraphqlProduct(ctx context.Context, storeID int, shopName string
 				dbProduct.Name = product.Product.Title
 			}
 
+			// TODO map image
 			if product.Image != "" {
-				dbProduct.ImageURL = product.Image
+				// dbProduct.ImageURL = product.Image
 			}
 		}
 
@@ -533,8 +534,9 @@ func SyncShopifyGraphqlProduct(ctx context.Context, storeID int, shopName string
 			newProduct.Name = product.Product.Title
 		}
 
+		// TODO map image
 		if product.Image != "" {
-			newProduct.ImageURL = product.Image
+			// newProduct.ImageURL = product.Image
 		}
 
 		if product.Weight != nil && product.WeightUnit != "" {

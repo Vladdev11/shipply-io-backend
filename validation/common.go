@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 )
 
@@ -78,7 +79,7 @@ func validateRequiredIntField(raw json.RawMessage, fieldName string, min int) (i
 // validateOptionalIntField validates an optional int field
 func validateOptionalIntField(raw json.RawMessage, fieldName string, min int) (*int, error) {
 	var value int
-	if len(raw) == 0 {
+	if raw == nil {
 		return nil, nil
 	} else if err := json.Unmarshal(raw, &value); err != nil {
 		return nil, fmt.Errorf("%s must be an integer", fieldName)
@@ -106,7 +107,7 @@ func validateRequiredFloatField(raw json.RawMessage, fieldName string, min float
 // validateOptionalFloatField validates an optional float field
 func validateOptionalFloatField(raw json.RawMessage, fieldName string, min float64) (*float64, error) {
 	var value float64
-	if len(raw) == 0 {
+	if raw == nil {
 		return nil, nil
 	} else if err := json.Unmarshal(raw, &value); err != nil {
 		return nil, fmt.Errorf("%s must be a number", fieldName)
@@ -136,7 +137,7 @@ func validateRequiredStringField(raw json.RawMessage, fieldName string, minLen i
 // validateOptionalStringField validates an optional string field
 func validateOptionalStringField(raw json.RawMessage, fieldName string, minLen int, maxLen ...int) (*string, error) {
 	var value string
-	if len(raw) == 0 {
+	if raw == nil {
 		return nil, nil
 	} else if err := json.Unmarshal(raw, &value); err != nil {
 		return nil, fmt.Errorf("%s must be a string", fieldName)
@@ -147,6 +148,76 @@ func validateOptionalStringField(raw json.RawMessage, fieldName string, minLen i
 	} else {
 		return &value, nil
 	}
+}
+
+// validateRequiredIntArrayField validates a required int array field
+func validateRequiredIntArrayField(raw json.RawMessage, fieldName string, minLen int, maxLen ...int) ([]int, error) {
+	var value []int
+	if raw == nil {
+		return nil, fmt.Errorf("%s is required", fieldName)
+	} else if err := json.Unmarshal(raw, &value); err != nil {
+		return nil, fmt.Errorf("%s must be an array of integers", fieldName)
+	} else if len(value) < minLen {
+		return nil, fmt.Errorf("%s must have at least %d items", fieldName, minLen)
+	} else if len(maxLen) > 0 && len(value) > maxLen[0] {
+		return nil, fmt.Errorf("%s must have less than or equal to %d items", fieldName, maxLen[0])
+	} else {
+		return value, nil
+	}
+}
+
+/* ---------------------------------- Files --------------------------------- */
+
+// MultipartFileData represents a custom struct that is returned when parsing a multipart file upload
+type MultipartFileData struct {
+	FileData multipart.File
+	FileName string
+	FileType string
+}
+
+// ParseMultipartFile parses a multipart file upload
+func ParseMultipartFile(r *http.Request, key string) (*MultipartFileData, error) {
+	file, fileHeader, err := r.FormFile(key)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	// Create a buffer to store a portion of the file
+	buf := make([]byte, 512)
+	_, err = file.Read(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	// Detect the content type of the file
+	contentType := http.DetectContentType(buf)
+
+	// Make sure to reset the read pointer to the beginning of the file after reading
+	file.Seek(0, 0)
+
+	fileData := &MultipartFileData{
+		FileData: file,
+		FileName: fileHeader.Filename,
+		FileType: contentType,
+	}
+
+	return fileData, nil
+}
+
+// ParseMultipartImage parses a multipart image upload
+func ParseMultipartImage(r *http.Request, key string) (*MultipartFileData, error) {
+
+	fileData, err := ParseMultipartFile(r, key)
+	if err != nil {
+		return nil, err
+	}
+
+	if fileData.FileType != "image/jpeg" && fileData.FileType != "image/png" {
+		return nil, fmt.Errorf("file must be a valid image")
+	}
+
+	return fileData, nil
 }
 
 /* ---------------------------- Common Functions ---------------------------- */

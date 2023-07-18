@@ -475,9 +475,74 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	case util.OrganizationUser:
 		OrganizationHandlers.UpdateProduct(w, r)
 	case util.ClientAdmin:
-		// ClientHandlers.UpdateProduct(w, r)
+		ClientHandlers.UpdateProduct(w, r)
 	case util.ClientUser:
-		// ClientHandlers.UpdateProduct(w, r)
+		ClientHandlers.UpdateProduct(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func AddProductImage(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.AddProductImage(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.AddProductImage(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.AddProductImage(w, r)
+	case util.ClientUser:
+		ClientHandlers.AddProductImage(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func DeleteProductImage(w http.ResponseWriter, r *http.Request) {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.DeleteProductImage(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.DeleteProductImage(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.DeleteProductImage(w, r)
+	case util.ClientUser:
+		ClientHandlers.DeleteProductImage(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+}
+
+func UpdateProductImageOrder(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.UpdateProductImageOrder(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.UpdateProductImageOrder(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.UpdateProductImageOrder(w, r)
+	case util.ClientUser:
+		ClientHandlers.UpdateProductImageOrder(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}

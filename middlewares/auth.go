@@ -57,7 +57,6 @@ func AuthMiddleware(secret string) func(http.Handler) http.Handler {
 				return
 			}
 			// add the user to the context
-
 			ctx = context.WithValue(r.Context(), "user", user)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
