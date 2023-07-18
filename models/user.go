@@ -74,7 +74,7 @@ func (u *User) GetOrganization(ctx context.Context) error {
 
 	organization, err := GetOrganizationByID(ctx, u.OwnerID)
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "user's organization"}
 	}
 	u.Organization = &organization
 	return nil
@@ -82,12 +82,12 @@ func (u *User) GetOrganization(ctx context.Context) error {
 
 func (u *User) GetClient(ctx context.Context) error {
 	if u.GetRole() != util.ClientAdmin && u.GetRole() != util.ClientUser {
-		return fmt.Errorf("user does not belong to a client")
+		return ErrUserIsNotAClient
 	}
 
 	client, err := GetClientByID(ctx, u.OwnerID)
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "user's client"}
 	}
 	u.Client = &client
 	return nil

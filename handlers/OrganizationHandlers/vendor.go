@@ -69,6 +69,10 @@ func VendorList(w http.ResponseWriter, r *http.Request) {
 
 	request.OrganizationID = user.Organization.ID
 	vendors, total, count, err := user.Organization.GetVendors(ctx, request)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
+		return
+	}
 
 	searchResults, err := models.ConvertVendorsToSearchResults(vendors, total, count)
 	if err != nil {

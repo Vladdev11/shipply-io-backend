@@ -115,7 +115,7 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := responses.GenerateGetOrderResponse(*order)
+	response := responses.GenerateGetOrderResponse(r.Context(), *order)
 
 	util.JSONResponse(w, response, http.StatusOK)
 

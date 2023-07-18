@@ -306,7 +306,7 @@ func GetProductByID(ctx context.Context, id int) (*Product, error) {
 	var product Product
 	err := util.DBFromContext(ctx).First(&product, id).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Err: err, Object: "product"}
 	}
 	return &product, nil
 }
@@ -415,7 +415,7 @@ func (p *Product) GetClient(ctx context.Context) error {
 	var client Client
 	err := util.DBFromContext(ctx).First(&client, p.ClientID).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "product's client association"}
 	}
 
 	p.Client = client

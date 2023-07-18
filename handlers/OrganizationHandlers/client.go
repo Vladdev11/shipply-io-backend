@@ -57,7 +57,11 @@ func ListClients(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization(ctx)
+	if err = user.GetOrganization(ctx); err != nil {
+		util.ErrResponse(w, err, http.StatusUnauthorized)
+		return
+	}
+
 	clients, err := models.GetClientsByOrganizationID(ctx, user.Organization.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get clients", http.StatusUnauthorized)
