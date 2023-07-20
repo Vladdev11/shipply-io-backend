@@ -4,11 +4,12 @@ import (
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 )
 
-func LocationTypeList(w http.ResponseWriter, r *http.Request) {
+func ListLocationTypes(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -23,25 +24,48 @@ func LocationTypeList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO change to typical list response with total count, filtered count, and data
 	locationTypes, err := user.Organization.GetLocationTypes(ctx)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		util.ErrorResponse(w, "failed to get location types", http.StatusBadRequest)
 		return
 	}
 
-	var locationTypesReturnJSON []*models.LocationTypeReturnJSON
-	for _, locationType := range locationTypes {
-		locationTypesReturnJSON = append(locationTypesReturnJSON, locationType.ConvertToReturnJSON())
-	}
-
-	if len(locationTypesReturnJSON) == 0 {
-		locationTypesReturnJSON = make([]*models.LocationTypeReturnJSON, 0)
-	}
-
-	util.JSONResponse(w, locationTypesReturnJSON, http.StatusOK)
+	response := responses.GenerateListLocationTypesResponse(locationTypes)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func LocationTypeCreate(w http.ResponseWriter, r *http.Request) {
+func GetLocationType(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	locationTypeID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "failed to get location type id", http.StatusBadRequest)
+		return
+	}
+
+	locationType, err := models.GetLocationTypeByID(ctx, locationTypeID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
+		return
+	}
+
+	if locationType.OrganizationID != user.OwnerID {
+		util.ErrorResponse(w, "user does not have access to this view location type", http.StatusForbidden)
+		return
+	}
+
+	response := responses.GenerateGetLocationTypeResponse(*locationType)
+	util.JSONResponse(w, response, http.StatusOK)
+}
+
+func CreateLocationType(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -74,39 +98,11 @@ func LocationTypeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, locationType.ConvertToReturnJSON(), http.StatusOK)
+	response := responses.GenerateCreateLocationTypeResponse(locationType)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func LocationTypeGet(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	locationTypeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "failed to get location type id", http.StatusBadRequest)
-		return
-	}
-
-	locationType, err := models.GetLocationTypeByID(ctx, locationTypeID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
-		return
-	}
-
-	if locationType.OrganizationID != user.OwnerID {
-		util.ErrorResponse(w, "user does not have access to this view location type", http.StatusForbidden)
-		return
-	}
-
-	util.JSONResponse(w, locationType.ConvertToReturnJSON(), http.StatusOK)
-}
-
-func LocationTypeUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdateLocationType(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -145,10 +141,11 @@ func LocationTypeUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, locationType.ConvertToReturnJSON(), http.StatusOK)
+	response := responses.GenerateUpdateLocationTypeResponse(*locationType)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func LocationTypeDelete(w http.ResponseWriter, r *http.Request) {
+func DeleteLocationType(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)

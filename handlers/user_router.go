@@ -996,6 +996,30 @@ func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
 // ** END PURCHASE ORDER NOTES ROUTES ** //
 
 // ** PURCHASE ORDER ATTACHMENTS ROUTES ** //
+
+func ListPurchaseOrderAttachments(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.ListPurchaseOrderAttachments(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.ListPurchaseOrderAttachments(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.ListPurchaseOrderAttachments(w, r)
+	case util.ClientUser:
+		ClientHandlers.ListPurchaseOrderAttachments(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
 func PurchaseOrderAttachmentCreate(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
@@ -1013,29 +1037,6 @@ func PurchaseOrderAttachmentCreate(w http.ResponseWriter, r *http.Request) {
 		ClientHandlers.PurchaseOrderAttachmentCreate(w, r)
 	case util.ClientUser:
 		ClientHandlers.PurchaseOrderAttachmentCreate(w, r)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-
-}
-
-func PurchaseOrderAttachmentList(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderAttachmentList(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderAttachmentList(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderAttachmentList(w, r)
-	case util.ClientUser:
-		ClientHandlers.PurchaseOrderAttachmentList(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
@@ -1091,7 +1092,7 @@ func GetVendor(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func VendorList(w http.ResponseWriter, r *http.Request) {
+func ListVendors(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1101,19 +1102,19 @@ func VendorList(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.VendorList(w, r)
+		OrganizationHandlers.ListVendors(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.VendorList(w, r)
+		OrganizationHandlers.ListVendors(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.VendorList(w, r)
+		ClientHandlers.ListVendors(w, r)
 	case util.ClientUser:
-		ClientHandlers.VendorList(w, r)
+		ClientHandlers.ListVendors(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
 }
 
-func VendorCreate(w http.ResponseWriter, r *http.Request) {
+func CreateVendor(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1123,19 +1124,19 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.VendorCreate(w, r)
+		OrganizationHandlers.CreateVendor(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.VendorCreate(w, r)
+		OrganizationHandlers.CreateVendor(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.VendorCreate(w, r)
+		ClientHandlers.CreateVendor(w, r)
 	case util.ClientUser:
-		ClientHandlers.VendorCreate(w, r)
+		ClientHandlers.CreateVendor(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
 }
 
-func VendorUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdateVendor(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1145,19 +1146,19 @@ func VendorUpdate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.VendorUpdate(w, r)
+		OrganizationHandlers.UpdateVendor(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.VendorUpdate(w, r)
+		OrganizationHandlers.UpdateVendor(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.VendorUpdate(w, r)
+		ClientHandlers.UpdateVendor(w, r)
 	case util.ClientUser:
-		ClientHandlers.VendorUpdate(w, r)
+		ClientHandlers.UpdateVendor(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
 }
 
-func VendorDelete(w http.ResponseWriter, r *http.Request) {
+func DeleteVendor(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1167,13 +1168,13 @@ func VendorDelete(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.VendorDelete(w, r)
+		OrganizationHandlers.DeleteVendor(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.VendorDelete(w, r)
+		OrganizationHandlers.DeleteVendor(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.VendorDelete(w, r)
+		ClientHandlers.DeleteVendor(w, r)
 	case util.ClientUser:
-		ClientHandlers.VendorDelete(w, r)
+		ClientHandlers.DeleteVendor(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
@@ -1183,7 +1184,7 @@ func VendorDelete(w http.ResponseWriter, r *http.Request) {
 //** END VENDOR ROUTES **//
 
 // ** WAREHOUSE ROUTES ** //
-func WarehouseList(w http.ResponseWriter, r *http.Request) {
+func ListWarehouses(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1193,20 +1194,20 @@ func WarehouseList(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.WarehouseList(w, r)
+		OrganizationHandlers.ListWarehouses(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.WarehouseList(w, r)
+		OrganizationHandlers.ListWarehouses(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.WarehouseList(w, r)
+		ClientHandlers.ListWarehouses(w, r)
 	case util.ClientUser:
-		ClientHandlers.WarehouseList(w, r)
+		ClientHandlers.ListWarehouses(w, r)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
 
 }
 
-func WarehouseCreate(w http.ResponseWriter, r *http.Request) {
+func GetWarehouse(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1216,9 +1217,32 @@ func WarehouseCreate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.WarehouseCreate(w, r)
+		OrganizationHandlers.GetWarehouse(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.WarehouseCreate(w, r)
+		OrganizationHandlers.GetWarehouse(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.GetWarehouse(w, r)
+	case util.ClientUser:
+		ClientHandlers.GetWarehouse(w, r)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func CreateWarehouse(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.CreateWarehouse(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.CreateWarehouse(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot create warehouse", http.StatusForbidden)
 	case util.ClientUser:
@@ -1229,7 +1253,7 @@ func WarehouseCreate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func WarehouseGet(w http.ResponseWriter, r *http.Request) {
+func UpdateWarehouse(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1239,32 +1263,9 @@ func WarehouseGet(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.WarehouseGet(w, r)
+		OrganizationHandlers.UpdateWarehouse(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.WarehouseGet(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.WarehouseGet(w, r)
-	case util.ClientUser:
-		ClientHandlers.WarehouseGet(w, r)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-
-}
-
-func WarehouseUpdate(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.WarehouseUpdate(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.WarehouseUpdate(w, r)
+		OrganizationHandlers.UpdateWarehouse(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot update warehouse", http.StatusForbidden)
 	case util.ClientUser:
@@ -1275,7 +1276,7 @@ func WarehouseUpdate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func WarehouseDelete(w http.ResponseWriter, r *http.Request) {
+func DeleteWarehouse(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1285,9 +1286,9 @@ func WarehouseDelete(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.WarehouseDelete(w, r)
+		OrganizationHandlers.DeleteWarehouse(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.WarehouseDelete(w, r)
+		OrganizationHandlers.DeleteWarehouse(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot delete warehouse", http.StatusForbidden)
 	case util.ClientUser:
@@ -1301,7 +1302,7 @@ func WarehouseDelete(w http.ResponseWriter, r *http.Request) {
 // ** END WAREHOUSE ROUTES ** //
 
 // ** LOCATION ROUTES ** //
-func LocationList(w http.ResponseWriter, r *http.Request) {
+func ListLocations(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1311,9 +1312,9 @@ func LocationList(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationList(w, r)
+		OrganizationHandlers.ListLocations(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.LocationList(w, r)
+		OrganizationHandlers.ListLocations(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot list locations", http.StatusForbidden)
 	case util.ClientUser:
@@ -1324,7 +1325,7 @@ func LocationList(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func LocationCreate(w http.ResponseWriter, r *http.Request) {
+func GetLocation(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1334,32 +1335,9 @@ func LocationCreate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationCreate(w, r)
+		OrganizationHandlers.GetLocation(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.LocationCreate(w, r)
-	case util.ClientAdmin:
-		util.ErrorResponse(w, "user cannot create location", http.StatusForbidden)
-	case util.ClientUser:
-		util.ErrorResponse(w, "user cannot create location", http.StatusForbidden)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-
-}
-
-func LocationGet(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationGet(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.LocationGet(w, r)
+		OrganizationHandlers.GetLocation(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot get location", http.StatusForbidden)
 	case util.ClientUser:
@@ -1370,7 +1348,7 @@ func LocationGet(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func LocationUpdate(w http.ResponseWriter, r *http.Request) {
+func CreateLocation(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1380,9 +1358,32 @@ func LocationUpdate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationUpdate(w, r)
+		OrganizationHandlers.CreateLocation(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.LocationUpdate(w, r)
+		OrganizationHandlers.CreateLocation(w, r)
+	case util.ClientAdmin:
+		util.ErrorResponse(w, "user cannot create location", http.StatusForbidden)
+	case util.ClientUser:
+		util.ErrorResponse(w, "user cannot create location", http.StatusForbidden)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func UpdateLocation(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.UpdateLocation(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.UpdateLocation(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot update location", http.StatusForbidden)
 	case util.ClientUser:
@@ -1393,7 +1394,7 @@ func LocationUpdate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func LocationDelete(w http.ResponseWriter, r *http.Request) {
+func DeleteLocation(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1403,9 +1404,9 @@ func LocationDelete(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationDelete(w, r)
+		OrganizationHandlers.DeleteLocation(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.LocationDelete(w, r)
+		OrganizationHandlers.DeleteLocation(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot delete location", http.StatusForbidden)
 	case util.ClientUser:
@@ -1419,7 +1420,7 @@ func LocationDelete(w http.ResponseWriter, r *http.Request) {
 // ** END LOCATION ROUTES ** //
 
 // ** LOCATION TYPE ROUTES ** //
-func LocationTypeList(w http.ResponseWriter, r *http.Request) {
+func ListLocationTypes(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1429,9 +1430,9 @@ func LocationTypeList(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationTypeList(w, r)
+		OrganizationHandlers.ListLocationTypes(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.LocationTypeList(w, r)
+		OrganizationHandlers.ListLocationTypes(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot list location types", http.StatusForbidden)
 	case util.ClientUser:
@@ -1442,7 +1443,7 @@ func LocationTypeList(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func LocationTypeCreate(w http.ResponseWriter, r *http.Request) {
+func GetLocationType(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1452,32 +1453,9 @@ func LocationTypeCreate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationTypeCreate(w, r)
+		OrganizationHandlers.GetLocationType(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.LocationTypeCreate(w, r)
-	case util.ClientAdmin:
-		util.ErrorResponse(w, "user cannot create location type", http.StatusForbidden)
-	case util.ClientUser:
-		util.ErrorResponse(w, "user cannot create location type", http.StatusForbidden)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-
-}
-
-func LocationTypeGet(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationTypeGet(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.LocationTypeGet(w, r)
+		OrganizationHandlers.GetLocationType(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot get location type", http.StatusForbidden)
 	case util.ClientUser:
@@ -1488,7 +1466,7 @@ func LocationTypeGet(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func LocationTypeUpdate(w http.ResponseWriter, r *http.Request) {
+func CreateLocationType(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1498,9 +1476,32 @@ func LocationTypeUpdate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationTypeUpdate(w, r)
+		OrganizationHandlers.CreateLocationType(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.LocationTypeUpdate(w, r)
+		OrganizationHandlers.CreateLocationType(w, r)
+	case util.ClientAdmin:
+		util.ErrorResponse(w, "user cannot create location type", http.StatusForbidden)
+	case util.ClientUser:
+		util.ErrorResponse(w, "user cannot create location type", http.StatusForbidden)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func UpdateLocationType(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.UpdateLocationType(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.UpdateLocationType(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot update location type", http.StatusForbidden)
 	case util.ClientUser:
@@ -1511,7 +1512,7 @@ func LocationTypeUpdate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func LocationTypeDelete(w http.ResponseWriter, r *http.Request) {
+func DeleteLocationType(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1521,9 +1522,9 @@ func LocationTypeDelete(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.LocationTypeDelete(w, r)
+		OrganizationHandlers.DeleteLocationType(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.LocationTypeDelete(w, r)
+		OrganizationHandlers.DeleteLocationType(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot delete location type", http.StatusForbidden)
 	case util.ClientUser:
@@ -1663,7 +1664,7 @@ func ListCarrierConnections(w http.ResponseWriter, r *http.Request) {
 
 // ** BOX ROUTES ** //
 
-func BoxList(w http.ResponseWriter, r *http.Request) {
+func ListBoxes(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -1673,36 +1674,13 @@ func BoxList(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.BoxList(w, r)
+		OrganizationHandlers.ListBoxes(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.BoxList(w, r)
+		OrganizationHandlers.ListBoxes(w, r)
 	case util.ClientAdmin:
 		util.ErrorResponse(w, "user cannot list boxes", http.StatusForbidden)
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot list boxes", http.StatusForbidden)
-	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
-	}
-
-}
-
-func BoxCreate(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.BoxCreate(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.BoxCreate(w, r)
-	case util.ClientAdmin:
-		util.ErrorResponse(w, "user cannot create box", http.StatusForbidden)
-	case util.ClientUser:
-		util.ErrorResponse(w, "user cannot create box", http.StatusForbidden)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}
@@ -1726,6 +1704,29 @@ func GetBox(w http.ResponseWriter, r *http.Request) {
 		util.ErrorResponse(w, "user cannot get box", http.StatusForbidden)
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot get box", http.StatusForbidden)
+	default:
+		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+	}
+
+}
+
+func CreateBox(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.CreateBox(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.CreateBox(w, r)
+	case util.ClientAdmin:
+		util.ErrorResponse(w, "user cannot create box", http.StatusForbidden)
+	case util.ClientUser:
+		util.ErrorResponse(w, "user cannot create box", http.StatusForbidden)
 	default:
 		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
 	}

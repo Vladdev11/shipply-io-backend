@@ -24,15 +24,16 @@ type Weight struct {
 // Address represents the expected response body for the Address used by multiple endpoints
 type Address struct {
 	ID           int    `json:"id"`
-	Address1     string `json:"address_1"`
-	Address2     string `json:"address_2"`
-	Address3     string `json:"address_3"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	Company      string `json:"company"`
+	Street1      string `json:"street1"`
+	Street2      string `json:"street2"`
+	Street3      string `json:"street3"`
 	City         string `json:"city"`
 	State        string `json:"state"`
 	PostalCode   string `json:"postal_code"`
 	Country      string `json:"country"`
-	CompanyName  string `json:"company_name"`
-	ContactName  string `json:"contact_name"`
-	PhoneNumber  string `json:"phone_number"`
+	Phone        string `json:"phone"`
 	EmailAddress string `json:"email_address"`
 }

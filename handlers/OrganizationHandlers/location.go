@@ -4,10 +4,11 @@ import (
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func LocationList(w http.ResponseWriter, r *http.Request) {
+func ListLocations(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -35,17 +36,61 @@ func LocationList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	searchResults, err := models.ConvertLocationsToSearchResults(ctx, locations, total, count)
+	for i := range locations {
+		err = locations[i].GetLocationType(ctx)
+		if err != nil {
+			util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
+			return
+		}
+	}
+
+	response := responses.GenerateListLocationsResponse(locations, total, count)
+	util.JSONResponse(w, response, http.StatusOK)
+}
+
+func GetLocation(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to convert locations to search results", http.StatusBadRequest)
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
 		return
 	}
 
-	util.JSONResponse(w, searchResults, http.StatusOK)
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		return
+	}
 
+	locationID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "Invalid location id", http.StatusBadRequest)
+		return
+	}
+
+	location, err := models.GetLocationByID(ctx, locationID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get location", http.StatusBadRequest)
+		return
+	}
+
+	if !user.Organization.IsWarehouseOwner(ctx, location.WarehouseID) {
+		util.ErrorResponse(w, "user does not have access to location", http.StatusForbidden)
+		return
+	}
+
+	err = location.GetLocationType(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
+		return
+	}
+
+	response := responses.GenerateGetLocationResponse(location)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func LocationCreate(w http.ResponseWriter, r *http.Request) {
+func CreateLocation(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -88,53 +133,11 @@ func LocationCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, location.ConvertToReturnJSON(ctx), http.StatusOK)
-
+	response := responses.GenerateCreateLocationResponse(location)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func LocationGet(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	locationID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "Invalid location id", http.StatusBadRequest)
-		return
-	}
-
-	location, err := models.GetLocationByID(ctx, locationID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get location", http.StatusBadRequest)
-		return
-	}
-
-	if !user.Organization.IsWarehouseOwner(ctx, location.WarehouseID) {
-		util.ErrorResponse(w, "user does not have access to location", http.StatusForbidden)
-		return
-	}
-
-	err = location.GetLocationType(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get location type", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, location.ConvertToReturnJSON(ctx), http.StatusOK)
-
-}
-
-func LocationUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdateLocation(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -185,11 +188,12 @@ func LocationUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, location.ConvertToReturnJSON(ctx), http.StatusOK)
+	response := responses.GenerateUpdateLocationResponse(location)
+	util.JSONResponse(w, response, http.StatusOK)
 
 }
 
-func LocationDelete(w http.ResponseWriter, r *http.Request) {
+func DeleteLocation(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)

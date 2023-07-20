@@ -23,6 +23,7 @@ type PurchaseOrderAttachment struct {
 
 	Attachment    *Attachment
 	PurchaseOrder *PurchaseOrder
+	URL           string `gorm:"-"`
 }
 
 type PurchaseOrderAttachmentCreateRequest struct {
