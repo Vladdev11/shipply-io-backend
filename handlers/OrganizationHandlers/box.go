@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
 
@@ -12,7 +13,7 @@ import (
 	ShipengineModels "github.com/shipply-io/shipply-io-backend/api/shipengine/models"
 )
 
-func BoxList(w http.ResponseWriter, r *http.Request) {
+func ListBoxes(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -27,25 +28,54 @@ func BoxList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO convert to typical search query
 	boxes, err := user.Organization.GetBoxes(ctx)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		util.ErrorResponse(w, "failed to get boxes", http.StatusBadRequest)
 		return
 	}
 
-	var boxesReturnJSON []*models.BoxReturnJSON
-	for _, box := range boxes {
-		boxesReturnJSON = append(boxesReturnJSON, box.ConvertToReturnJSON())
-	}
-
-	if len(boxesReturnJSON) == 0 {
-		boxesReturnJSON = make([]*models.BoxReturnJSON, 0)
-	}
-
-	util.JSONResponse(w, boxesReturnJSON, http.StatusOK)
+	response := responses.GenerateListBoxesResponse(boxes)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func BoxCreate(w http.ResponseWriter, r *http.Request) {
+func GetBox(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		return
+	}
+
+	boxID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "box_id is required", http.StatusBadRequest)
+		return
+	}
+
+	box, err := models.GetBoxByID(ctx, boxID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get box", http.StatusBadRequest)
+		return
+	}
+
+	if box.OrganizationID != user.Organization.ID {
+		util.ErrorResponse(w, "box does not belong to organization", http.StatusUnauthorized)
+		return
+	}
+
+	response := responses.GenerateGetBoxResponse(*box)
+	util.JSONResponse(w, response, http.StatusOK)
+}
+
+func CreateBox(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -112,87 +142,8 @@ func BoxCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, box.ConvertToReturnJSON(), http.StatusOK)
-}
-
-func GetBox(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	boxID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "box_id is required", http.StatusBadRequest)
-		return
-	}
-
-	box, err := models.GetBoxByID(ctx, boxID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get box", http.StatusBadRequest)
-		return
-	}
-
-	if box.OrganizationID != user.Organization.ID {
-		util.ErrorResponse(w, "box does not belong to organization", http.StatusUnauthorized)
-		return
-	}
-
-	boxJson := box.ConvertToReturnJSON()
-
-	util.JSONResponse(w, boxJson, http.StatusOK)
-}
-
-func DeleteBox(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	boxID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "box_id is required", http.StatusBadRequest)
-		return
-	}
-
-	box, err := models.GetBoxByID(ctx, boxID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get box", http.StatusBadRequest)
-		return
-	}
-
-	if box.OrganizationID != user.Organization.ID {
-		util.ErrorResponse(w, "box does not belong to organization", http.StatusUnauthorized)
-		return
-	}
-
-	//TODO logic around when we prevent a box from being deleted
-
-	err = box.Delete(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to delete box", http.StatusBadRequest)
-		return
-	}
-
-	util.SuccessResponse(w, http.StatusOK)
+	response := responses.GenerateCreateBoxResponse(box)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
 func UpdateBox(w http.ResponseWriter, r *http.Request) {
@@ -243,5 +194,51 @@ func UpdateBox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, box.ConvertToReturnJSON(), http.StatusOK)
+	// TODO update shipengine package
+
+	response := responses.GenerateUpdateBoxResponse(*box)
+	util.JSONResponse(w, response, http.StatusOK)
+}
+
+func DeleteBox(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		return
+	}
+
+	boxID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrorResponse(w, "box_id is required", http.StatusBadRequest)
+		return
+	}
+
+	box, err := models.GetBoxByID(ctx, boxID)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get box", http.StatusBadRequest)
+		return
+	}
+
+	if box.OrganizationID != user.Organization.ID {
+		util.ErrorResponse(w, "box does not belong to organization", http.StatusUnauthorized)
+		return
+	}
+
+	//TODO logic around when we prevent a box from being deleted
+
+	err = box.Delete(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to delete box", http.StatusBadRequest)
+		return
+	}
+
+	util.SuccessResponse(w, http.StatusOK)
 }

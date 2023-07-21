@@ -8,6 +8,35 @@ import (
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
+func ListVendors(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetOrganization(ctx)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		return
+	}
+
+	request := models.VendorListRequest{}
+	errors := request.ParseAndValidateRequest(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		return
+	}
+
+	request.OrganizationID = user.Organization.ID
+	vendors, total, count, err := user.Organization.GetVendors(ctx, request)
+
+	response := responses.GenerateListVendorsResponse(vendors, total, count)
+	util.JSONResponse(w, response, http.StatusOK)
+}
+
 func GetVendor(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
@@ -45,42 +74,7 @@ func GetVendor(w http.ResponseWriter, r *http.Request) {
 	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func VendorList(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	request := models.VendorListRequest{}
-	errors := request.ParseAndValidateRequest(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
-		return
-	}
-
-	request.OrganizationID = user.Organization.ID
-	vendors, total, count, err := user.Organization.GetVendors(ctx, request)
-
-	searchResults, err := models.ConvertVendorsToSearchResults(vendors, total, count)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert vendors to search results", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, searchResults, http.StatusOK)
-
-}
-
-func VendorCreate(w http.ResponseWriter, r *http.Request) {
+func CreateVendor(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -119,11 +113,11 @@ func VendorCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, vendor.ConvertToReturnJSON(), http.StatusOK)
-
+	response := responses.GenerateCreateVendorResponse(*vendor)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func VendorUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdateVendor(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -168,12 +162,11 @@ func VendorUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vendorJSON := vendor.ConvertToReturnJSON()
-	util.JSONResponse(w, vendorJSON, http.StatusOK)
-
+	response := responses.GenerateUpdateVendorResponse(*vendor)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func VendorDelete(w http.ResponseWriter, r *http.Request) {
+func DeleteVendor(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
