@@ -59,15 +59,7 @@ func GetVendor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
   
-	request.OrganizationID = user.Organization.ID
-	vendors, total, count, err := user.Organization.GetVendors(ctx, request)
-	if err != nil {
-		util.ErrResponse(w, err, http.StatusBadRequest)
-		return
-	}
-
-	searchResults, err := models.ConvertVendorsToSearchResults(vendors, total, count)
-
+	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get vendor", http.StatusBadRequest)
 		return

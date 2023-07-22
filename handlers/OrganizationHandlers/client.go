@@ -68,6 +68,7 @@ func GetClient(w http.ResponseWriter, r *http.Request) {
 	response := responses.GenerateGetClientResponse(ctx, client)
 	util.JSONResponse(w, response, http.StatusOK)
 }
+
 func ListClients(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

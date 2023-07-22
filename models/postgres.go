@@ -131,8 +131,8 @@ func (o StringSlice) Value() (driver.Value, error) {
 // If the callback returns nil, the transaction is committed.
 // The transaction is attached to the context, so it can be accessed with util.DBFromContext(ctx) in all model functions.
 func ContextWithTx(ctx context.Context, cb func(context context.Context) error) error {
-	err := util.DBFromContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return cb(util.ContextWithDB(ctx, tx))
-	})
-	return err
+    err := util.DBFromContext(ctx).Transaction(func(tx *gorm.DB) error {
+        return cb(util.ContextWithDB(ctx, tx))
+    })
+    return err
 }
