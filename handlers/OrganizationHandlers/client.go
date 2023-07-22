@@ -68,29 +68,6 @@ func GetClient(w http.ResponseWriter, r *http.Request) {
 	response := responses.GenerateGetClientResponse(ctx, client)
 	util.JSONResponse(w, response, http.StatusOK)
 }
-func ListClients(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	if err = user.GetOrganization(ctx); err != nil {
-		util.ErrResponse(w, err, http.StatusUnauthorized)
-		return
-	}
-
-	clients, err := models.GetClientsByOrganizationID(ctx, user.Organization.ID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get clients", http.StatusUnauthorized)
-		return
-	}
-
-	response := responses.GenerateListClientsResponse(ctx, clients)
-	util.JSONResponse(w, response, http.StatusOK)
-}
 
 func CreateClient(w http.ResponseWriter, r *http.Request) {
 
