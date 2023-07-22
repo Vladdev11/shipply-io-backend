@@ -55,37 +55,21 @@ func GetInventoryByProductID(ctx context.Context, productID int) ([]Inventory, e
 
 // function to batch update inventory gien a slice of inventory
 func BatchUpdateInventoryOrderItemIDs(ctx context.Context, inventory []Inventory) error {
+	db := util.DBFromContext(ctx)
 
-	//start transaction
-	tx := util.DBFromContext(ctx).Begin()
-	for _, inventoryUnit := range inventory {
+	for i, inventoryUnit := range inventory {
 		//update inventory unit
-		err := tx.Model(&inventoryUnit).Update("order_item_id", inventoryUnit.OrderItemID).Error
+		err := db.Model(&inventoryUnit).Update("order_item_id", inventoryUnit.OrderItemID).Error
 		if err != nil {
-			//rollback transaction if error
-			tx.Rollback()
+			return ErrUpdateFailed{Err: err, Object: fmt.Sprintf("inventory unit #%d", i)}
 		}
-	}
-	//commit transaction
-	err := tx.Commit().Error
-	if err != nil {
-		return err
 	}
 
 	return nil
 }
 
 func CreateInventory(ctx context.Context, productID int, quantity int, locationID int, damaged bool, rejectionID int) error {
-
-	//start transaction
-	tx := util.DBFromContext(ctx).Begin()
-
-	//flag to indicate if an error has occurred
-	errorOccurred := false
-
-	//define err
-	var err error
-
+	db := util.DBFromContext(ctx)
 	//loop through quantity
 	for i := 0; i < quantity; i++ {
 
@@ -99,48 +83,36 @@ func CreateInventory(ctx context.Context, productID int, quantity int, locationI
 		}
 
 		//create inventory unit
-		err := tx.Create(&inventory).Error
-		if err != nil {
-			errorOccurred = true
-			break
+		if err := db.Create(&inventory).Error; err != nil {
+			return ErrCreateFailed{Err: err, Object: fmt.Sprintf("inventory #%d for product %d", i, productID)}
 		}
-	}
-
-	if errorOccurred {
-		//rollback transaction if error
-		tx.Rollback()
-		return err
-	}
-
-	//commit transaction
-	err = tx.Commit().Error
-	if err != nil {
-		return err
 	}
 
 	return nil
 }
 
 func RemoveInventory(ctx context.Context, productID int, quantity int, locationID int, damaged bool) error {
-
-	//start transaction
-	tx := util.DBFromContext(ctx).Begin()
+	db := util.DBFromContext(ctx)
 
 	//get inventory ids to delete
 	var deletedIDs []uint
-	util.DBFromContext(ctx).Model(&Inventory{}).Where("product_id = ? AND location_id = ?", 1, 1).Where("damaged = ?", damaged).Order("created_at DESC").Limit(quantity).Pluck("id", &deletedIDs)
-
-	//delete inventory
-	err := tx.Where("id IN (?)", deletedIDs).Delete(&Inventory{}).Error
-	if err != nil {
-		//rollback transaction if error
-		tx.Rollback()
-		return err
+	if err := db.Model(&Inventory{}).
+		Where("product_id = ? AND location_id = ?", 1, 1).
+		Where("damaged = ?", damaged).
+		Order("created_at DESC").
+		Limit(quantity).
+		Pluck("id", &deletedIDs).
+		Error; err != nil {
+		return ErrQueryFailed{Err: err, Object: "inventory ids to delete"}
 	}
 
-	//commit transaction
-	return tx.Commit().Error
+	//delete inventory
+	err := db.Where("id IN (?)", deletedIDs).Delete(&Inventory{}).Error
+	if err != nil {
+		return ErrDeleteFailed{Err: err, Object: "inventory"}
+	}
 
+	return nil
 }
 
 func GetProductLocationsAndLevelsByProductID(ctx context.Context, productID int) ([]InventoryLocationLevel, error) {

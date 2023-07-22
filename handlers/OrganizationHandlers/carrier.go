@@ -200,7 +200,10 @@ func GetCarrierConnection(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = carrierConnection.GetSettings()
+	if err = carrierConnection.GetSettings(); err != nil {
+		util.ErrResponse(w, err, http.StatusInternalServerError)
+		return
+	}
 
 	carrierConnectionJSON := carrierConnection.ConvertToReturnJSON()
 

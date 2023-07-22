@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/knadh/koanf/v2"
+	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -123,4 +125,14 @@ func (o StringSlice) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return strings.Join(o, ","), nil
+}
+
+// ContextWithTx runs a callback function with a transaction, and rolls back the transaction if the callback returns an error.
+// If the callback returns nil, the transaction is committed.
+// The transaction is attached to the context, so it can be accessed with util.DBFromContext(ctx) in all model functions.
+func ContextWithTx(ctx context.Context, cb func(context context.Context) error) error {
+	err := util.DBFromContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return cb(util.ContextWithDB(ctx, tx))
+	})
+	return err
 }

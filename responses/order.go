@@ -1,7 +1,7 @@
 package responses
 
 import (
-	"fmt"
+	"context"
 	"time"
 
 	"github.com/shipply-io/shipply-io-backend/models"
@@ -181,7 +181,7 @@ type ShippingMethodResponseForGetOrder struct {
 }
 
 // GenerateGetOrderResponse generates a GetOrderResponse struct
-func GenerateGetOrderResponse(order models.Order) *GetOrderResponse {
+func GenerateGetOrderResponse(ctx context.Context, order models.Order) *GetOrderResponse {
 
 	orderHistories := make([]OrderHistoryResponseForGetOrder, len(order.History))
 	for i, orderHistory := range order.History {
@@ -192,7 +192,7 @@ func GenerateGetOrderResponse(order models.Order) *GetOrderResponse {
 				ID:        orderHistory.CreatedByUser.ID,
 				FirstName: orderHistory.CreatedByUser.FirstName,
 				LastName:  orderHistory.CreatedByUser.LastName,
-				ImageURL:  fmt.Sprintf("%s/%s", util.ConfigCDNHost, orderHistory.CreatedByUser.AvatarFileName),
+				ImageURL:  orderHistory.CreatedByUser.GetAvatarFileURL(ctx),
 			},
 		}
 	}

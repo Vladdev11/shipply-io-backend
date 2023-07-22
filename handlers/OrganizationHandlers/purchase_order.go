@@ -257,7 +257,10 @@ func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization(ctx)
+	if err = user.GetOrganization(ctx); err != nil {
+		util.ErrResponse(w, err, http.StatusUnauthorized)
+		return
+	}
 
 	request := &models.PurchaseOrderHistoryCreateRequest{}
 	errors := request.ParseAndValidateRequest(r)
