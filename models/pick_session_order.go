@@ -8,20 +8,18 @@ import (
 )
 
 type PickSessionOrder struct {
-	ID                      int  `json:"id" gorm:"primary_key"`
-	OrderID                 int  `json:"order_id"`
-	PickSessionID           int  `json:"pick_session_id"`
-	LocationID              *int `json:"location_id"`
-	Picked                  bool `json:"picked"`
-	Shipped                 bool `json:"shipped"`
-	HasError                bool `json:"has_error"`
-	PickSessionOrderErrorID *int `json:"pick_session_order_error_id"`
-	ShippingRateID          int  `json:"shipping_rate_id"`
+	ID             int  `json:"id" gorm:"primary_key"`
+	OrderID        int  `json:"order_id"`
+	PickSessionID  int  `json:"pick_session_id"`
+	LocationID     *int `json:"location_id"`
+	Picked         bool `json:"picked"`
+	Shipped        bool `json:"shipped"`
+	HasError       bool `json:"has_error"`
+	ShippingRateID int  `json:"shipping_rate_id"`
 
 	Order                 Order                  `json:"order"`
 	PickSession           PickSession            `json:"pick_session"`
 	Location              *Location              `json:"location"`
-	PickSessionOrderError *PickSessionOrderError `json:"pick_session_order_error"`
 	PickSessionOrderItems []PickSessionOrderItem `json:"pick_session_order_items"`
 	ShippingRate          ShippingRate           `json:"shipping_rate"`
 }

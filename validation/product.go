@@ -2,6 +2,7 @@ package validation
 
 import (
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 
@@ -20,8 +21,8 @@ type CreateProductRequestData struct {
 	Sku     string  `json:"sku"`
 	Barcode *string `json:"barcode"`
 
-	// TODO - Add support for images
-	// Images []ImageForCreateProductRequestData `json:"images"`
+	MainImage        *ImageForCreateProductRequestData  `json:"main_image"`
+	AdditionalImages []ImageForCreateProductRequestData `json:"images"`
 
 	Dimensions *Dimensions `json:"dimensions"`
 	Weight     *Weight     `json:"weight"`
@@ -45,32 +46,49 @@ func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequ
 		return nil, errors
 	}
 
-	// TODO - Add support for images
-	// var images []ImageForCreateProductRequestData
-	// i := 1
-	// for {
-	// 	imageKey := fmt.Sprintf("file%d", i)
-	// 	file, fileHeader, err := r.FormFile(imageKey)
-	// 	if err == nil {
-	// 		defer file.Close()
-	// 		if fileHeader.Header.Get("Content-Type") != "image/jpeg" && fileHeader.Header.Get("Content-Type") != "image/png" {
-	// 			errors = append(errors, "file must be a valid image")
-	// 			i++
-	// 			continue
-	// 		}
+	// Main Image
+	mainImageFile, err := ParseMultipartImage(r, "main_image")
+	if err != nil && err != http.ErrMissingFile {
+		errors = append(errors, err.Error())
+		return nil, errors
+	}
 
-	// 		images = append(images, ImageForCreateProductRequestData{
-	// 			ImageData: file,
-	// 			FileType:  fileHeader.Header.Get("Content-Type"),
-	// 			FileName:  fileHeader.Filename,
-	// 		})
-	// 	} else {
-	// 		break
-	// 	}
-	// 	i++
-	// }
+	if mainImageFile != nil {
+		createProductRequestData.MainImage = &ImageForCreateProductRequestData{
+			ImageData: mainImageFile.FileData,
+			FileType:  mainImageFile.FileType,
+			FileName:  mainImageFile.FileName,
+		}
+	}
 
-	// createProductRequestData.Images = images
+	// Additional Images
+	var additionalImages []ImageForCreateProductRequestData
+	i := 1
+	for {
+		imageKey := fmt.Sprintf("additional_image_%d", i)
+		imageFile, err := ParseMultipartImage(r, imageKey)
+		if err != nil {
+			if err == http.ErrMissingFile {
+				break
+			}
+			errors = append(errors, err.Error())
+			continue
+		}
+
+		additionalImages = append(additionalImages, ImageForCreateProductRequestData{
+			ImageData: imageFile.FileData,
+			FileType:  imageFile.FileType,
+			FileName:  imageFile.FileName,
+		})
+
+		i++
+	}
+	createProductRequestData.AdditionalImages = additionalImages
+
+	// Validate that a main image is provided if additional images are provided
+	if mainImageFile == nil && len(additionalImages) > 0 {
+		errors = append(errors, "main_image is required if additional images are provided")
+	}
 
 	// Retrieve non-image JSON data (stored within the data field)
 	dataField := r.FormValue("data")
@@ -83,8 +101,6 @@ func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequ
 	}
 
 	// Validate each field using the new validation functions
-	var err error
-
 	user, _ := models.GetRequestingUser(r)
 	if !user.IsClientRole() {
 		if createProductRequestData.ClientID, err = validateRequiredIntField(rawData["client_id"], "client_id", 1); err != nil {
@@ -191,5 +207,71 @@ func ParseRequestToUpdateProductRequestData(r *http.Request) (*UpdateProductRequ
 	}
 
 	return &updateProductRequestData, nil
+
+}
+
+/* ----------------------------- AddProductImage ---------------------------- */
+
+type AddProductImageRequestData struct {
+	Image *ImageForAddProductImageRequestData `json:"image"`
+}
+
+type ImageForAddProductImageRequestData struct {
+	ImageData multipart.File `json:"image_data"`
+	FileType  string         `json:"file_type"`
+	FileName  string         `json:"file_name"`
+}
+
+func ParseRequestToAddProductImageRequestData(r *http.Request) (*AddProductImageRequestData, []string) {
+
+	addProductImageRequestData := AddProductImageRequestData{}
+	errors := []string{}
+
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		errors = append(errors, err.Error())
+		return nil, errors
+	}
+
+	// Main Image
+	imageFile, err := ParseMultipartImage(r, "image")
+	if err != nil {
+		errors = append(errors, err.Error())
+		return nil, errors
+	}
+
+	addProductImageRequestData.Image = &ImageForAddProductImageRequestData{
+		ImageData: imageFile.FileData,
+		FileType:  imageFile.FileType,
+		FileName:  imageFile.FileName,
+	}
+
+	return &addProductImageRequestData, nil
+
+}
+
+/* ------------------------- UpdateProductImageOrder ------------------------ */
+
+// UpdateProductImageOrderRequestData represents the formatted and validated data for the UpdateProductImageOrder endpoint
+type UpdateProductImageOrderRequestData struct {
+	Order []int `json:"order"`
+}
+
+// ParseRequestToUpdateProductImageOrderRequestData parses and validates the request body for the UpdateProductImageOrder endpoint
+func ParseRequestToUpdateProductImageOrderRequestData(r *http.Request) (*UpdateProductImageOrderRequestData, []string) {
+
+	updateProductImageOrderRequestData := UpdateProductImageOrderRequestData{}
+	errors := []string{}
+
+	rawData, err := ParseJSONRequestBody(r)
+
+	if updateProductImageOrderRequestData.Order, err = validateRequiredIntArrayField(rawData["order"], "order", 1); err != nil {
+		errors = append(errors, err.Error())
+	}
+
+	if len(errors) > 0 {
+		return nil, errors
+	}
+
+	return &updateProductImageOrderRequestData, nil
 
 }

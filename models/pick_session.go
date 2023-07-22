@@ -196,10 +196,11 @@ func (ps *PickSession) ConvertToPickSessionResponse(ctx context.Context) (*PickS
 				return nil, err
 			}
 
+			// TODO get correct image
 			progress.Items = append(progress.Items, PickSessionProgressItem{
-				ProductID:      pickSessionOrderItem.ProductID,
-				ProductName:    product.Name,
-				ImageURL:       product.ImageURL,
+				ProductID:   pickSessionOrderItem.ProductID,
+				ProductName: product.Name,
+				// ImageURL:       product.ImageURL,
 				QuantityPicked: pickSessionOrderItem.QuantityPicked,
 				QuantityToPick: pickSessionOrderItem.QuantityToPick,
 			})
@@ -225,10 +226,11 @@ func (ps *PickSession) ConvertToPickSessionResponse(ctx context.Context) (*PickS
 					return nil, err
 				}
 
+				// TODO get correct image
 				pickSessionResponse.Remaining = append(pickSessionResponse.Remaining, PickSessionRemaining{
-					Quantity:     pickSessionOrderItem.QuantityToPick - pickSessionOrderItem.QuantityPicked,
-					ProductID:    pickSessionOrderItem.ProductID,
-					ImageURL:     product.ImageURL,
+					Quantity:  pickSessionOrderItem.QuantityToPick - pickSessionOrderItem.QuantityPicked,
+					ProductID: pickSessionOrderItem.ProductID,
+					// ImageURL:     product.ImageURL,
 					ProductName:  product.Name,
 					LocationName: location.Name,
 				})

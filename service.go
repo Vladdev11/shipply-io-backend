@@ -182,7 +182,7 @@ func main() {
 	protected.HandleFunc("/purchase-order/{id}/delete", handlers.DeletePurchaseOrder).Methods(http.MethodDelete)
 	//**  END PURCHASE ORDER ROUTES **//
 
-	// TODO - update to new response structure
+	// TODO - Brennan update to new response structure
 	//**  PURCHASE ORDER ITEM ROUTES **//
 	protected.HandleFunc("/purchase-order/{id}/items/bulk-update", handlers.PurchaseOrderItemUpdateBulk).Methods(http.MethodPatch)
 	protected.HandleFunc("/purchase-order/{id}/item/create", handlers.PurchaseOrderItemCreate).Methods(http.MethodPost)
@@ -198,16 +198,18 @@ func main() {
 	protected.HandleFunc("/purchase-order-status/{id}/delete", handlers.PurchaseOrderStatusDelete).Methods(http.MethodDelete)
 	//** END PURCHASE ORDER STATUS ROUTES **//
 
+	// TODO - Brennan update to new response structure
 	//**  PURCHASE ORDER NOTE ROUTES **//
 	protected.HandleFunc("/purchase-order/{id}/notes/create", handlers.PurchaseOrderHistoryCreate).Methods(http.MethodPost)
 	//** END PURCHASE ORDER NOTE ROUTES **//
 
 	//** PURCHASE ORDER ATTACHMENT ROUTES **//
+	protected.HandleFunc("/purchase-order/{id}/attachment/list", handlers.ListPurchaseOrderAttachments).Methods(http.MethodGet)
 	protected.HandleFunc("/purchase-order/{id}/attachment/create", handlers.PurchaseOrderAttachmentCreate).Methods(http.MethodPost)
 	protected.HandleFunc("/purchase-order/{id}/attachment/{purchase_order_attachment_id}/delete", handlers.PurchaseOrderAttachmentDelete).Methods(http.MethodDelete)
-	protected.HandleFunc("/purchase-order/{id}/attachment/list", handlers.PurchaseOrderAttachmentList).Methods(http.MethodGet)
 	//** END PURCHASE ORDER ATTACHMENT ROUTES **//
 
+	// TODO - Brennan update to new response structure
 	//** RECEIVING ROUTES **//
 	protected.HandleFunc("/purchase-order/{purchase_order_id}/receiving/list-items", handlers.ReceivingListItems).Methods(http.MethodGet)
 	protected.HandleFunc("/purchase-order/{purchase_order_id}/receiving/batch-receive", handlers.PurchaseOrderItemReceive).Methods(http.MethodPost)
@@ -217,6 +219,7 @@ func main() {
 	protected.HandleFunc("/purchase-order/{purchase_order_id}/receiving/scan-input", handlers.PurchaseOrderItemScanInput).Methods(http.MethodPost)
 	//** END RECEIVING ROUTES **//
 
+	// TODO - Brennan update to new response structure
 	//** PRODUCT LOT ROUTES **//
 	// protected.HandleFunc("/product-lots/list", handlers.ProductLotList).Methods(http.MethodGet)
 	protected.HandleFunc("/product-lots/create", handlers.ProductLotCreate).Methods(http.MethodPost)
@@ -235,8 +238,12 @@ func main() {
 	protected.HandleFunc("/product/{id}/stores", handlers.GetProductStores).Methods(http.MethodGet)
 	protected.HandleFunc("/product/create", handlers.CreateProduct).Methods(http.MethodPost)
 	protected.HandleFunc("/product/{id}/update", handlers.UpdateProduct).Methods(http.MethodPatch)
+	protected.HandleFunc("/product/{id}/image/add", handlers.AddProductImage).Methods(http.MethodPost)
+	protected.HandleFunc("/product/{id}/image/{product_image_id}/delete", handlers.DeleteProductImage).Methods(http.MethodDelete)
+	protected.HandleFunc("/product/{id}/update-image-order", handlers.UpdateProductImageOrder).Methods(http.MethodPatch)
 	//** END PRODUCT ROUTES **//
 
+	// TODO - Brennan update to new response structure
 	//** PRODUCT ALIAS ROUTES **//
 	protected.HandleFunc("/product-aliases", handlers.ProductAliasCreate).Methods(http.MethodPost)
 	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasGetByBarcode).Methods(http.MethodGet)
@@ -245,36 +252,35 @@ func main() {
 	//** END PRODUCT ALIAS ROUTES **//
 
 	//** VENDOR ROUTES **//
-	protected.HandleFunc("/vendor/list", handlers.VendorList).Methods(http.MethodGet)
+	protected.HandleFunc("/vendor/list", handlers.ListVendors).Methods(http.MethodGet)
 	protected.HandleFunc("/vendor/{id}", handlers.GetVendor).Methods(http.MethodGet)
-	protected.HandleFunc("/vendor/create", handlers.VendorCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/vendor/{id}", handlers.GetVendor).Methods(http.MethodGet)
-	protected.HandleFunc("/vendor/{id}/update", handlers.VendorUpdate).Methods(http.MethodPatch)
-	protected.HandleFunc("/vendor/{id}/delete", handlers.VendorDelete).Methods(http.MethodDelete)
+	protected.HandleFunc("/vendor/create", handlers.CreateVendor).Methods(http.MethodPost)
+	protected.HandleFunc("/vendor/{id}/update", handlers.UpdateVendor).Methods(http.MethodPatch)
+	protected.HandleFunc("/vendor/{id}/delete", handlers.DeleteVendor).Methods(http.MethodDelete)
 	//** END VENDOR ROUTES **//
 
 	// ** WAREHOUSE ROUTES **//
-	protected.HandleFunc("/warehouse/list", handlers.WarehouseList).Methods(http.MethodGet)
-	protected.HandleFunc("/warehouse/create", handlers.WarehouseCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/warehouse/{id}", handlers.WarehouseGet).Methods(http.MethodGet)
-	protected.HandleFunc("/warehouse/{id}/update", handlers.WarehouseUpdate).Methods(http.MethodPatch)
-	protected.HandleFunc("/warehouse/{id}/delete", handlers.WarehouseDelete).Methods(http.MethodDelete)
+	protected.HandleFunc("/warehouse/list", handlers.ListWarehouses).Methods(http.MethodGet)
+	protected.HandleFunc("/warehouse/{id}", handlers.GetWarehouse).Methods(http.MethodGet)
+	protected.HandleFunc("/warehouse/create", handlers.CreateWarehouse).Methods(http.MethodPost)
+	protected.HandleFunc("/warehouse/{id}/update", handlers.UpdateWarehouse).Methods(http.MethodPatch)
+	protected.HandleFunc("/warehouse/{id}/delete", handlers.DeleteWarehouse).Methods(http.MethodDelete)
 	// ** END WAREHOUSE ROUTES **//
 
 	// ** LOCATION ROUTES **//
-	protected.HandleFunc("/location/list", handlers.LocationList).Methods(http.MethodGet)
-	protected.HandleFunc("/location/create", handlers.LocationCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/location/{id}", handlers.LocationGet).Methods(http.MethodGet)
-	protected.HandleFunc("/location/{id}/update", handlers.LocationUpdate).Methods(http.MethodPatch)
-	protected.HandleFunc("/location/{id}/delete", handlers.LocationDelete).Methods(http.MethodDelete)
+	protected.HandleFunc("/location/list", handlers.ListLocations).Methods(http.MethodGet)
+	protected.HandleFunc("/location/{id}", handlers.GetLocation).Methods(http.MethodGet)
+	protected.HandleFunc("/location/create", handlers.CreateLocation).Methods(http.MethodPost)
+	protected.HandleFunc("/location/{id}/update", handlers.UpdateLocation).Methods(http.MethodPatch)
+	protected.HandleFunc("/location/{id}/delete", handlers.DeleteLocation).Methods(http.MethodDelete)
 	// ** END LOCATION ROUTES **//
 
 	// ** LOCATION TYPE ROUTES **//
-	protected.HandleFunc("/location-type/list", handlers.LocationTypeList).Methods(http.MethodGet)
-	protected.HandleFunc("/location-type/create", handlers.LocationTypeCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/location-type/{id}", handlers.LocationTypeGet).Methods(http.MethodGet)
-	protected.HandleFunc("/location-type/{id}/update", handlers.LocationTypeUpdate).Methods(http.MethodPatch)
-	protected.HandleFunc("/location-type/{id}/delete", handlers.LocationTypeDelete).Methods(http.MethodDelete)
+	protected.HandleFunc("/location-type/list", handlers.ListLocationTypes).Methods(http.MethodGet)
+	protected.HandleFunc("/location-type/{id}", handlers.GetLocationType).Methods(http.MethodGet)
+	protected.HandleFunc("/location-type/create", handlers.CreateLocationType).Methods(http.MethodPost)
+	protected.HandleFunc("/location-type/{id}/update", handlers.UpdateLocationType).Methods(http.MethodPatch)
+	protected.HandleFunc("/location-type/{id}/delete", handlers.DeleteLocationType).Methods(http.MethodDelete)
 	// ** END LOCATION TYPE ROUTES **//
 
 	//** ORDER ROUTES **//
@@ -286,18 +292,20 @@ func main() {
 	//** END ORDER ITEM ROUTES **//
 
 	//**  BOX ROUTES **//
-	protected.HandleFunc("/boxes/list", handlers.BoxList).Methods(http.MethodGet)
-	protected.HandleFunc("/box/create", handlers.BoxCreate).Methods(http.MethodPost)
+	protected.HandleFunc("/boxes/list", handlers.ListBoxes).Methods(http.MethodGet)
 	protected.HandleFunc("/box/{id}", handlers.GetBox).Methods(http.MethodGet)
-	protected.HandleFunc("/box/{id}/delete", handlers.DeleteBox).Methods(http.MethodDelete)
+	protected.HandleFunc("/box/create", handlers.CreateBox).Methods(http.MethodPost)
 	protected.HandleFunc("/box/{id}/update", handlers.UpdateBox).Methods(http.MethodPatch)
+	protected.HandleFunc("/box/{id}/delete", handlers.DeleteBox).Methods(http.MethodDelete)
 	//** END BOX ROUTES **//
 
+	// TODO - Brennan update to new response structure
 	//** CARRIER ROUTES **//
 	protected.HandleFunc("/carriers/list", handlers.ListCarriers).Methods(http.MethodGet)
 	protected.HandleFunc("/carrier/{carrier_id}/connect", handlers.CreateCarrierConnection).Methods(http.MethodPost)
 	//** END CARRIER ROUTES **//
 
+	// TODO - Brennan update to new response structure
 	//** CARRIER CONNECTION ROUTES **//
 	protected.HandleFunc("/carrier-connections/list", handlers.ListCarrierConnections).Methods(http.MethodGet)
 	protected.HandleFunc("/carrier-connection/{carrier_connection_id}", handlers.GetCarrierConnection).Methods(http.MethodGet)
@@ -305,12 +313,14 @@ func main() {
 	protected.HandleFunc("/carrier-connection/{carrier_connection_id}/disconnect", handlers.DisconnectCarrierConnection).Methods(http.MethodDelete)
 	//** END CARRIER CONNECTION ROUTES **//
 
+	// TODO - Brennan update to new response structure
 	//** SHIPPING METHOD ROUTES **//
 	protected.HandleFunc("/shipping-methods/list", handlers.ListShippingMethods).Methods(http.MethodGet)
 	protected.HandleFunc("/shipping-method/{shipping_method_id}", handlers.GetShippingMethod).Methods(http.MethodGet)
 	protected.HandleFunc("/shipping-method/{shipping_method_id}", handlers.UpdateShippingMethod).Methods(http.MethodPatch)
 	//** END SHIPPING METHOD ROUTES **//
 
+	// TODO - Brady update to new response structure
 	// ** PICK SESSION ROUTES **//
 	protected.HandleFunc("/pick-session/create", handlers.CreatePickSession).Methods(http.MethodPost)
 	protected.HandleFunc("/pick-session/active", handlers.GetActivePickSession).Methods(http.MethodGet)
@@ -321,6 +331,7 @@ func main() {
 	protected.HandleFunc("/pick-session/complete", handlers.PickSessionComplete).Methods(http.MethodPost)
 	// ** END PICK SESSION ROUTES **//
 
+	// TODO - Brady update to new response structure
 	// ** SHIPPING ROUTES **//
 	protected.HandleFunc("/shipping/scan-tote", handlers.ShippingScanTote).Methods(http.MethodPost)
 	protected.HandleFunc("/shipping/pick-session-order/{id}", handlers.ShippingGetPickSessionOrder).Methods(http.MethodGet)

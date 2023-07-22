@@ -4,10 +4,11 @@ import (
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func WarehouseList(w http.ResponseWriter, r *http.Request) {
+func ListWarehouses(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -38,17 +39,12 @@ func WarehouseList(w http.ResponseWriter, r *http.Request) {
 	request.OrganizationID = user.Client.Organization.ID
 	warehouses, total, count, err := user.Client.Organization.GetWarehouses(ctx, request)
 
-	searchResults, err := models.ConvertWarehousesToSearchResults(warehouses, total, count)
-	if err != nil {
-		util.ErrorResponse(w, "failed to convert warehouses to search results", http.StatusBadRequest)
-		return
-	}
-
-	util.JSONResponse(w, searchResults, http.StatusOK)
+	response := responses.GenerateListWarehousesResponse(warehouses, total, count)
+	util.JSONResponse(w, response, http.StatusOK)
 
 }
 
-func WarehouseGet(w http.ResponseWriter, r *http.Request) {
+func GetWarehouse(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -92,5 +88,6 @@ func WarehouseGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, warehouse, http.StatusOK)
+	response := responses.GenerateGetWarehouseResponse(*warehouse)
+	util.JSONResponse(w, response, http.StatusOK)
 }

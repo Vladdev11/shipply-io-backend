@@ -46,8 +46,7 @@ type Product struct {
 	ProductNote          string
 	PackNote             string
 	ReturnNote           string
-	ImageURL             string
-	AdditionalImageUrls  StringSlice `gorm:"type:VARCHAR"`
+	Description          string
 
 	OnHand      int
 	NonSellable int
@@ -70,15 +69,28 @@ type Product struct {
 	ProductBundles     []ProductBundle            `gorm:"many2many:bundle_products;"`
 	Components         []Product                  `gorm:"-"`
 	Stores             []Store                    `gorm:"-"`
+	ProductImages      []ProductImage             `gorm:"-"`
+}
+
+func (p *Product) GetProductImages(ctx context.Context) error {
+	var productImages []ProductImage
+	err := util.DBFromContext(ctx).Where("product_id = ?", p.ID).Order(`"order" ASC`).Find(&productImages).Error
+	if err != nil {
+		return err
+	}
+	p.ProductImages = productImages
+	return nil
 }
 
 /* ----------------------------- Create Product ----------------------------- */
 type CreateProductInput struct {
-	ClientID   int
-	Sku        string
-	Barcode    *string
-	Name       string
-	Value      float64
+	ClientID    int
+	Sku         string
+	Barcode     *string
+	Name        string
+	Value       float64
+	Description *string
+
 	Weight     *Weight
 	Dimensions *Dimensions
 }
@@ -94,6 +106,10 @@ func CreateProduct(ctx context.Context, input CreateProductInput) (*Product, err
 
 	if input.Barcode != nil {
 		product.Barcode = *input.Barcode
+	}
+
+	if input.Description != nil {
+		product.Description = *input.Description
 	}
 
 	if input.Weight != nil {
@@ -117,13 +133,14 @@ func CreateProduct(ctx context.Context, input CreateProductInput) (*Product, err
 
 /* ------------------------------ Update Product ----------------------------- */
 type UpdateProductInput struct {
-	ID         int
-	Sku        *string
-	Barcode    *string
-	Name       *string
-	Value      *float64
-	Weight     *Weight
-	Dimensions *Dimensions
+	ID          int
+	Sku         *string
+	Barcode     *string
+	Name        *string
+	Value       *float64
+	Description *string
+	Weight      *Weight
+	Dimensions  *Dimensions
 }
 
 func UpdateProduct(ctx context.Context, input UpdateProductInput) (*Product, error) {
@@ -147,6 +164,10 @@ func UpdateProduct(ctx context.Context, input UpdateProductInput) (*Product, err
 
 	if input.Value != nil {
 		product.Value = *input.Value
+	}
+
+	if input.Description != nil {
+		product.Description = *input.Description
 	}
 
 	if input.Weight != nil {
@@ -268,7 +289,6 @@ func (p *Product) ConvertToReturnJSON() *ProductReturnJSON {
 		ProductNote:          p.ProductNote,
 		PackNote:             p.PackNote,
 		ReturnNote:           p.ReturnNote,
-		ImageURL:             p.ImageURL,
 		OnHand:               p.OnHand,
 		NonSellable:          p.NonSellable,
 		Allocated:            p.Allocated,

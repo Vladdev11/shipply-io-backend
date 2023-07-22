@@ -67,10 +67,11 @@ type ProductResponseForListProducts struct {
 	Allocated   int     `json:"allocated"`
 	Backordered int     `json:"backordered"`
 	Price       float64 `json:"price"`
+	ImageURL    string  `json:"image_url"`
 }
 
 // GenerateListProductsResponse converts a product to a ListProductsResponse
-func GenerateListProductsResponse(products []models.Product, count int, total int) *ListProductsResponse {
+func GenerateListProductsResponse(ctx context.Context, products []models.Product, count int, total int) *ListProductsResponse {
 	productResponses := make([]ProductResponseForListProducts, len(products))
 	for i, product := range products {
 		productResponses[i] = ProductResponseForListProducts{
@@ -82,6 +83,10 @@ func GenerateListProductsResponse(products []models.Product, count int, total in
 			Allocated:   product.Allocated,
 			Backordered: product.Backordered,
 			Price:       product.Price,
+		}
+
+		if product.ProductImages != nil && len(product.ProductImages) > 0 {
+			productResponses[i].ImageURL = product.ProductImages[0].GetImageURL(ctx)
 		}
 	}
 
@@ -96,45 +101,46 @@ func GenerateListProductsResponse(products []models.Product, count int, total in
 
 // GetProductResponse represents the response body for the GetProduct endpoint
 type GetProductResponse struct {
-	ID                   int       `json:"id"`
-	Name                 string    `json:"name"`
-	Sku                  string    `json:"sku"`
-	Barcode              string    `json:"barcode"`
-	Price                float64   `json:"price"`
-	Available            int       `json:"available"`
-	OnHand               int       `json:"on_hand"`
-	Allocated            int       `json:"allocated"`
-	Backordered          int       `json:"backordered"`
-	ImageURL             string    `json:"image_url"`
-	AdditionalImageUrls  []string  `json:"additional_image_urls"`
-	ProductNote          string    `json:"product_note"`
-	PackNote             string    `json:"pack_note"`
-	ReturnNote           string    `json:"return_note"`
-	Width                float64   `json:"width"`
-	Height               float64   `json:"height"`
-	Length               float64   `json:"length"`
-	Weight               float64   `json:"weight"`
-	Value                float64   `json:"value"`
-	CustomsValue         float64   `json:"customs_value"`
-	CustomsDescription   string    `json:"customs_description"`
-	LastCounted          time.Time `json:"last_counted"`
-	CountryOfManufacture string    `json:"country_of_manufacture"`
-	TariffCode           string    `json:"tariff_code"`
-	NeedsSerialNumber    bool      `json:"needs_serial_number"`
-	NeedsLotNumber       bool      `json:"needs_lot_number"`
-	IgnoreOnInvoice      bool      `json:"ignore_on_invoice"`
-	IgnoreOnCustoms      bool      `json:"ignore_on_customs"`
-	IsComponent          bool      `json:"is_component"`
-	UpdatedAt            time.Time `json:"updated_at"`
+	ID                   int                          `json:"id"`
+	Name                 string                       `json:"name"`
+	Sku                  string                       `json:"sku"`
+	Barcode              string                       `json:"barcode"`
+	Description          string                       `json:"description"`
+	Price                float64                      `json:"price"`
+	Available            int                          `json:"available"`
+	OnHand               int                          `json:"on_hand"`
+	Allocated            int                          `json:"allocated"`
+	Backordered          int                          `json:"backordered"`
+	ProductNote          string                       `json:"product_note"`
+	PackNote             string                       `json:"pack_note"`
+	ReturnNote           string                       `json:"return_note"`
+	Width                float64                      `json:"width"`
+	Height               float64                      `json:"height"`
+	Length               float64                      `json:"length"`
+	Weight               float64                      `json:"weight"`
+	Value                float64                      `json:"value"`
+	CustomsValue         float64                      `json:"customs_value"`
+	CustomsDescription   string                       `json:"customs_description"`
+	LastCounted          time.Time                    `json:"last_counted"`
+	CountryOfManufacture string                       `json:"country_of_manufacture"`
+	TariffCode           string                       `json:"tariff_code"`
+	NeedsSerialNumber    bool                         `json:"needs_serial_number"`
+	NeedsLotNumber       bool                         `json:"needs_lot_number"`
+	IgnoreOnInvoice      bool                         `json:"ignore_on_invoice"`
+	IgnoreOnCustoms      bool                         `json:"ignore_on_customs"`
+	IsComponent          bool                         `json:"is_component"`
+	UpdatedAt            time.Time                    `json:"updated_at"`
+	Images               []ImageResponseForGetProduct `json:"images"`
+}
+
+// ImageResponseForGetProduct represents the response body for an individual image for GetProduct endpoint
+type ImageResponseForGetProduct struct {
+	ID       int    `json:"id"`
+	ImageURL string `json:"image_url"`
 }
 
 // GenerateGetProductResponse converts a product to a GetProductResponse
-func GenerateGetProductResponse(product *models.Product) *GetProductResponse {
-
-	additionalImageUrls := make([]string, len(product.AdditionalImageUrls))
-
-	// Use copy to copy the values from product.AdditionalImageUrls to additionalImageUrls
-	copy(additionalImageUrls, product.AdditionalImageUrls)
+func GenerateGetProductResponse(ctx context.Context, product *models.Product) *GetProductResponse {
 
 	//Determine if product is a component
 	isComponent := false
@@ -142,18 +148,25 @@ func GenerateGetProductResponse(product *models.Product) *GetProductResponse {
 		isComponent = true
 	}
 
+	images := make([]ImageResponseForGetProduct, len(product.ProductImages))
+	for i, image := range product.ProductImages {
+		images[i] = ImageResponseForGetProduct{
+			ID:       image.ID,
+			ImageURL: image.GetImageURL(ctx),
+		}
+	}
+
 	return &GetProductResponse{
 		ID:                   product.ID,
 		Name:                 product.Name,
 		Sku:                  product.Sku,
 		Barcode:              product.Barcode,
+		Description:          product.Description,
 		Price:                product.Price,
 		Available:            product.Available,
 		OnHand:               product.OnHand,
 		Allocated:            product.Allocated,
 		Backordered:          product.Backordered,
-		ImageURL:             product.ImageURL,
-		AdditionalImageUrls:  additionalImageUrls,
 		ProductNote:          product.ProductNote,
 		PackNote:             product.PackNote,
 		ReturnNote:           product.ReturnNote,
@@ -171,6 +184,7 @@ func GenerateGetProductResponse(product *models.Product) *GetProductResponse {
 		NeedsLotNumber:       product.NeedsLotNumber,
 		IgnoreOnInvoice:      product.IgnoreOnInvoice,
 		IgnoreOnCustoms:      product.IgnoreOnCustoms,
+		Images:               images,
 		IsComponent:          isComponent,
 		UpdatedAt:            product.UpdatedAt,
 	}
@@ -335,16 +349,20 @@ type ProductBundleParentProductResponse struct {
 }
 
 // GenerateGetProductBundlesResponse converts a product to a GetProductBundlesResponse
-func GenerateGetProductBundlesResponse(product *models.Product) *GetProductBundlesResponse {
+func GenerateGetProductBundlesResponse(ctx context.Context, product *models.Product) *GetProductBundlesResponse {
 	bundleResponses := make([]ProductBundleResponseForGetProductBundles, len(product.ProductBundles))
 
 	for i, bundle := range product.ProductBundles {
+
 		productResponse := ProductBundleParentProductResponse{
-			ID:       bundle.Product.ID,
-			Name:     bundle.Product.Name,
-			Sku:      bundle.Product.Sku,
-			Barcode:  bundle.Product.Barcode,
-			ImageURL: bundle.Product.ImageURL,
+			ID:      bundle.Product.ID,
+			Name:    bundle.Product.Name,
+			Sku:     bundle.Product.Sku,
+			Barcode: bundle.Product.Barcode,
+		}
+
+		if bundle.Product.ProductImages != nil && len(bundle.Product.ProductImages) > 0 {
+			productResponse.ImageURL = bundle.Product.ProductImages[0].GetImageURL(ctx)
 		}
 
 		bundleResponses[i] = ProductBundleResponseForGetProductBundles{
@@ -448,5 +466,21 @@ type UpdateProductResponse struct {
 func GenerateUpdateProductResponse(product models.Product) *UpdateProductResponse {
 	return &UpdateProductResponse{
 		ID: product.ID,
+	}
+}
+
+/* ----------------------------- AddProductImage ---------------------------- */
+
+// AddProductImageResponse represents the response body for the AddProductImage endpoint
+type AddProductImageResponse struct {
+	ID       int    `json:"id"`
+	ImageURL string `json:"image_url"`
+}
+
+// GenerateAddProductImageResponse converts a product image to a AddProductImageResponse
+func GenerateAddProductImageResponse(ctx context.Context, productImage models.ProductImage) *AddProductImageResponse {
+	return &AddProductImageResponse{
+		ID:       productImage.ID,
+		ImageURL: productImage.GetImageURL(ctx),
 	}
 }

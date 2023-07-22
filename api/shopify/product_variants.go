@@ -50,9 +50,10 @@ func MapProductVariantToDatabaseProduct(productVariant gen.GetProductVariants_Pr
 		product.Name = productVariant.Product.Title
 	}
 
-	if productVariant.Image != nil {
-		product.ImageURL = productVariant.Image.URL
-	}
+	// TODO map images
+	// if productVariant.Image != nil {
+	// 	product.ImageURL = productVariant.Image.URL
+	// }
 
 	product.Sku = *productVariant.Sku
 	product.Weight = *productVariant.Weight
