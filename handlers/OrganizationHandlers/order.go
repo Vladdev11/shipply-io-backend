@@ -25,9 +25,9 @@ func ListOrders(w http.ResponseWriter, r *http.Request) {
 
 	request := models.OrdersListRequest{}
 	request.OrganizationID = user.Organization.ID
-	errors := request.ParseAndValidateRequest(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+	err = request.ParseAndValidateRequest(r)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 

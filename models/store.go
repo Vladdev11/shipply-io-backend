@@ -13,6 +13,13 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	//ErrStoreisNotAShopifyStore is returned when a store is not a shopify store
+	ErrStoreisNotAShopifyStore = errors.New("store is not a shopify store")
+	//ErrInvalidShopifyCredentialsJSON is returned when the shopify credentials json is invalid
+	ErrInvalidShopifyCredentialsJSON = errors.New("invalid shopify credentials json")
+)
+
 type Store struct {
 	ID             int
 	ClientID       int
@@ -236,17 +243,29 @@ func (s *Store) Create(ctx context.Context) error {
 }
 
 func (s *Store) Delete(ctx context.Context) error {
-	return util.DBFromContext(ctx).Delete(s).Error
+	err := util.DBFromContext(ctx).Delete(s).Error
+	if err != nil {
+		return ErrDeleteFailed{Object: "store", Err: err}
+	}
+	return nil
 }
 
 func (s *Store) Activate(ctx context.Context) error {
 	s.Active = true
-	return util.DBFromContext(ctx).Save(s).Error
+	err := util.DBFromContext(ctx).Save(s).Error
+	if err != nil {
+		return ErrUpdateFailed{Object: "store", Err: err}
+	}
+	return nil
 }
 
 func (s *Store) Deactivate(ctx context.Context) error {
 	s.Active = false
-	return util.DBFromContext(ctx).Save(s).Error
+	err := util.DBFromContext(ctx).Save(s).Error
+	if err != nil {
+		return ErrUpdateFailed{Object: "store", Err: err}
+	}
+	return nil
 }
 
 func (s *Store) UpdateAPICredentials(ctx context.Context, newCredentials interface{}) error {
@@ -285,7 +304,7 @@ func (s *Store) GetShopifySettings(ctx context.Context) (*ShopifyStoreSettings, 
 func (s *Store) GetShopifyCredentials(ctx context.Context) (*ShopifyCredentials, error) {
 
 	if s.MarketplaceID != util.ShopifyMarketplaceID {
-		return nil, errors.New("Store is not a Shopify store")
+		return nil, ErrStoreisNotAShopifyStore
 	}
 
 	var credentials ShopifyCredentials
@@ -297,7 +316,7 @@ func (s *Store) GetShopifyCredentials(ctx context.Context) (*ShopifyCredentials,
 	}{}
 
 	if err := json.Unmarshal(s.APICredentials, aux); err != nil {
-		return nil, errors.New("Invalid JSON in APICredentials")
+		return nil, ErrInvalidShopifyCredentialsJSON
 	}
 
 	if aux.ShopName != nil {
@@ -364,7 +383,7 @@ func GetStoreByID(ctx context.Context, id int) (*Store, error) {
 	var store Store
 	err := util.DBFromContext(ctx).First(&store, id).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "store", Err: err}
 	}
 	return &store, nil
 }

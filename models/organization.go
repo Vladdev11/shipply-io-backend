@@ -361,13 +361,13 @@ func (organization *Organization) GetShippingMethods(ctx context.Context, reques
 	//get organization clients
 	err := organization.GetClients(ctx)
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "clients", Err: err}
 	}
 
 	for _, client := range organization.Clients {
 		err := client.GetStores(ctx)
 		if err != nil {
-			return nil, err
+			return nil, ErrQueryFailed{Object: "stores", Err: err}
 		}
 
 		//get stores
@@ -396,7 +396,7 @@ func (organization *Organization) GetShippingMethods(ctx context.Context, reques
 
 	err = query.Find(&shippingMethods).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "shipping methods", Err: err}
 	}
 
 	return shippingMethods, nil

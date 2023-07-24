@@ -85,7 +85,7 @@ func (poa *PurchaseOrderAttachment) Delete(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Delete(poa).Error
 	if err != nil {
-		return err
+		return ErrDeleteFailed{Object: "purchase order attachment", Err: err}
 	}
 
 	return nil
@@ -107,7 +107,7 @@ func CreatePurchaseOrderAttachment(ctx context.Context, purchaseOrderAttachment 
 
 	err := util.DBFromContext(ctx).Create(purchaseOrderAttachment).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrCreateFailed{Object: "purchase order attachment", Err: err}
 	}
 
 	return purchaseOrderAttachment, nil
@@ -120,7 +120,7 @@ func GetPurchaseOrderAttachmentByID(ctx context.Context, id int) (*PurchaseOrder
 
 	err := util.DBFromContext(ctx).First(purchaseOrderAttachment, id).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "purchase order attachment", Err: err}
 	}
 
 	return purchaseOrderAttachment, nil

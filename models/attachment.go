@@ -33,7 +33,7 @@ func CreateAttachment(ctx context.Context, attachment *Attachment) (*Attachment,
 
 	err := util.DBFromContext(ctx).Create(attachment).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrCreateFailed{Object: "attachment", Err: err}
 	}
 
 	return attachment, nil

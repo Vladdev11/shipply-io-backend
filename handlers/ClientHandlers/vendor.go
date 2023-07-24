@@ -1,6 +1,7 @@
 package ClientHandlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
@@ -8,7 +9,13 @@ import (
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
+var (
+	//ErrClientDoesNotHaveAccessToVendor is returned when a client does not have access to a vendor
+	ErrClientDoesNotHaveAccessToVendor = errors.New("client does not have access to vendor")
+)
+
 func ListVendors(w http.ResponseWriter, r *http.Request) {
+  
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -79,7 +86,7 @@ func CreateVendor(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
@@ -99,7 +106,7 @@ func CreateVendor(w http.ResponseWriter, r *http.Request) {
 
 	err = vendor.Create(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to create vendor", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -118,18 +125,18 @@ func UpdateVendor(w http.ResponseWriter, r *http.Request) {
 
 	vendorID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid vendor id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find vendor", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != vendor.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, ErrClientDoesNotHaveAccessToVendor, http.StatusForbidden)
 		return
 	}
 
@@ -161,24 +168,24 @@ func DeleteVendor(w http.ResponseWriter, r *http.Request) {
 
 	vendorID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid vendor id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find vendor", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != vendor.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, ErrClientDoesNotHaveAccessToVendor, http.StatusForbidden)
 		return
 	}
 
 	err = vendor.Delete(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to delete vendor", http.StatusInternalServerError)
+		util.ErrResponse(w, err, http.StatusInternalServerError)
 		return
 	}
 

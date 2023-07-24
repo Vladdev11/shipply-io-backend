@@ -15,7 +15,7 @@ func CreateShipment(ctx context.Context, req ShipengineModels.CreateShipmentRequ
 		return nil, nil, err
 	}
 
-	request, err := http.NewRequest("POST", "/v1/shipments", bytes.NewBuffer(body))
+	request, err := http.NewRequest("POST", "/shipments", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}

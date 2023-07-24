@@ -1,11 +1,17 @@
 package ClientHandlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
+)
+
+var (
+	//ErrPurchaseOrderStatusInUse is returned when a purchase order status is in use and cannot be deleted
+	ErrPurchaseOrderStatusInUse = errors.New("purchase order status is in use and cannot be deleted")
 )
 
 func ListPurchaseOrderStatuses(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +25,7 @@ func ListPurchaseOrderStatuses(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
@@ -33,7 +39,7 @@ func ListPurchaseOrderStatuses(w http.ResponseWriter, r *http.Request) {
 
 	statuses, total, count, err := user.Client.GetPurchaseOrderStatuses(ctx, request)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get purchase order statuses", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -52,7 +58,7 @@ func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetOrganization(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
@@ -64,7 +70,7 @@ func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.OwnerID != request.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
 		return
 	}
 
@@ -77,7 +83,7 @@ func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 
 	err = purchaseOrderStatus.Create(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to create purchase order status", http.StatusInternalServerError)
+		util.ErrResponse(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -96,35 +102,35 @@ func PurchaseOrderStatusDelete(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	posID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order status id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	purchaseOrderStatus, err := models.GetPurchaseOrderStatusByID(ctx, posID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find purchase order status", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != purchaseOrderStatus.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
 		return
 	}
 
 	if purchaseOrderStatus.IsInUse(ctx) {
-		util.ErrorResponse(w, "purchase order status is in use and cannot be deleted", http.StatusBadRequest)
+		util.ErrResponse(w, ErrPurchaseOrderStatusInUse, http.StatusBadRequest)
 		return
 	}
 
 	err = purchaseOrderStatus.Delete(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to delete purchase order status", http.StatusInternalServerError)
+		util.ErrResponse(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -143,13 +149,13 @@ func PurchaseOrderStatusUpdate(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	posID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order status id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -160,7 +166,7 @@ func PurchaseOrderStatusUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.OwnerID != purchaseOrderStatus.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, err, http.StatusForbidden)
 		return
 	}
 

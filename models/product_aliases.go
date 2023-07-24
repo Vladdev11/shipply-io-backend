@@ -49,6 +49,7 @@ type ProductAliasUpdateRequest struct {
 func (pa *ProductAliasCreateRequest) ParseAndValidateRequest(r *http.Request) error {
 	var errs []error
 
+	//REVIEW- brady don't we need to confirm these fields are of correct type?
 	err := json.NewDecoder(r.Body).Decode(&pa)
 	if err != nil {
 		return err

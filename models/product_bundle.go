@@ -52,7 +52,7 @@ func (pb *ProductBundle) GetComponents(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Model(pb).Association("Components").Find(&pb.Components)
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "product bundle components"}
 	}
 
 	return nil
@@ -63,7 +63,7 @@ func (pb *ProductBundle) GetProduct(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Model(pb).Association("Product").Find(&pb.Product)
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "product"}
 	}
 
 	return nil
@@ -76,7 +76,7 @@ func GetBundleByProductID(ctx context.Context, productID int) (*ProductBundle, e
 
 	err := util.DBFromContext(ctx).Where("product_id = ?", productID).First(&bundle).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Err: err, Object: "product bundle"}
 	}
 
 	return &bundle, nil

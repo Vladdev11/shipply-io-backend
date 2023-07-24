@@ -457,9 +457,9 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createProductRequestData, errors := validation.ParseRequestToCreateProductRequestData(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+	createProductRequestData, err := validation.ParseRequestToCreateProductRequestData(r)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -604,9 +604,9 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updateProductRequestData, errors := validation.ParseRequestToUpdateProductRequestData(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+	updateProductRequestData, err := validation.ParseRequestToUpdateProductRequestData(r)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -857,9 +857,9 @@ func UpdateProductImageOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updateProductImageOrderRequestData, errors := validation.ParseRequestToUpdateProductImageOrderRequestData(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+	updateProductImageOrderRequestData, err := validation.ParseRequestToUpdateProductImageOrderRequestData(r)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 

@@ -7,11 +7,12 @@ import (
 
 	"github.com/shipply-io/shipply-io-backend/api"
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/tasks"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
+func CreatePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -73,11 +74,10 @@ func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, purchaseOrderItemJson, http.StatusCreated)
+	util.SuccessResponse(w, http.StatusOK)
 }
 
-func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
+func GetPurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -132,12 +132,12 @@ func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, purchaseOrderItemJson, http.StatusOK)
+	response := responses.GenerateGetPurchaseOrderItemResponse(ctx, *purchaseOrderItem)
+	util.JSONResponse(w, response, http.StatusOK)
 
 }
 
-func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdatePurchaseOrderItemBulk(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -217,7 +217,7 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 	util.SuccessResponse(w, http.StatusOK)
 }
 
-func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdatePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -287,11 +287,11 @@ func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
 
 	go tasks.AllocateInventoryByProduct(ctx, purchaseOrderItem.ProductID)
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, purchaseOrderItemJson, http.StatusOK)
+	response := responses.GenerateUpdatePurchaseOrderItemResponse(ctx, *purchaseOrderItem)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
+func DeletePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -497,7 +497,7 @@ func PurchaseOrderItemReceive(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	util.JSONResponse(w, purchaseOrderJSON, http.StatusOK)
+	util.SuccessResponse(w, http.StatusOK)
 
 }
 

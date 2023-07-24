@@ -248,7 +248,7 @@ func DeletePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
+func CreatePurchaseOrderHistory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)

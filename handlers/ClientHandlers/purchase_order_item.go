@@ -1,13 +1,23 @@
 package ClientHandlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
+var (
+	//ErrPurchaseOrderDoesNotBelongToClient is returned when a user tries to access a purchase order that does not belong to their client
+	ErrPurchaseOrderDoesNotBelongToClient = errors.New("purchase order does not belong to client")
+	//ErrPurchaseOrderItemDoesNotBelongToPurchaseOrder is returned when a user tries to access a purchase order item that does not belong to the purchase order
+	ErrPurchaseOrderItemDoesNotBelongToPurchaseOrder = errors.New("purchase order item does not belong to purchase order")
+)
+
+func CreatePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -18,18 +28,18 @@ func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
 
 	purchaseOrderID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != purchaseOrder.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
 		return
 	}
 
@@ -42,12 +52,12 @@ func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
 
 	product, err := models.GetProductByID(ctx, request.ProductID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find product", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if product.ClientID != purchaseOrder.ClientID {
-		util.ErrorResponse(w, "product does not belong to this client", http.StatusBadRequest)
+		util.ErrResponse(w, ErrProductDoesNotBelongToClient, http.StatusBadRequest)
 		return
 	}
 
@@ -59,15 +69,14 @@ func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
 
 	err = purchaseOrderItem.Create(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to create purchase order item", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(r.Context())
-	util.JSONResponse(w, purchaseOrderItemJson, http.StatusCreated)
+	util.SuccessResponse(w, http.StatusOK)
 }
 
-func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
+func GetPurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -78,50 +87,50 @@ func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
 
 	purchaseOrderID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != purchaseOrder.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
 		return
 	}
 
 	purchaseOrderItemID, err := util.GetIntFromPath(r, "item_id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order item id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(ctx, purchaseOrderItemID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find purchase order item", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if purchaseOrderItem.PurchaseOrderID != purchaseOrder.ID {
-		util.ErrorResponse(w, "purchase order item does not belong to this purchase order", http.StatusBadRequest)
+		util.ErrResponse(w, ErrPurchaseOrderDoesNotBelongToClient, http.StatusBadRequest)
 		return
 	}
 
 	err = purchaseOrderItem.GetProduct(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find product", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(r.Context())
-	util.JSONResponse(w, purchaseOrderItemJson, http.StatusOK)
+	response := responses.GenerateGetPurchaseOrderItemResponse(ctx, *purchaseOrderItem)
+	util.JSONResponse(w, response, http.StatusOK)
 
 }
 
-func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdatePurchaseOrderItemBulk(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -132,18 +141,18 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 
 	purchaseOrderID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != purchaseOrder.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
 		return
 	}
 
@@ -164,12 +173,12 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 
 		purchaseOrderItem, err := models.GetPurchaseOrderItemByID(ctx, purchaseOrderItemUpdateRequest.ID)
 		if err != nil {
-			util.ErrorResponse(w, "failed to find purchase order item", http.StatusBadRequest)
+			util.ErrResponse(w, err, http.StatusBadRequest)
 			return
 		}
 
 		if purchaseOrderItem.PurchaseOrderID != purchaseOrder.ID {
-			util.ErrorResponse(w, "purchase order item does not belong to this purchase order", http.StatusBadRequest)
+			util.ErrResponse(w, ErrPurchaseOrderItemDoesNotBelongToPurchaseOrder, http.StatusBadRequest)
 			return
 		}
 
@@ -194,7 +203,7 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdatePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -205,35 +214,35 @@ func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
 
 	purchaseOrderID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != purchaseOrder.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
 		return
 	}
 
 	purchaseOrderItemID, err := util.GetIntFromPath(r, "item_id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order item id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(ctx, purchaseOrderItemID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find purchase order item", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if purchaseOrderItem.PurchaseOrderID != purchaseOrder.ID {
-		util.ErrorResponse(w, "purchase order item does not belong to this purchase order", http.StatusBadRequest)
+		util.ErrResponse(w, ErrPurchaseOrderItemDoesNotBelongToPurchaseOrder, http.StatusBadRequest)
 		return
 	}
 
@@ -250,11 +259,11 @@ func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(r.Context())
-	util.JSONResponse(w, purchaseOrderItemJson, http.StatusOK)
+	response := responses.GenerateUpdatePurchaseOrderItemResponse(ctx, *purchaseOrderItem)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
+func DeletePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -265,41 +274,41 @@ func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
 
 	purchaseOrderID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order ID", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	purchaseOrder, err := models.GetPurchaseOrderByID(ctx, purchaseOrderID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find purchase order", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != purchaseOrder.ClientID {
-		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
 		return
 	}
 
 	purchaseOrderItemID, err := util.GetIntFromPath(r, "item_id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid purchase order item id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	purchaseOrderItem, err := models.GetPurchaseOrderItemByID(ctx, purchaseOrderItemID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find purchase order item", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if purchaseOrderItem.PurchaseOrderID != purchaseOrder.ID {
-		util.ErrorResponse(w, "purchase order item does not belong to this purchase order", http.StatusBadRequest)
+		util.ErrResponse(w, ErrPurchaseOrderDoesNotBelongToClient, http.StatusBadRequest)
 		return
 	}
 
 	err = purchaseOrderItem.Delete(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to delete purchase order item", http.StatusInternalServerError)
+		util.ErrResponse(w, err, http.StatusInternalServerError)
 		return
 	}
 

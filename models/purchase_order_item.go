@@ -84,7 +84,7 @@ type PurchaseOrderItemBulkUpdateRequest []PurchaseOrderItemUpdateRequest
 func (poi *PurchaseOrderItem) Create(ctx context.Context) error {
 	err := util.DBFromContext(ctx).Create(poi).Error
 	if err != nil {
-		return err
+		return ErrCreateFailed{Object: "purchase order item", Err: err}
 	}
 
 	return nil
@@ -94,7 +94,7 @@ func (poi *PurchaseOrderItem) Delete(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Delete(poi).Error
 	if err != nil {
-		return err
+		return ErrDeleteFailed{Object: "purchase order item", Err: err}
 	}
 
 	return nil
@@ -119,7 +119,7 @@ func GetPurchaseOrderItemByID(ctx context.Context, purchaseOrderItemID int) (*Pu
 	//get purchase order item from database
 	err := util.DBFromContext(ctx).Where("id = ?", purchaseOrderItemID).First(purchaseOrderItem).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "purchase order item", Err: err}
 	}
 
 	//return purchase order item
@@ -506,7 +506,7 @@ func (poi *PurchaseOrderItem) GetRejections(ctx context.Context) error {
 	if len(purchaseOrderItemRejections) > 0 {
 		for i := range purchaseOrderItemRejections {
 			err = purchaseOrderItemRejections[i].GetImages(ctx)
-      err = purchaseOrderItemRejections[i].GetLocation(ctx)
+			err = purchaseOrderItemRejections[i].GetLocation(ctx)
 			if err != nil {
 				return err
 			}

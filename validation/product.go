@@ -2,11 +2,18 @@ package validation
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+)
+
+/* --------------------------------- Errors --------------------------------- */
+var (
+	//ErrMainImageRequiredIfAdditionalImagesProvided is returned when a main image is not provided but additional images are provided
+	ErrMainImageRequiredIfAdditionalImagesProvided = errors.New("main_image is required if additional images are provided")
 )
 
 /* ------------------------------ CreateProduct ----------------------------- */
@@ -36,21 +43,19 @@ type ImageForCreateProductRequestData struct {
 }
 
 // ParseRequestToCreateProductRequestData parses and validates the request body for the CreateProduct endpoint
-func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequestData, []string) {
+func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequestData, error) {
 
 	createProductRequestData := CreateProductRequestData{}
-	errors := []string{}
+	var errs []error
 
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		errors = append(errors, err.Error())
-		return nil, errors
+		return nil, err
 	}
 
 	// Main Image
 	mainImageFile, err := ParseMultipartImage(r, "main_image")
 	if err != nil && err != http.ErrMissingFile {
-		errors = append(errors, err.Error())
-		return nil, errors
+		return nil, err
 	}
 
 	if mainImageFile != nil {
@@ -71,7 +76,7 @@ func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequ
 			if err == http.ErrMissingFile {
 				break
 			}
-			errors = append(errors, err.Error())
+			errs = append(errs, err)
 			continue
 		}
 
@@ -87,7 +92,7 @@ func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequ
 
 	// Validate that a main image is provided if additional images are provided
 	if mainImageFile == nil && len(additionalImages) > 0 {
-		errors = append(errors, "main_image is required if additional images are provided")
+		errs = append(errs, ErrMainImageRequiredIfAdditionalImagesProvided)
 	}
 
 	// Retrieve non-image JSON data (stored within the data field)
@@ -96,54 +101,54 @@ func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequ
 	// Parse the JSON data into a map
 	var rawData map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(dataField), &rawData); err != nil {
-		errors = append(errors, "invalid JSON data")
-		return nil, errors
+		errs = append(errs, ErrInvalidJSON)
+		return nil, errors.Join(errs...)
 	}
 
 	// Validate each field using the new validation functions
 	user, _ := models.GetRequestingUser(r)
 	if !user.IsClientRole() {
 		if createProductRequestData.ClientID, err = validateRequiredIntField(rawData["client_id"], "client_id", 1); err != nil {
-			errors = append(errors, err.Error())
+			errs = append(errs, err)
 		}
 	} else {
 		createProductRequestData.ClientID = user.OwnerID
 	}
 
 	if createProductRequestData.Name, err = validateRequiredStringField(rawData["name"], "name", 1); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if createProductRequestData.Description, err = validateOptionalStringField(rawData["description"], "description", 1); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if createProductRequestData.Value, err = validateRequiredFloatField(rawData["value"], "value", 0); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if createProductRequestData.Sku, err = validateRequiredStringField(rawData["sku"], "sku", 1, 255); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if createProductRequestData.Barcode, err = validateOptionalStringField(rawData["barcode"], "barcode", 1, 255); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if rawData["dimensions"] != nil {
 		if createProductRequestData.Dimensions, err = validateDimensionsField(rawData["dimensions"]); err != nil {
-			errors = append(errors, err.Error())
+			errs = append(errs, err)
 		}
 	}
 
 	if rawData["weight"] != nil {
 		if createProductRequestData.Weight, err = validateWeightField(rawData["weight"]); err != nil {
-			errors = append(errors, err.Error())
+			errs = append(errs, err)
 		}
 	}
 
-	if len(errors) > 0 {
-		return nil, errors
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 
 	return &createProductRequestData, nil
@@ -163,47 +168,47 @@ type UpdateProductRequestData struct {
 	Weight     *Weight     `json:"weight"`
 }
 
-func ParseRequestToUpdateProductRequestData(r *http.Request) (*UpdateProductRequestData, []string) {
+func ParseRequestToUpdateProductRequestData(r *http.Request) (*UpdateProductRequestData, error) {
 
 	updateProductRequestData := UpdateProductRequestData{}
-	errors := []string{}
+	var errs []error
 
 	rawData, err := ParseJSONRequestBody(r)
 
 	if updateProductRequestData.Name, err = validateOptionalStringField(rawData["name"], "name", 1); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if updateProductRequestData.Description, err = validateOptionalStringField(rawData["description"], "description", 1); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if updateProductRequestData.Value, err = validateOptionalFloatField(rawData["value"], "value", 0); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if updateProductRequestData.Sku, err = validateOptionalStringField(rawData["sku"], "sku", 1, 255); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if updateProductRequestData.Barcode, err = validateOptionalStringField(rawData["barcode"], "barcode", 1, 255); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
 	if rawData["dimensions"] != nil {
 		if updateProductRequestData.Dimensions, err = validateDimensionsField(rawData["dimensions"]); err != nil {
-			errors = append(errors, err.Error())
+			errs = append(errs, err)
 		}
 	}
 
 	if rawData["weight"] != nil {
 		if updateProductRequestData.Weight, err = validateWeightField(rawData["weight"]); err != nil {
-			errors = append(errors, err.Error())
+			errs = append(errs, err)
 		}
 	}
 
-	if len(errors) > 0 {
-		return nil, errors
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 
 	return &updateProductRequestData, nil
@@ -257,19 +262,19 @@ type UpdateProductImageOrderRequestData struct {
 }
 
 // ParseRequestToUpdateProductImageOrderRequestData parses and validates the request body for the UpdateProductImageOrder endpoint
-func ParseRequestToUpdateProductImageOrderRequestData(r *http.Request) (*UpdateProductImageOrderRequestData, []string) {
+func ParseRequestToUpdateProductImageOrderRequestData(r *http.Request) (*UpdateProductImageOrderRequestData, error) {
 
 	updateProductImageOrderRequestData := UpdateProductImageOrderRequestData{}
-	errors := []string{}
+	var errs []error
 
 	rawData, err := ParseJSONRequestBody(r)
 
 	if updateProductImageOrderRequestData.Order, err = validateRequiredIntArrayField(rawData["order"], "order", 1); err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
-	if len(errors) > 0 {
-		return nil, errors
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 
 	return &updateProductImageOrderRequestData, nil

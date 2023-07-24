@@ -51,7 +51,7 @@ type ClientReturnJSON struct {
 func (c *Client) GetOrganization(ctx context.Context) error {
 	organization, err := GetOrganizationByID(ctx, c.OrganizationID)
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "organization"}
 	}
 	c.Organization = organization
 	return nil
@@ -60,6 +60,9 @@ func (c *Client) GetOrganization(ctx context.Context) error {
 func GetClientByID(ctx context.Context, id int) (Client, error) {
 	var client Client
 	err := util.DBFromContext(ctx).Where("id = ?", id).First(&client).Error
+	if err != nil {
+		err = ErrQueryFailed{Err: err, Object: "client"}
+	}
 	return client, err
 }
 
@@ -124,17 +127,17 @@ func (client *Client) GetPurchaseOrders(ctx context.Context, polr PurchaseOrderL
 
 	var purchaseOrders []PurchaseOrder
 	if err := query.Offset(polr.Offset).Limit(polr.Limit).Find(&purchaseOrders).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, ErrQueryFailed{Err: err, Object: "purchase orders"}
 	}
 
 	var count int64
 	if err := countQuery.Count(&count).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, ErrQueryFailed{Err: err, Object: "purchase orders"}
 	}
 
 	var total int64
 	if err := totalQuery.Count(&total).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, ErrQueryFailed{Err: err, Object: "purchase orders"}
 	}
 
 	return purchaseOrders, int(count), int(total), nil
@@ -148,17 +151,17 @@ func (client *Client) GetPurchaseOrderStatuses(ctx context.Context, poslr Purcha
 
 	var purchaseOrderStatuses []PurchaseOrderStatus
 	if err := query.Offset(poslr.Offset).Limit(poslr.Limit).Find(&purchaseOrderStatuses).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, ErrQueryFailed{Err: err, Object: "purchase order statuses"}
 	}
 
 	var count int64
 	if err := countQuery.Count(&count).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, ErrQueryFailed{Err: err, Object: "purchase order statuses"}
 	}
 
 	var total int64
 	if err := totalQuery.Count(&total).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, ErrQueryFailed{Err: err, Object: "purchase order statuses"}
 	}
 
 	return purchaseOrderStatuses, int(count), int(total), nil
@@ -201,7 +204,7 @@ func (client *Client) SearchProducts(ctx context.Context, spr ProductSearchReque
 
 	query = query.Limit(10)
 	if err := query.Find(&products).Error; err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Err: err, Object: "products"}
 	}
 
 	return products, nil
@@ -242,7 +245,7 @@ func (client *Client) GetCarrierConnections(ctx context.Context) ([]CarrierConne
 		Find(&carrierConnections).Error
 
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Err: err, Object: "carrier connection"}
 	}
 
 	return carrierConnections, nil
@@ -255,7 +258,7 @@ func (client *Client) GetStores(ctx context.Context) error {
 	err := util.DBFromContext(ctx).Where("client_id = ?", client.ID).Find(&stores).Error
 
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "stores"}
 	}
 
 	client.Stores = stores

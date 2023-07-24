@@ -52,13 +52,17 @@ type VendorUpdateRequest struct {
 }
 
 func (v *Vendor) Create(ctx context.Context) error {
-	return util.DBFromContext(ctx).Create(v).Error
+	err := util.DBFromContext(ctx).Create(v).Error
+	if err != nil {
+		return ErrCreateFailed{Object: "vendor", Err: err}
+	}
+	return nil
 }
 
 func (v *Vendor) Delete(ctx context.Context) error {
 	err := util.DBFromContext(ctx).Delete(v).Error
 	if err != nil {
-		return err
+		return ErrDeleteFailed{Object: "vendor", Err: err}
 	}
 
 	return nil
@@ -325,7 +329,7 @@ func GetVendorByID(ctx context.Context, id int) (*Vendor, error) {
 
 	err := util.DBFromContext(ctx).First(vendor, id).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "vendor", Err: err}
 	}
 
 	//return vendor

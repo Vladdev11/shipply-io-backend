@@ -170,7 +170,11 @@ func (sm *ShippingMethod) Create(ctx context.Context) error {
 }
 
 func (sm *ShippingMethod) Update(ctx context.Context) error {
-	return util.DBFromContext(ctx).Save(sm).Error
+	err := util.DBFromContext(ctx).Save(sm).Error
+	if err != nil {
+		return ErrUpdateFailed{Object: "shipping_method", Err: err}
+	}
+	return nil
 }
 
 func (sm *ShippingMethod) Delete(ctx context.Context) error {
@@ -188,6 +192,9 @@ func GetShippingMethodByStoreAndName(ctx context.Context, storeID int, name stri
 func GetShippingMethodByID(ctx context.Context, id int) (*ShippingMethod, error) {
 	sm := &ShippingMethod{}
 	err := util.DBFromContext(ctx).Where("id = ?", id).First(sm).Error
+	if err != nil {
+		return nil, ErrQueryFailed{Object: "shipping_method", Err: err}
+	}
 	return sm, err
 }
 

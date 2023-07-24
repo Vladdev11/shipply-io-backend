@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -56,7 +55,6 @@ func (pos *PurchaseOrderStatus) IsInUse(ctx context.Context) bool {
 	var count int64
 	err := util.DBFromContext(ctx).Model(&PurchaseOrder{}).Where("status = ?", pos.ID).Count(&count).Error
 	if err != nil {
-		fmt.Println(err)
 		return false
 	}
 	return count > 0
@@ -85,7 +83,7 @@ func GetPurchaseOrderStatusByID(ctx context.Context, id int) (*PurchaseOrderStat
 	var purchaseOrderStatus PurchaseOrderStatus
 	err := util.DBFromContext(ctx).Where("id = ?", id).First(&purchaseOrderStatus).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "purchase order status", Err: err}
 	}
 	return &purchaseOrderStatus, nil
 }
@@ -93,7 +91,7 @@ func GetPurchaseOrderStatusByID(ctx context.Context, id int) (*PurchaseOrderStat
 func (poscr *PurchaseOrderStatus) Create(ctx context.Context) error {
 	err := util.DBFromContext(ctx).Create(poscr).Error
 	if err != nil {
-		return err
+		return ErrCreateFailed{Object: "purchase order status", Err: err}
 	}
 	return nil
 }
@@ -435,7 +433,7 @@ func (pos *PurchaseOrderStatus) UpdateWithRequest(ctx context.Context, request *
 
 func (pos *PurchaseOrderStatus) Delete(ctx context.Context) error {
 	if err := util.DBFromContext(ctx).Delete(pos).Error; err != nil {
-		return err
+		return ErrDeleteFailed{Err: err, Object: "purchase order status"}
 	}
 
 	return nil

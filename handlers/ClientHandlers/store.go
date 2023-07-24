@@ -1,12 +1,18 @@
 package ClientHandlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/api/shopify"
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
+)
+
+var (
+	//ErrClientDoesNotHaveAccessToStore is returned when a client does not have access to a store
+	ErrClientDoesNotHaveAccessToStore = errors.New("client does not have access to store")
 )
 
 func GetStore(w http.ResponseWriter, r *http.Request) {
@@ -20,24 +26,24 @@ func GetStore(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
 	storeID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != store.ClientID {
-		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
+		util.ErrResponse(w, ErrClientDoesNotHaveAccessToStore, http.StatusForbidden)
 		return
 	}
 
@@ -58,13 +64,13 @@ func ListStores(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
 	err = user.Client.GetStores(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find shipping methods", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -88,30 +94,30 @@ func ActivateStore(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
 	storeID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != store.ClientID {
-		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
+		util.ErrResponse(w, ErrClientDoesNotHaveAccessToStore, http.StatusForbidden)
 		return
 	}
 
 	err = store.Activate(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to activate store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -129,30 +135,30 @@ func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
 	storeID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != store.ClientID {
-		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
+		util.ErrResponse(w, ErrClientDoesNotHaveAccessToStore, http.StatusForbidden)
 		return
 	}
 
 	err = store.Deactivate(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to deactivate store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -170,24 +176,24 @@ func UpdateStore(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
 	storeID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid store id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != store.ClientID {
-		util.ErrorResponse(w, "user does not have access to this store", http.StatusForbidden)
+		util.ErrResponse(w, ErrClientDoesNotHaveAccessToStore, http.StatusForbidden)
 		return
 	}
 
@@ -222,24 +228,24 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
 	storeID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if user.OwnerID != store.ClientID {
-		util.ErrorResponse(w, "user does not have access to store", http.StatusForbidden)
+		util.ErrResponse(w, ErrClientDoesNotHaveAccessToStore, http.StatusForbidden)
 		return
 	}
 
@@ -247,10 +253,11 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 
 		shopifyCredentials, err := store.GetShopifyCredentials(ctx)
 		if err != nil {
-			util.ErrorResponse(w, "failed to get shopify credentials", http.StatusBadRequest)
+			util.ErrResponse(w, err, http.StatusBadRequest)
 			return
 		}
 
+		//TODO add error handling here
 		// Delete ShopifyLocations in DB
 		store.DeleteShopifyLocations(ctx)
 
@@ -264,7 +271,7 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 
 	err = store.Delete(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to delete store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 

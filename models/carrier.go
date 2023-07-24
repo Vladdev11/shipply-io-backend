@@ -54,7 +54,8 @@ func GetCarriers(ctx context.Context) ([]Carrier, error) {
 	var carriers []Carrier
 	err := util.DBFromContext(ctx).Find(&carriers).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Err: err, Object: "carriers"}
+
 	}
 
 	return carriers, nil
@@ -64,7 +65,7 @@ func GetCarrierByID(ctx context.Context, id int) (Carrier, error) {
 	var carrier Carrier
 	err := util.DBFromContext(ctx).First(&carrier, id).Error
 	if err != nil {
-		return Carrier{}, err
+		return Carrier{}, ErrQueryFailed{Err: err, Object: "carrier"}
 	}
 
 	return carrier, nil

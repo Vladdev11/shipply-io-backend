@@ -19,7 +19,7 @@ func PurchaseLabelFromRate(ctx context.Context, plfrr ShipengineModels.PurchaseL
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("/v1/labels/rates/%s", RateID), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", fmt.Sprintf("/labels/rates/%s", RateID), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}

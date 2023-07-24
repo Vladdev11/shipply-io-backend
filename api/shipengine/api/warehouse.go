@@ -17,7 +17,7 @@ func CreateWarehouse(ctx context.Context, warehouse *ShipengineModels.Warehouse)
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", "/v1/warehouses", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "/warehouses", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}

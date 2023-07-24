@@ -95,7 +95,10 @@ func (u *User) GetClient(ctx context.Context) error {
 
 func (u *User) Delete(ctx context.Context) error {
 	err := util.DBFromContext(ctx).Delete(u).Error
-	return err
+	if err != nil {
+		return ErrDeleteFailed{Err: err, Object: "user"}
+	}
+	return nil
 }
 
 func GetUserByEmail(ctx context.Context, email string) (*User, error) {
@@ -111,12 +114,18 @@ func CreateUser(ctx context.Context, user *User) (*User, error) {
 
 func (u *User) Update(ctx context.Context) error {
 	err := util.DBFromContext(ctx).Save(u).Error
-	return err
+	if err != nil {
+		return ErrUpdateFailed{Err: err, Object: "user"}
+	}
+	return nil
 }
 
 func GetUserByID(ctx context.Context, id int) (User, error) {
 	var user User
 	err := util.DBFromContext(ctx).Where("id = ?", id).First(&user).Error
+	if err != nil {
+		err = ErrQueryFailed{Err: err, Object: "user"}
+	}
 	return user, err
 }
 
@@ -130,7 +139,7 @@ func GenerateUserPasswordAndSalt(password string) ([]byte, []byte, error) {
 	//hash password
 	hashedPassword := HashPassword(password, salt)
 
-	return hashedPassword, salt, err
+	return hashedPassword, salt, nil
 }
 
 func (u *User) ConvertToReturnJSON(ctx context.Context) *UserReturnJSON {
@@ -201,7 +210,7 @@ func (u *UserCreateRequest) UnmarshalJSON(data []byte) error {
 func (u *User) Create(ctx context.Context) error {
 
 	if err := util.DBFromContext(ctx).Create(&u).Error; err != nil {
-		return err
+		return ErrCreateFailed{Err: err, Object: "user"}
 	}
 
 	return nil

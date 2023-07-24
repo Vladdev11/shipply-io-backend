@@ -37,3 +37,9 @@ type Address struct {
 	Phone        string `json:"phone"`
 	EmailAddress string `json:"email_address"`
 }
+
+// FieldProperties represents the response body for the FieldProperties used by multiple endpoints
+type FieldProperties struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}

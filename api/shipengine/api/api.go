@@ -24,6 +24,7 @@ func ContextWithShipengineClient(ctx context.Context, host string, key string) (
 	if err != nil {
 		return ctx, err
 	}
+
 	client := &APIClient{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
@@ -34,7 +35,7 @@ func ContextWithShipengineClient(ctx context.Context, host string, key string) (
 				ResponseHeaderTimeout: time.Second * 10,
 			},
 		},
-		apiHost: u.Host,
+		apiHost: u.String(),
 		apiKey:  key,
 	}
 	return context.WithValue(ctx, shipengineKey, client), nil
@@ -43,7 +44,11 @@ func ContextWithShipengineClient(ctx context.Context, host string, key string) (
 func (c *APIClient) Do(req *http.Request) (*http.Response, error) {
 	// We use the API host and key from the client instead of the request
 	// Request only has the path and body
-	req.URL.Host = c.apiHost
+	var err error
+	req.URL, err = url.Parse(c.apiHost + req.URL.Path)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("API-Key", c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "*/*")

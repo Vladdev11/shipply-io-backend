@@ -17,7 +17,7 @@ func ShopRates(ctx context.Context, rsr ShipengineModels.RateShopRequest) (*Ship
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", "/v1/rates", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "/rates", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}

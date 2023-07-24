@@ -76,7 +76,7 @@ func (p *Product) GetProductImages(ctx context.Context) error {
 	var productImages []ProductImage
 	err := util.DBFromContext(ctx).Where("product_id = ?", p.ID).Order(`"order" ASC`).Find(&productImages).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "product images"}
 	}
 	p.ProductImages = productImages
 	return nil
@@ -124,7 +124,7 @@ func CreateProduct(ctx context.Context, input CreateProductInput) (*Product, err
 	}
 
 	if err := util.DBFromContext(ctx).Create(&product).Error; err != nil {
-		return nil, err
+		return nil, ErrCreateFailed{Err: err, Object: "product"}
 	}
 
 	return &product, nil
@@ -182,7 +182,7 @@ func UpdateProduct(ctx context.Context, input UpdateProductInput) (*Product, err
 	}
 
 	if err := util.DBFromContext(ctx).Save(&product).Error; err != nil {
-		return nil, err
+		return nil, ErrCreateFailed{Err: err, Object: "product"}
 	}
 
 	return &product, nil
@@ -334,8 +334,8 @@ func GetProductByID(ctx context.Context, id int) (*Product, error) {
 func GetProductByClientIDAndSku(ctx context.Context, clientID int, sku string) (*Product, error) {
 	var product Product
 	err := util.DBFromContext(ctx).Where("client_id = ? AND sku = ?", clientID, sku).First(&product).Error
-	if err != nil {
-		return nil, err
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, ErrQueryFailed{Err: err, Object: "product"}
 	}
 	return &product, nil
 }
@@ -447,7 +447,7 @@ func (p *Product) GetProductLots(ctx context.Context) error {
 	var productLots []ProductLot
 	err := util.DBFromContext(ctx).Where("product_id = ?", p.ID).Find(&productLots).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
+		return ErrQueryFailed{Err: err, Object: "product lots"}
 	}
 
 	p.ProductLots = productLots
@@ -470,7 +470,7 @@ func (p *Product) IsBundle(ctx context.Context) (bool, error) {
 		if err == gorm.ErrRecordNotFound {
 			return false, nil
 		}
-		return false, err
+		return false, ErrQueryFailed{Err: err, Object: "product bundle"}
 	}
 
 	return true, nil
@@ -480,7 +480,7 @@ func GetProductByBarcodeAndClientID(ctx context.Context, barcode string, clientI
 	var product Product
 	err := util.DBFromContext(ctx).Where("client_id = ? AND barcode = ?", clientID, barcode).First(&product).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Err: err, Object: "product barcode"}
 	}
 	return &product, nil
 }
@@ -818,18 +818,18 @@ func (client *Client) GetProducts(ctx context.Context, polr ProductListRequest) 
 
 	var products []Product
 	if err := query.Offset(polr.Offset).Limit(polr.Limit).Find(&products).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, ErrQueryFailed{Err: err, Object: "products"}
 	}
 
 	// TODO: why are we doing a second query here for count when you can just use len(products)?
 	var count int64
 	if err := countQuery.Count(&count).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, ErrQueryFailed{Err: err, Object: "products"}
 	}
 
 	var total int64
 	if err := totalQuery.Count(&total).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, ErrQueryFailed{Err: err, Object: "products"}
 	}
 
 	return products, int(count), int(total), nil
@@ -940,7 +940,7 @@ func (product *Product) GetProductBundles(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Model(product).Association("ProductBundles").Find(&product.ProductBundles)
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "product bundles"}
 	}
 
 	return nil
@@ -953,7 +953,7 @@ func (product *Product) GetStores(ctx context.Context) error {
 		Joins("JOIN shopify_products ON shopify_products.store_id = stores.id").
 		Where("shopify_products.product_id = ?", product.ID).
 		Find(&stores).Error; err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "stores"}
 	}
 
 	product.Stores = stores

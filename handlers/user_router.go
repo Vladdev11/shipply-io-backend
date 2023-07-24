@@ -27,7 +27,7 @@ func GetUserSelf(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetUserSelf(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -48,7 +48,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access to other users", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -70,7 +70,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access to create users", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -93,7 +93,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access to update users", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -116,7 +116,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access to delete users", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -138,7 +138,7 @@ func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UpdateUserPassword(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -160,7 +160,7 @@ func UpdateUserAvatar(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access to update avatar", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -186,7 +186,7 @@ func UserSavedFilterCreate(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UserSavedFilterCreate(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -207,7 +207,7 @@ func UserSavedFilterList(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UserSavedFilterList(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -228,7 +228,7 @@ func UserSavedFilterUpdate(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UserSavedFilterUpdate(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -249,7 +249,7 @@ func UserSavedFilterDelete(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UserSavedFilterDelete(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -275,7 +275,7 @@ func SearchProducts(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.SearchProducts(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -298,7 +298,7 @@ func ListProducts(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListProducts(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -321,7 +321,7 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetProduct(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -344,7 +344,7 @@ func GetProductOrders(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetProductOrders(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -367,7 +367,7 @@ func GetProductInventory(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetProductInventory(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -390,7 +390,7 @@ func GetProductBundles(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetProductBundles(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -413,7 +413,7 @@ func GetProductBundleComponents(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetProductBundleComponents(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -435,7 +435,7 @@ func GetProductStores(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		// ClientHandlers.GetProductStores(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -457,7 +457,7 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.CreateProduct(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -479,7 +479,7 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UpdateProduct(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -501,7 +501,7 @@ func AddProductImage(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.AddProductImage(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -522,7 +522,7 @@ func DeleteProductImage(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.DeleteProductImage(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -544,7 +544,7 @@ func UpdateProductImageOrder(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UpdateProductImageOrder(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -571,7 +571,7 @@ func GetPurchaseOrder(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetPurchaseOrder(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -593,7 +593,7 @@ func ListPurchaseOrders(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListPurchaseOrders(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -616,7 +616,7 @@ func CreatePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.CreatePurchaseOrder(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -638,7 +638,7 @@ func UpdatePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UpdatePurchaseOrder(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -661,7 +661,7 @@ func DeletePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.DeletePurchaseOrder(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -669,7 +669,7 @@ func DeletePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 // ** END PURCHASE ORDER ROUTES ** //
 
 // ** PURCHASE ORDER ITEM ROUTES ** //
-func PurchaseOrderItemUpdateBulk(w http.ResponseWriter, r *http.Request) {
+func UpdatePurchaseOrderItemBulk(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -679,20 +679,20 @@ func PurchaseOrderItemUpdateBulk(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderItemBulkUpdate(w, r)
+		OrganizationHandlers.UpdatePurchaseOrderItemBulk(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderItemBulkUpdate(w, r)
+		OrganizationHandlers.UpdatePurchaseOrderItemBulk(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderItemBulkUpdate(w, r)
+		ClientHandlers.UpdatePurchaseOrderItemBulk(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderItemBulkUpdate(w, r)
+		ClientHandlers.UpdatePurchaseOrderItemBulk(w, r)
 	default:
 		util.ErrorResponse(w, "user role does not exist", http.StatusBadRequest)
 	}
 
 }
 
-func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
+func CreatePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -702,20 +702,20 @@ func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderItemCreate(w, r)
+		OrganizationHandlers.CreatePurchaseOrderItem(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderItemCreate(w, r)
+		OrganizationHandlers.CreatePurchaseOrderItem(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderItemCreate(w, r)
+		ClientHandlers.CreatePurchaseOrderItem(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderItemCreate(w, r)
+		ClientHandlers.CreatePurchaseOrderItem(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
 
-func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
+func GetPurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -725,20 +725,20 @@ func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderItemGet(w, r)
+		OrganizationHandlers.GetPurchaseOrderItem(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderItemGet(w, r)
+		OrganizationHandlers.GetPurchaseOrderItem(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderItemGet(w, r)
+		ClientHandlers.GetPurchaseOrderItem(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderItemGet(w, r)
+		ClientHandlers.GetPurchaseOrderItem(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
 
-func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdatePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -748,20 +748,20 @@ func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderItemUpdate(w, r)
+		OrganizationHandlers.UpdatePurchaseOrderItem(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderItemUpdate(w, r)
+		OrganizationHandlers.UpdatePurchaseOrderItem(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderItemUpdate(w, r)
+		ClientHandlers.UpdatePurchaseOrderItem(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderItemUpdate(w, r)
+		ClientHandlers.UpdatePurchaseOrderItem(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
 
-func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
+func DeletePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -771,15 +771,15 @@ func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderItemDelete(w, r)
+		OrganizationHandlers.DeletePurchaseOrderItem(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderItemDelete(w, r)
+		OrganizationHandlers.DeletePurchaseOrderItem(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderItemDelete(w, r)
+		ClientHandlers.DeletePurchaseOrderItem(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderItemDelete(w, r)
+		ClientHandlers.DeletePurchaseOrderItem(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -802,7 +802,7 @@ func PurchaseOrderItemReceive(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "client users cannot receive purchase order items", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -825,7 +825,7 @@ func PurchaseOrderItemReject(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "client users cannot receive purchase order items", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -848,7 +848,7 @@ func PurchaseOrderItemUpdateIPAInfo(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "client users cannot receive purchase order items", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -871,7 +871,7 @@ func PurchaseOrderItemScanInput(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "client users cannot receive purchase order items", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -897,7 +897,7 @@ func ListPurchaseOrderStatuses(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListPurchaseOrderStatuses(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -919,7 +919,7 @@ func PurchaseOrderStatusCreate(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.PurchaseOrderStatusCreate(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -941,7 +941,7 @@ func PurchaseOrderStatusUpdate(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.PurchaseOrderStatusUpdate(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -963,14 +963,14 @@ func PurchaseOrderStatusDelete(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.PurchaseOrderStatusDelete(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
 // ** END PURCHASE ORDER STATUS ROUTES ** //
 
 // ** PURCHASE ORDER NOTES ROUTES ** //
-func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
+func CreatePurchaseOrderHistory(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
@@ -980,15 +980,15 @@ func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.PurchaseOrderHistoryCreate(w, r)
+		OrganizationHandlers.CreatePurchaseOrderHistory(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.PurchaseOrderHistoryCreate(w, r)
+		OrganizationHandlers.CreatePurchaseOrderHistory(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.PurchaseOrderHistoryCreate(w, r)
+		ClientHandlers.CreatePurchaseOrderHistory(w, r)
 	case util.ClientUser:
-		ClientHandlers.PurchaseOrderHistoryCreate(w, r)
+		ClientHandlers.CreatePurchaseOrderHistory(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1015,7 +1015,7 @@ func ListPurchaseOrderAttachments(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListPurchaseOrderAttachments(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1038,7 +1038,7 @@ func PurchaseOrderAttachmentCreate(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.PurchaseOrderAttachmentCreate(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1061,7 +1061,7 @@ func PurchaseOrderAttachmentDelete(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.PurchaseOrderAttachmentDelete(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1088,7 +1088,7 @@ func GetVendor(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetVendor(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -1110,7 +1110,7 @@ func ListVendors(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListVendors(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -1132,7 +1132,7 @@ func CreateVendor(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.CreateVendor(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -1154,7 +1154,7 @@ func UpdateVendor(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UpdateVendor(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -1176,7 +1176,7 @@ func DeleteVendor(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.DeleteVendor(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1202,7 +1202,7 @@ func ListWarehouses(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListWarehouses(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1225,7 +1225,7 @@ func GetWarehouse(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetWarehouse(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1248,7 +1248,7 @@ func CreateWarehouse(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot create warehouse", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1271,7 +1271,7 @@ func UpdateWarehouse(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot update warehouse", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1294,7 +1294,7 @@ func DeleteWarehouse(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot delete warehouse", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1320,7 +1320,7 @@ func ListLocations(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot list locations", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1343,7 +1343,7 @@ func GetLocation(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot get location", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1366,7 +1366,7 @@ func CreateLocation(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot create location", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1389,7 +1389,7 @@ func UpdateLocation(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot update location", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1412,7 +1412,7 @@ func DeleteLocation(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot delete location", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1438,7 +1438,7 @@ func ListLocationTypes(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot list location types", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1461,7 +1461,7 @@ func GetLocationType(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot get location type", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1484,7 +1484,7 @@ func CreateLocationType(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot create location type", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1507,7 +1507,7 @@ func UpdateLocationType(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot update location type", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1530,7 +1530,7 @@ func DeleteLocationType(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot delete location type", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1557,7 +1557,7 @@ func ListCarriers(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListCarriers(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1565,77 +1565,6 @@ func ListCarriers(w http.ResponseWriter, r *http.Request) {
 // ** END CARRIER ROUTES ** //
 
 // ** CARRIER CONNECTION ROUTES ** //
-
-func CreateCarrierConnection(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.CreateCarrierConnection(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.CreateCarrierConnection(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.CreateCarrierConnection(w, r)
-	case util.ClientUser:
-		ClientHandlers.CreateCarrierConnection(w, r)
-	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
-	}
-
-}
-
-func GetCarrierConnection(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	//TODO need to remove carrier from all possible shipping method
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.GetCarrierConnection(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.GetCarrierConnection(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.GetCarrierConnection(w, r)
-	case util.ClientUser:
-		ClientHandlers.GetCarrierConnection(w, r)
-	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
-	}
-
-}
-
-func DisconnectCarrierConnection(w http.ResponseWriter, r *http.Request) {
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
-
-	switch user.GetRole() {
-	case util.OrganizationAdmin:
-		OrganizationHandlers.DisconnectCarrierConnection(w, r)
-	case util.OrganizationUser:
-		OrganizationHandlers.DisconnectCarrierConnection(w, r)
-	case util.ClientAdmin:
-		ClientHandlers.DisconnectCarrierConnection(w, r)
-	case util.ClientUser:
-		ClientHandlers.DisconnectCarrierConnection(w, r)
-	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
-	}
-
-}
 
 func ListCarrierConnections(w http.ResponseWriter, r *http.Request) {
 
@@ -1655,7 +1584,78 @@ func ListCarrierConnections(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListCarrierConnections(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
+	}
+
+}
+
+func GetCarrierConnection(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.GetCarrierConnection(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.GetCarrierConnection(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.GetCarrierConnection(w, r)
+	case util.ClientUser:
+		ClientHandlers.GetCarrierConnection(w, r)
+	default:
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
+	}
+
+}
+
+func CreateCarrierConnection(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.CreateCarrierConnection(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.CreateCarrierConnection(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.CreateCarrierConnection(w, r)
+	case util.ClientUser:
+		ClientHandlers.CreateCarrierConnection(w, r)
+	default:
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
+	}
+
+}
+
+func DisconnectCarrierConnection(w http.ResponseWriter, r *http.Request) {
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
+		return
+	}
+
+	//TODO need to remove carrier from all possible shipping method
+
+	switch user.GetRole() {
+	case util.OrganizationAdmin:
+		OrganizationHandlers.DisconnectCarrierConnection(w, r)
+	case util.OrganizationUser:
+		OrganizationHandlers.DisconnectCarrierConnection(w, r)
+	case util.ClientAdmin:
+		ClientHandlers.DisconnectCarrierConnection(w, r)
+	case util.ClientUser:
+		ClientHandlers.DisconnectCarrierConnection(w, r)
+	default:
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1682,7 +1682,7 @@ func ListBoxes(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot list boxes", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1705,7 +1705,7 @@ func GetBox(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot get box", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1728,7 +1728,7 @@ func CreateBox(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot create box", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1751,7 +1751,7 @@ func DeleteBox(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot delete box", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1774,7 +1774,7 @@ func UpdateBox(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot update box", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1800,7 +1800,7 @@ func CreatePickSession(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot create pick session", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1823,7 +1823,7 @@ func GetActivePickSession(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot get active pick session", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1846,7 +1846,7 @@ func PickSessionSelectItem(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot select item", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1869,7 +1869,7 @@ func PickSessionAssignTote(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot assign tote", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1892,7 +1892,7 @@ func PickSessionConfirmTote(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot confirm tote", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1915,7 +1915,7 @@ func PickSessionPick(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot pick", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1938,7 +1938,7 @@ func PickSessionComplete(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user cannot complete pick session", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -1965,7 +1965,7 @@ func ListShippingMethods(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListShippingMethods(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
@@ -1987,7 +1987,7 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetShippingMethod(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2010,7 +2010,7 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UpdateShippingMethod(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2036,7 +2036,7 @@ func ListStores(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListStores(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2058,7 +2058,7 @@ func GetStore(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetStore(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2080,7 +2080,7 @@ func ActivateStore(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ActivateStore(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2102,7 +2102,7 @@ func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.DeactivateStore(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2124,7 +2124,7 @@ func UpdateStore(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.UpdateStore(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2146,7 +2146,7 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.DeleteStore(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2171,7 +2171,7 @@ func ListOrders(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ListOrders(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2193,7 +2193,7 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.GetOrder(w, r)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2219,7 +2219,7 @@ func GetClient(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2242,7 +2242,7 @@ func ListClients(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2264,7 +2264,7 @@ func CreateClient(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2287,7 +2287,7 @@ func UpdateClient(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2310,7 +2310,7 @@ func UpdateClientAvatar(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "user does not have access", http.StatusUnauthorized)
 	default:
-		util.ErrorResponse(w, "invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2337,7 +2337,7 @@ func ShippingScanTote(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "User does not have access to this action", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2360,7 +2360,7 @@ func ShippingGetPickSessionOrder(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "User does not have access to this action", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2383,7 +2383,7 @@ func ShippingShopRates(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "User does not have access to this action", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2406,7 +2406,7 @@ func ShippingSelectRate(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "User does not have access to this action", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2429,7 +2429,7 @@ func ShippingPurchaseLabel(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "User does not have access to this action", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2456,7 +2456,7 @@ func ReceivingListItems(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		util.ErrorResponse(w, "User does not have access to this action", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2479,7 +2479,7 @@ func PurchaseOrderItemGetReceivingDetails(w http.ResponseWriter, r *http.Request
 	case util.ClientUser:
 		util.ErrorResponse(w, "User does not have access to this action", http.StatusForbidden)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2506,7 +2506,7 @@ func ProductLotListByProduct(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ProductLotListByProduct(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2529,7 +2529,7 @@ func ProductLotCreate(w http.ResponseWriter, r *http.Request) {
 	// case util.ClientUser:
 	// 	ClientHandlers.ProductLotCreate(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 
 }
@@ -2554,11 +2554,11 @@ func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
 	case util.ClientUser:
 		ClientHandlers.ProductAliasCreate(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
-func ProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
+func GetProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
@@ -2567,19 +2567,19 @@ func ProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.ProductAliasGetByBarcode(w, r)
+		OrganizationHandlers.GetProductAliasGetByBarcode(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.ProductAliasGetByBarcode(w, r)
+		OrganizationHandlers.GetProductAliasGetByBarcode(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.ProductAliasGetByBarcode(w, r)
+		ClientHandlers.GetProductAliasGetByBarcode(w, r)
 	case util.ClientUser:
-		ClientHandlers.ProductAliasGetByBarcode(w, r)
+		ClientHandlers.GetProductAliasGetByBarcode(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
-func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
+func UpdateProductAliasByBarcode(w http.ResponseWriter, r *http.Request) {
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
@@ -2588,19 +2588,19 @@ func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.ProductAliasUpdateByBarcode(w, r)
+		OrganizationHandlers.UpdateProductAliasByBarcode(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.ProductAliasUpdateByBarcode(w, r)
+		OrganizationHandlers.UpdateProductAliasByBarcode(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.ProductAliasUpdateByBarcode(w, r)
+		ClientHandlers.UpdateProductAliasByBarcode(w, r)
 	case util.ClientUser:
-		ClientHandlers.ProductAliasUpdateByBarcode(w, r)
+		ClientHandlers.UpdateProductAliasByBarcode(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 
-func ProductAliasDeleteByBarcode(w http.ResponseWriter, r *http.Request) {
+func DeleteProductAliasByBarcode(w http.ResponseWriter, r *http.Request) {
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
 		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
@@ -2609,15 +2609,15 @@ func ProductAliasDeleteByBarcode(w http.ResponseWriter, r *http.Request) {
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
-		OrganizationHandlers.ProductAliasDeleteByBarcode(w, r)
+		OrganizationHandlers.DeleteProductAliasByBarcode(w, r)
 	case util.OrganizationUser:
-		OrganizationHandlers.ProductAliasDeleteByBarcode(w, r)
+		OrganizationHandlers.DeleteProductAliasByBarcode(w, r)
 	case util.ClientAdmin:
-		ClientHandlers.ProductAliasDeleteByBarcode(w, r)
+		ClientHandlers.DeleteProductAliasByBarcode(w, r)
 	case util.ClientUser:
-		ClientHandlers.ProductAliasDeleteByBarcode(w, r)
+		ClientHandlers.DeleteProductAliasByBarcode(w, r)
 	default:
-		util.ErrorResponse(w, "Invalid User", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
 }
 

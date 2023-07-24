@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
@@ -62,7 +63,7 @@ func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
+func UpdateProductAliasByBarcode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -127,7 +128,7 @@ func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
 	util.JSONResponse(w, productAlias, http.StatusOK)
 }
 
-func ProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
+func GetProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -165,10 +166,11 @@ func ProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.JSONResponse(w, productAlias, http.StatusOK)
+	response := responses.GenerateGetProductAliasGetByBarcodeResponse(*productAlias)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func ProductAliasDeleteByBarcode(w http.ResponseWriter, r *http.Request) {
+func DeleteProductAliasByBarcode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -211,5 +213,5 @@ func ProductAliasDeleteByBarcode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	util.SuccessResponse(w, http.StatusOK)
 }

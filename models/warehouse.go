@@ -153,7 +153,7 @@ func (w *Warehouse) ConvertToReturnJSON() *WarehouseReturnJSON {
 
 func (wlr *WarehouseListRequest) ParseAndValidateRequest(r *http.Request) []string {
 
-	errors := []string{}
+	var errors []string
 
 	wlr.Limit = 100
 	limit, err := util.GetIntQueryParam(r, "limit")

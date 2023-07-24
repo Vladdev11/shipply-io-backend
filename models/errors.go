@@ -1,6 +1,9 @@
 package models
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
 	// ErrUserNotInContext Returned if the user is not in the request context
@@ -8,6 +11,21 @@ var (
 
 	// ErrUserIsNotAClient Returned if the user is not a client (i.e. role doesn't match the 2 client roles)
 	ErrUserIsNotAClient = errors.New("expected a user that belongs to a client")
+
+	// ErrUserIsNotAnOrganization Returned if the user is not an organization (i.e. role doesn't match the 2 organization roles)
+	ErrUserIsNotAnOrganization = errors.New("expected a user that belongs to an organization")
+
+	// ErrUserDoesNotBelongToClient Returned if the user does not belong to the client
+	ErrUserDoesNotBelongToClient = errors.New("user does not belong to client")
+
+	// ErrUserDoesNotBelongToOrganization Returned if the user does not belong to the organization
+	ErrUserDoesNotBelongToOrganization = errors.New("user does not belong to organization")
+
+	//ErrCarrierNotSupported
+	ErrCarrierNotSupported = errors.New("carrier not supported")
+
+	//ErrInvalidJSON
+	ErrInvalidJSON = errors.New("failed to parse json")
 )
 
 // ErrQueryFailed Returned if the query failed, with the underlying error and the object that was queried
@@ -82,4 +100,46 @@ type ErrExists struct {
 
 func (e ErrExists) Error() string {
 	return e.Object + " already exists"
+}
+
+// ErrInvalidFieldType Returned if a field is not of the expected type
+type ErrInvalidFieldType struct {
+	Field     string
+	FieldType string
+}
+
+func (e ErrInvalidFieldType) Error() string {
+	return fmt.Sprintf("%s must be of type %s", e.Field, e.FieldType)
+}
+
+// ErrInvalidFieldLength Returned if a field is not of the expected length
+type ErrInvalidFieldLength struct {
+	Field string
+	Min   int
+	Max   int
+}
+
+func (e ErrInvalidFieldLength) Error() string {
+	return fmt.Sprintf("%s must be between %d and %d characters", e.Field, e.Min, e.Max)
+}
+
+// ErrInvalidFieldRange Returned if a field is not of the expected range
+type ErrInvalidFieldRange struct {
+	Field string
+	Min   int
+	Max   int
+}
+
+func (e ErrInvalidFieldRange) Error() string {
+	return fmt.Sprintf("%s must be between %d and %d", e.Field, e.Min, e.Max)
+}
+
+// ErrInvalidFieldValue Returned if a field has an invalid value or does not meet certain criteria
+type ErrInvalidFieldValue struct {
+	Field  string
+	Reason string
+}
+
+func (e ErrInvalidFieldValue) Error() string {
+	return fmt.Sprintf("%s is invalid: %s", e.Field, e.Reason)
 }
