@@ -183,8 +183,8 @@ func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequ
 	}
 
 	// Main Image
-	mainImageFile, err := ParseMultipartImage(r, "main_image")
-	if err != nil && err != http.ErrMissingFile {
+	mainImageFile, err := ValidateOptionalMultipartImage(r, "main_image")
+	if err != nil {
 		return nil, err
 	}
 
@@ -201,13 +201,14 @@ func ParseRequestToCreateProductRequestData(r *http.Request) (*CreateProductRequ
 	i := 1
 	for {
 		imageKey := fmt.Sprintf("additional_image_%d", i)
-		imageFile, err := ParseMultipartImage(r, imageKey)
+		imageFile, err := ValidateOptionalMultipartImage(r, imageKey)
 		if err != nil {
-			if err == http.ErrMissingFile {
-				break
-			}
 			errs = append(errs, err)
 			continue
+		}
+
+		if imageFile == nil {
+			break
 		}
 
 		additionalImages = append(additionalImages, ImageForCreateProductRequestData{
@@ -382,7 +383,7 @@ func ParseRequestToAddProductImageRequestData(r *http.Request) (*AddProductImage
 	}
 
 	// Main Image
-	imageFile, err := ParseMultipartImage(r, "image")
+	imageFile, err := ValidateRequiredMultipartImage(r, "image")
 	if err != nil {
 		errs = append(errs, err)
 	}

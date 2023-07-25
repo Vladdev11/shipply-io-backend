@@ -241,13 +241,32 @@ func ParseMultipartFile(r *http.Request, key string) (*MultipartFileData, error)
 	return fileData, nil
 }
 
-// ParseMultipartImage parses a multipart image upload
-func ParseMultipartImage(r *http.Request, key string) (*MultipartFileData, error) {
+// ValidateRequiredMultipartImage validates a required multipart image upload and returns the file data
+func ValidateRequiredMultipartImage(r *http.Request, key string) (*MultipartFileData, error) {
 
 	fileData, err := ParseMultipartFile(r, key)
 	if err != nil {
 		if err == http.ErrMissingFile {
 			return nil, ErrMissingField{Field: key}
+		}
+
+		return nil, err
+	}
+
+	if fileData.FileType != "image/jpeg" && fileData.FileType != "image/png" {
+		return nil, ErrInvalidFieldType{Field: key, ExpectedType: "image/jpeg or image/png"}
+	}
+
+	return fileData, nil
+}
+
+// ValidateOptionalMultipartImage validates an optional multipart image upload and returns the file data
+func ValidateOptionalMultipartImage(r *http.Request, key string) (*MultipartFileData, error) {
+
+	fileData, err := ParseMultipartFile(r, key)
+	if err != nil {
+		if err == http.ErrMissingFile {
+			return nil, nil
 		}
 
 		return nil, err

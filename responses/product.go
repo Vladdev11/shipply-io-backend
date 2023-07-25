@@ -131,12 +131,19 @@ type GetProductResponse struct {
 	IsComponent          bool                         `json:"is_component"`
 	UpdatedAt            time.Time                    `json:"updated_at"`
 	Images               []ImageResponseForGetProduct `json:"images"`
+	Client               ClientResponseForGetProduct  `json:"client"`
 }
 
 // ImageResponseForGetProduct represents the response body for an individual image for GetProduct endpoint
 type ImageResponseForGetProduct struct {
 	ID       int    `json:"id"`
 	ImageURL string `json:"image_url"`
+}
+
+// ClientResponseForGetProduct represents the response body for an individual client for GetProduct endpoint
+type ClientResponseForGetProduct struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // GenerateGetProductResponse converts a product to a GetProductResponse
@@ -187,6 +194,10 @@ func GenerateGetProductResponse(ctx context.Context, product *models.Product) *G
 		Images:               images,
 		IsComponent:          isComponent,
 		UpdatedAt:            product.UpdatedAt,
+		Client: ClientResponseForGetProduct{
+			ID:   product.Client.ID,
+			Name: product.Client.Name,
+		},
 	}
 }
 

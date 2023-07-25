@@ -120,7 +120,7 @@ func ParseRequestToClientUpdateAvatarRequestData(r *http.Request) (*ClientUpdate
 		return nil, err
 	}
 
-	multipartImageData, err := ParseMultipartImage(r, "file")
+	multipartImageData, err := ValidateRequiredMultipartImage(r, "file")
 	if err != nil {
 		errs = append(errs, err)
 	}

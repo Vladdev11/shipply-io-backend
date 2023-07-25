@@ -337,6 +337,11 @@ func GetProductByClientIDAndSku(ctx context.Context, clientID int, sku string) (
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, ErrQueryFailed{Err: err, Object: "product"}
 	}
+
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+
 	return &product, nil
 }
 
@@ -479,9 +484,14 @@ func (p *Product) IsBundle(ctx context.Context) (bool, error) {
 func GetProductByBarcodeAndClientID(ctx context.Context, barcode string, clientID int) (*Product, error) {
 	var product Product
 	err := util.DBFromContext(ctx).Where("client_id = ? AND barcode = ?", clientID, barcode).First(&product).Error
-	if err != nil {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, ErrQueryFailed{Err: err, Object: "product barcode"}
 	}
+
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+
 	return &product, nil
 }
 

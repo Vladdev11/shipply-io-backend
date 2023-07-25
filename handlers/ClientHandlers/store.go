@@ -16,30 +16,11 @@ var (
 	ErrClientDoesNotHaveAccessToStore = errors.New("client does not have access to store")
 )
 
-var (
-	//ErrClientDoesNotHaveAccessToStore is returned when a client does not have access to a store
-	ErrClientDoesNotHaveAccessToStore = errors.New("client does not have access to store")
-)
-
 func GetStore(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := models.UserFromContext(ctx)
 
 	getStoreRequestData, err := validation.ParseRequestToGetStoreRequestData(r)
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetClient(ctx)
-	if err != nil {
-		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
@@ -68,12 +49,6 @@ func ListStores(w http.ResponseWriter, r *http.Request) {
 
 	err := user.Client.GetStores(ctx)
 	if err != nil {
-		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
-		return
-	}
-
-	err = user.Client.GetStores(ctx)
-	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
@@ -98,19 +73,6 @@ func ActivateStore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	store, err := models.GetStoreByID(ctx, activateStoreRequestData.StoreID)
-	if err != nil {
-
-		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrResponse(w, err, http.StatusBadRequest)
-		return
-	}
-
-	store, err := models.GetStoreByID(ctx, storeID)
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
@@ -145,18 +107,6 @@ func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 
 	store, err := models.GetStoreByID(ctx, deactivateStoreRequestData.StoreID)
 	if err != nil {
-		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrResponse(w, err, http.StatusBadRequest)
-		return
-	}
-
-	store, err := models.GetStoreByID(ctx, storeID)
-	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
@@ -183,21 +133,6 @@ func UpdateStore(w http.ResponseWriter, r *http.Request) {
 	user := models.UserFromContext(ctx)
 
 	updateStoreRequestData, err := validation.ParseRequestToUpdateStoreRequestData(r)
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetClient(ctx)
-	if err != nil {
-		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
@@ -239,20 +174,6 @@ func DeleteStore(w http.ResponseWriter, r *http.Request) {
 	user := models.UserFromContext(ctx)
 
 	deleteStoreRequestData, err := validation.ParseRequestToDeleteStoreRequestData(r)
-
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetClient(ctx)
-	if err != nil {
-		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
