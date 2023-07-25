@@ -61,7 +61,6 @@ func ListProducts(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	user := models.UserFromContext(ctx)
-
 	request := models.ProductListRequest{}
 	errors := request.ParseAndValidateRequest(r)
 	if errors != nil {
@@ -105,6 +104,18 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 
 	product, err := models.GetProductByID(ctx, getProductRequestData.ProductID)
 	if err != nil {
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
+		return
+	}
+
+	product, err := models.GetProductByID(ctx, productID)
+	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
@@ -131,6 +142,20 @@ func GetProductOrders(w http.ResponseWriter, r *http.Request) {
 	user := models.UserFromContext(ctx)
 
 	getProductOrdersRequestData, err := validation.ParseRequestToGetProductOrdersRequestData(r)
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient(ctx)
+	if err != nil {
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
@@ -164,6 +189,20 @@ func GetProductInventory(w http.ResponseWriter, r *http.Request) {
 	user := models.UserFromContext(ctx)
 
 	getProductInventoryRequestData, err := validation.ParseRequestToGetProductInventoryRequestData(r)
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient(ctx)
+	if err != nil {
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
@@ -231,6 +270,12 @@ func GetProductBundles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	product, err := models.GetProductByID(ctx, productID)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
+		return
+	}
+
 	if user.Client.ID != product.ClientID {
 		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
 		return
@@ -289,6 +334,12 @@ func GetProductBundleComponents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	product, err := models.GetProductByID(ctx, productID)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
+		return
+	}
+
 	if user.Client.ID != product.ClientID {
 		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
 		return
@@ -328,6 +379,19 @@ func GetProductStores(w http.ResponseWriter, r *http.Request) {
 	user := models.UserFromContext(ctx)
 
 	getProductStoresRequestData, err := validation.ParseRequestToGetProductStoresRequestData(r)
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient(ctx)
+	if err != nil {
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
@@ -359,6 +423,26 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	user := models.UserFromContext(ctx)
+
+	createProductRequestData, err := validation.ParseRequestToCreateProductRequestData(r)
+	if err != nil {
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient(ctx)
+	if err != nil {
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
+		return
+	}
+
+	err = user.Client.GetOrganization(ctx)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusUnauthorized)
+		return
+	}
 
 	createProductRequestData, err := validation.ParseRequestToCreateProductRequestData(r)
 	if err != nil {
@@ -480,12 +564,30 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	product, err := models.GetProductByID(ctx, updateProductRequestData.ProductID)
 	if err != nil {
+		util.ErrResponse(w, err, http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
+		return
+	}
+
+	product, err := models.GetProductByID(ctx, productID)
+	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if product.ClientID != user.Client.ID {
 		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
+		return
+	}
+
+	updateProductRequestData, err := validation.ParseRequestToUpdateProductRequestData(r)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -555,6 +657,20 @@ func AddProductImage(w http.ResponseWriter, r *http.Request) {
 	user := models.UserFromContext(ctx)
 
 	addProductImageRequestData, err := validation.ParseRequestToAddProductImageRequestData(r)
+
+	user, err := models.GetRequestingUser(r)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	err = user.GetClient(ctx)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
@@ -574,6 +690,12 @@ func AddProductImage(w http.ResponseWriter, r *http.Request) {
 	err = product.GetProductImages(ctx)
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
+		return
+	}
+
+	addProductImageRequestData, errors := validation.ParseRequestToAddProductImageRequestData(r)
+	if errors != nil {
+		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
@@ -619,6 +741,18 @@ func DeleteProductImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	product, err := models.GetProductByID(ctx, deleteProductImageRequestData.ProductID)
+	if err != nil {
+		util.ErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	productID, err := util.GetIntFromPath(r, "id")
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
+		return
+	}
+
+	product, err := models.GetProductByID(ctx, productID)
 	if err != nil {
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
@@ -687,6 +821,12 @@ func UpdateProductImageOrder(w http.ResponseWriter, r *http.Request) {
 
 	if product.ClientID != user.Client.ID {
 		util.ErrResponse(w, models.ErrUserDoesNotBelongToClient, http.StatusForbidden)
+		return
+	}
+
+	updateProductImageOrderRequestData, err := validation.ParseRequestToUpdateProductImageOrderRequestData(r)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 

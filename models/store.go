@@ -20,6 +20,7 @@ var (
 )
 
 /* ---------------------------- Main Store Model ---------------------------- */
+
 type Store struct {
 	ID             int
 	ClientID       int
@@ -229,6 +230,24 @@ func (s *Store) Delete(ctx context.Context) error {
 	err := util.DBFromContext(ctx).Delete(s).Error
 	if err != nil {
 		return ErrDeleteFailed{Object: "store", Err: err}
+	}
+	return nil
+}
+
+func (s *Store) Activate(ctx context.Context) error {
+	s.Active = true
+	err := util.DBFromContext(ctx).Save(s).Error
+	if err != nil {
+		return ErrUpdateFailed{Object: "store", Err: err}
+	}
+	return nil
+}
+
+func (s *Store) Deactivate(ctx context.Context) error {
+	s.Active = false
+	err := util.DBFromContext(ctx).Save(s).Error
+	if err != nil {
+		return ErrUpdateFailed{Object: "store", Err: err}
 	}
 	return nil
 }

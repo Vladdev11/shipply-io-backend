@@ -360,6 +360,14 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	createProductRequestData, err := validation.ParseRequestToCreateProductRequestData(r)
 	if err != nil {
+
+		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
+		return
+	}
+
+	createProductRequestData, err := validation.ParseRequestToCreateProductRequestData(r)
+	if err != nil {
+
 		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
@@ -491,6 +499,11 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	if !user.Organization.IsClientOwner(ctx, product.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		return
+	}
+	updateProductRequestData, err := validation.ParseRequestToUpdateProductRequestData(r)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -693,6 +706,12 @@ func UpdateProductImageOrder(w http.ResponseWriter, r *http.Request) {
 
 	if !user.Organization.IsClientOwner(ctx, product.ClientID) {
 		util.ErrorResponse(w, "user does not have access to this client", http.StatusForbidden)
+		return
+	}
+
+	updateProductImageOrderRequestData, err := validation.ParseRequestToUpdateProductImageOrderRequestData(r)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 

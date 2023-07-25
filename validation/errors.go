@@ -1,5 +1,4 @@
 package validation
-
 import (
 	"errors"
 	"strconv"
@@ -8,7 +7,6 @@ import (
 var (
 	//ErrInvalidJSON is returned when the JSON is invalid
 	ErrInvalidJSON = errors.New("invalid JSON")
-
 	// ErrUnableToReadBody is returned when the request body cannot be read
 	ErrUnableToReadBody = errors.New("unable to read request body")
 )
