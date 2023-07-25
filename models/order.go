@@ -161,31 +161,59 @@ func (o *Order) Create(ctx context.Context) error {
 }
 
 func (o *Order) GetOrderItems(ctx context.Context) error {
-	return util.DBFromContext(ctx).Model(o).Association("OrderItems").Find(&o.OrderItems)
+	err := util.DBFromContext(ctx).Model(o).Association("OrderItems").Find(&o.OrderItems)
+	if err != nil {
+		return ErrQueryFailed{Err: err, Object: "order items"}
+	}
+	return nil
 }
 
 func (o *Order) GetStore(ctx context.Context) error {
-	return util.DBFromContext(ctx).Model(o).Association("Store").Find(&o.Store)
+	err := util.DBFromContext(ctx).Model(o).Association("Store").Find(&o.Store)
+	if err != nil {
+		return ErrQueryFailed{Err: err, Object: "store"}
+	}
+	return nil
 }
 
 func (o *Order) GetWarehouse(ctx context.Context) error {
-	return util.DBFromContext(ctx).Model(o).Association("Warehouse").Find(&o.Warehouse)
+	err := util.DBFromContext(ctx).Model(o).Association("Warehouse").Find(&o.Warehouse)
+	if err != nil {
+		return ErrQueryFailed{Err: err, Object: "warehouse"}
+	}
+	return nil
 }
 
 func (o *Order) GetBillToAddress(ctx context.Context) error {
-	return util.DBFromContext(ctx).Model(o).Association("BillToAddress").Find(&o.BillToAddress)
+	err := util.DBFromContext(ctx).Model(o).Association("BillToAddress").Find(&o.BillToAddress)
+	if err != nil {
+		return ErrQueryFailed{Err: err, Object: "bill to address"}
+	}
+	return nil
 }
 
 func (o *Order) GetShipToAddress(ctx context.Context) error {
-	return util.DBFromContext(ctx).Model(o).Association("ShipToAddress").Find(&o.ShipToAddress)
+	err := util.DBFromContext(ctx).Model(o).Association("ShipToAddress").Find(&o.ShipToAddress)
+	if err != nil {
+		return ErrQueryFailed{Err: err, Object: "ship to address"}
+	}
+	return nil
 }
 
 func (o *Order) GetShippingMethod(ctx context.Context) error {
-	return util.DBFromContext(ctx).Model(o).Association("ShippingMethod").Find(&o.ShippingMethod)
+	err := util.DBFromContext(ctx).Model(o).Association("ShippingMethod").Find(&o.ShippingMethod)
+	if err != nil {
+		return ErrQueryFailed{Err: err, Object: "shipping method"}
+	}
+	return nil
 }
 
 func (o *Order) GetBox(ctx context.Context) error {
-	return util.DBFromContext(ctx).Model(o).Association("Box").Find(&o.Box)
+	err := util.DBFromContext(ctx).Model(o).Association("Box").Find(&o.Box)
+	if err != nil {
+		return ErrQueryFailed{Err: err, Object: "box"}
+	}
+	return nil
 }
 
 func GetNextOrderReadyForPicking(ctx context.Context, warehouseID int) (*Order, error) {
@@ -230,7 +258,7 @@ func GetOrderByID(ctx context.Context, id int) (*Order, error) {
 	order := Order{}
 	err := util.DBFromContext(ctx).Where("id = ?", id).First(&order).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Err: err, Object: "order"}
 	}
 	return &order, nil
 }
@@ -423,14 +451,14 @@ func (o *Order) ConvertToReturnJSON(ctx context.Context) *OrderReturnJSON {
 	}
 }
 
-func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) []string {
+func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) error {
 
-	errors := []string{}
+	var errs []error
 
 	storeID, err := util.GetIntQueryParam(r, "store_id")
 	if err != util.ErrMissingQueryParam {
 		if err != nil {
-			errors = append(errors, "store_id must be an integer")
+			errs = append(errs, ErrInvalidFieldType{"store_id", "integer"})
 		} else {
 			olr.StoreID = storeID
 		}
@@ -439,7 +467,7 @@ func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) []string 
 	clientID, err := util.GetIntQueryParam(r, "client_id")
 	if err != util.ErrMissingQueryParam {
 		if err != nil {
-			errors = append(errors, "client_id must be an integer")
+			errs = append(errs, ErrInvalidFieldType{"client_id", "integer"})
 		} else {
 			olr.ClientID = clientID
 		}
@@ -449,9 +477,9 @@ func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) []string 
 	limit, err := util.GetIntQueryParam(r, "limit")
 	if err != util.ErrMissingQueryParam {
 		if err != nil {
-			errors = append(errors, "limit must be an integer")
+			errs = append(errs, ErrInvalidFieldType{"limit", "integer"})
 		} else if limit < 0 {
-			errors = append(errors, "limit must be greater than or equal to 0")
+			errs = append(errs, ErrInvalidFieldRange{"limit", 0, 1000})
 		} else {
 			olr.Limit = limit
 		}
@@ -461,9 +489,9 @@ func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) []string 
 	offset, err := util.GetIntQueryParam(r, "offset")
 	if err != util.ErrMissingQueryParam {
 		if err != nil {
-			errors = append(errors, "offset must be an integer")
+			errs = append(errs, ErrInvalidFieldType{"offset", "integer"})
 		} else if offset < 0 {
-			errors = append(errors, "offset must be greater than or equal to 0")
+			errs = append(errs, ErrInvalidFieldRange{"offset", 0, 1000})
 		} else {
 			olr.Offset = offset
 		}
@@ -473,9 +501,9 @@ func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) []string 
 	orderBy, err := util.GetStringQueryParam(r, "order_by")
 	if err != util.ErrMissingQueryParam {
 		if err != nil {
-			errors = append(errors, "order_by must be a string")
+			errs = append(errs, ErrInvalidFieldType{"order_by", "string"})
 		} else if orderBy != "asc" && orderBy != "desc" {
-			errors = append(errors, "order_by must be 'asc' or 'desc'")
+			errs = append(errs, ErrInvalidFieldValue{"order_by", "must be asc or desc"})
 		} else {
 			olr.OrderBy = orderBy
 		}
@@ -484,7 +512,7 @@ func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) []string 
 	orderByColumn, err := util.GetStringQueryParam(r, "order_by_column")
 	if err != util.ErrMissingQueryParam {
 		if err != nil {
-			errors = append(errors, "order_by_column must be a string")
+			errs = append(errs, ErrInvalidFieldType{"order_by_column", "string"})
 		} else {
 			olr.OrderByColumn = orderByColumn
 		}
@@ -493,14 +521,14 @@ func (olr *OrdersListRequest) ParseAndValidateRequest(r *http.Request) []string 
 	searchValue, err := util.GetStringQueryParam(r, "search_value")
 	if err != util.ErrMissingQueryParam {
 		if err != nil {
-			errors = append(errors, "search_value must be a string")
+			errs = append(errs, ErrInvalidFieldType{"search_value", "string"})
 		} else {
 			olr.SearchValue = searchValue
 		}
 	}
 
-	if len(errors) > 0 {
-		return errors
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -688,7 +716,7 @@ func (o *Order) GetTags(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Where("order_id = ?", o.ID).Find(&orderTags).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "order tags"}
 	}
 
 	o.Tags = orderTags
@@ -703,7 +731,7 @@ func (o *Order) GetStatus(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Where("id = ?", o.StatusID).Find(&OrderStatus).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Err: err, Object: "order status"}
 	}
 
 	o.Status = OrderStatus

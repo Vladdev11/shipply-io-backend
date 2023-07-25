@@ -5,6 +5,11 @@ import (
 	"net/http"
 )
 
+type errorResponse struct {
+	Error  string   `json:"error,omitempty"`
+	Errors []string `json:"errors,omitempty"`
+}
+
 func JSONError(text string) map[string]string {
 	return (map[string]string{"error": text})
 }
@@ -15,6 +20,21 @@ func JSONErrors(errors []string) map[string][]string {
 
 func JSONSuccess() map[string]string {
 	return (map[string]string{"success": "true"})
+}
+
+func ErrResponse(w http.ResponseWriter, err error, statusCode int) {
+	w.WriteHeader(statusCode)
+	// Handle Joined errors
+	if errs, ok := err.(interface{ Unwrap() []error }); ok {
+		errs := errs.Unwrap()
+		strs := make([]string, len(errs))
+		for i := range errs {
+			strs[i] = errs[i].Error()
+		}
+		json.NewEncoder(w).Encode(errorResponse{Errors: strs})
+		return
+	}
+	json.NewEncoder(w).Encode(errorResponse{Error: err.Error()})
 }
 
 func ErrorResponse(w http.ResponseWriter, err string, statusCode int) {

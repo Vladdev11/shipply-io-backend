@@ -143,16 +143,15 @@ type ProductCreateWebhookRequest struct {
 	} `json:"images"`
 }
 
-func ParseAndValidateProductCreateRequest(r *http.Request) (*string, []string) {
+func ParseAndValidateProductCreateRequest(r *http.Request) (*string, error) {
 
 	var productID string
 
-	var errs []string
+	var errs []error
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		errs = append(errs, "failed to read body")
-		return nil, errs
+		return nil, ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -161,17 +160,16 @@ func ParseAndValidateProductCreateRequest(r *http.Request) (*string, []string) {
 
 	err = json.Unmarshal(body, aux)
 	if err != nil {
-		return nil, []string{"invalid json"}
+		return nil, ErrInvalidJSON
 	}
 
 	if aux.AdminGraphqlAPIID != nil {
 		if err := json.Unmarshal(aux.AdminGraphqlAPIID, &productID); err != nil {
-			errs = append(errs, "invalid product id")
+			errs = append(errs, ErrInvalidShopifyGraphqlProductID)
 		}
 	}
-
 	if len(errs) > 0 {
-		return nil, errs
+		return nil, ErrInvalidJSON
 	}
 
 	return &productID, nil

@@ -48,7 +48,7 @@ func (po *PurchaseOrder) GetStatus(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Where("id = ?", po.StatusID).First(&po.Status).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Object: "purchase order status", Err: err}
 	}
 
 	return nil
@@ -137,7 +137,7 @@ func GetPurchaseOrderByID(ctx context.Context, purchaseOrderID int) (*PurchaseOr
 	purchaseOrder := &PurchaseOrder{}
 	err := util.DBFromContext(ctx).First(purchaseOrder, purchaseOrderID).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "purchase order", Err: err}
 	}
 
 	//return purchase order
@@ -329,12 +329,12 @@ func (po *PurchaseOrder) Delete(ctx context.Context) error {
 
 	err := db.Delete(po).Error
 	if err != nil {
-		return err
+		return ErrDeleteFailed{Object: "purchase order", Err: err}
 	}
 
 	err = db.Where("purchase_order_id = ?", po.ID).Delete(&PurchaseOrderItem{}).Error
 	if err != nil {
-		return err
+		return ErrDeleteFailed{Object: "purchase order items", Err: err}
 	}
 
 	return nil
@@ -353,7 +353,7 @@ func (po *PurchaseOrder) GetHistory(ctx context.Context) error {
 
 	histories, err := GetPurchaseOrderHistorysByID(ctx, po.ID)
 	if err != nil {
-		return err
+		return ErrQueryFailed{Object: "purchase order history", Err: err}
 	}
 
 	for i := range histories {
@@ -373,7 +373,7 @@ func (po *PurchaseOrder) GetItems(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Where("purchase_order_id = ?", po.ID).Order("id ASC").Find(&po.Items).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Object: "purchase order items", Err: err}
 	}
 
 	totalItems := 0
@@ -397,7 +397,7 @@ func (p *PurchaseOrder) GetAttachments(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Where("purchase_order_id = ?", p.ID).Order("id ASC").Find(&p.Attachments).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Object: "purchase order attachments", Err: err}
 	}
 
 	return nil
@@ -421,7 +421,7 @@ func (p *PurchaseOrder) GetTags(ctx context.Context) error {
 
 	err := util.DBFromContext(ctx).Where("purchase_order_id = ?", p.ID).Find(&purchaseOrderTags).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Object: "purchase order tags", Err: err}
 	}
 
 	p.Tags = purchaseOrderTags
@@ -790,7 +790,7 @@ func (por *PurchaseOrderListRequest) ParseAndValidateRequest(r *http.Request) []
 
 func (por *PurchaseOrder) Create(ctx context.Context) error {
 	if err := util.DBFromContext(ctx).Create(por).Error; err != nil {
-		return err
+		return ErrCreateFailed{Object: "PurchaseOrder", Err: err}
 	}
 
 	return nil

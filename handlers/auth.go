@@ -28,19 +28,19 @@ func AuthLogin(w http.ResponseWriter, r *http.Request) {
 	// Decode the incoming credentials into the struct
 	err := json.NewDecoder(r.Body).Decode(&credentials)
 	if err != nil {
-		util.ErrorResponse(w, "Failed To Receive Credentials", http.StatusBadRequest)
+		util.ErrResponse(w, ErrFailedToReceiveCredentials, http.StatusBadRequest)
 		return
 	}
 
 	user, err := models.GetUserByEmail(r.Context(), credentials.Email)
 	if err != nil {
-		util.ErrorResponse(w, "Invalid Credentials", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidCredentials, http.StatusUnauthorized)
 		return
 	}
 
 	// validate credentials
 	if !models.ComparePassword(credentials.Password, user.Salt, user.Password) {
-		util.ErrorResponse(w, "Invalid Credentials", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidCredentials, http.StatusUnauthorized)
 		return
 	}
 
@@ -55,7 +55,7 @@ func AuthLogin(w http.ResponseWriter, r *http.Request) {
 	// signed string is required to be a byte array
 	tokenString, err := token.SignedString([]byte(util.AuthSecretFromContext(r.Context())))
 	if err != nil {
-		util.ErrorResponse(w, "Failed To Sign Token", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrFailedTokenSignature, http.StatusInternalServerError)
 		return
 	}
 
@@ -70,19 +70,19 @@ func AuthNoExpirationToken(w http.ResponseWriter, r *http.Request) {
 	// Decode the incoming credentials into the struct
 	err := json.NewDecoder(r.Body).Decode(&credentials)
 	if err != nil {
-		util.ErrorResponse(w, "Failed To Receive Credentials", http.StatusBadRequest)
+		util.ErrResponse(w, ErrFailedToReceiveCredentials, http.StatusBadRequest)
 		return
 	}
 
 	user, err := models.GetUserByEmail(r.Context(), credentials.Email)
 	if err != nil {
-		util.ErrorResponse(w, "Invalid Credentials", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidCredentials, http.StatusUnauthorized)
 		return
 	}
 
 	// validate credentials
 	if !models.ComparePassword(credentials.Password, user.Salt, user.Password) {
-		util.ErrorResponse(w, "Invalid Credentials", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidCredentials, http.StatusUnauthorized)
 		return
 	}
 
@@ -97,7 +97,7 @@ func AuthNoExpirationToken(w http.ResponseWriter, r *http.Request) {
 	// signed string is required to be a byte array
 	tokenString, err := token.SignedString([]byte(util.AuthSecretFromContext(r.Context())))
 	if err != nil {
-		util.ErrorResponse(w, "Failed To Sign Token", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrFailedTokenSignature, http.StatusInternalServerError)
 		return
 	}
 
@@ -117,13 +117,13 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	// Decode the incoming credentials into the struct
 	err := json.NewDecoder(r.Body).Decode(&resetPasswordCredentials)
 	if err != nil {
-		util.ErrorResponse(w, "Failed To Receive Credentials", http.StatusBadRequest)
+		util.ErrResponse(w, ErrFailedToReceiveCredentials, http.StatusBadRequest)
 		return
 	}
 
 	user, err := models.GetUserByEmail(ctx, resetPasswordCredentials.Email)
 	if err != nil {
-		util.ErrorResponse(w, "invalid email", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrUserEmailDoesNotExist, http.StatusUnauthorized)
 		return
 	}
 
@@ -136,7 +136,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	err = passwordResetToken.Create(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to create password reset token", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrResetPasswordTokenGeneration, http.StatusInternalServerError)
 		return
 	}
 
@@ -151,18 +151,18 @@ func ValidateResetPasswordToken(w http.ResponseWriter, r *http.Request) {
 
 	token, err := util.GetStringQueryParam(r, "token")
 	if err != nil {
-		util.ErrorResponse(w, "token is required", http.StatusBadRequest)
+		util.ErrResponse(w, ErrTokenRequired, http.StatusBadRequest)
 		return
 	}
 
 	passwordResetToken, err := models.GetPasswordResetTokenByToken(r.Context(), token)
 	if err != nil {
-		util.ErrorResponse(w, "invalid token", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidToken, http.StatusUnauthorized)
 		return
 	}
 
 	if passwordResetToken.ExpiresAt.Before(time.Now()) {
-		util.ErrorResponse(w, "token expired", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrTokenExpired, http.StatusUnauthorized)
 		return
 	}
 
@@ -175,18 +175,18 @@ func UpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 	token, err := util.GetStringQueryParam(r, "token")
 	if err != nil {
-		util.ErrorResponse(w, "token is required", http.StatusBadRequest)
+		util.ErrResponse(w, ErrTokenRequired, http.StatusBadRequest)
 		return
 	}
 
 	passwordResetToken, err := models.GetPasswordResetTokenByToken(ctx, token)
 	if err != nil {
-		util.ErrorResponse(w, "invalid token", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidToken, http.StatusUnauthorized)
 		return
 	}
 
 	if passwordResetToken.ExpiresAt.Before(time.Now()) {
-		util.ErrorResponse(w, "token expired", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrTokenExpired, http.StatusUnauthorized)
 		return
 	}
 
@@ -198,24 +198,24 @@ func UpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewDecoder(r.Body).Decode(&updatePasswordCredentials)
 	if err != nil {
-		util.ErrorResponse(w, "Failed To Receive Credentials", http.StatusBadRequest)
+		util.ErrResponse(w, ErrFailedToReceiveCredentials, http.StatusBadRequest)
 		return
 	}
 
 	if !util.IsValidPassword(updatePasswordCredentials.Password) {
-		util.ErrorResponse(w, "invalid password", http.StatusBadRequest)
+		util.ErrResponse(w, ErrInvalidPassword, http.StatusBadRequest)
 		return
 	}
 
 	user, err := models.GetUserByID(ctx, passwordResetToken.UserID)
 	if err != nil {
-		util.ErrorResponse(w, "invalid user", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrInvalidUser, http.StatusUnauthorized)
 		return
 	}
 
 	hashedPassword, salt, err := models.GenerateUserPasswordAndSalt(updatePasswordCredentials.Password)
 	if err != nil {
-		util.ErrorResponse(w, "failed to generate password", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrFailedPasswordGeneration, http.StatusInternalServerError)
 		return
 	}
 
@@ -224,13 +224,13 @@ func UpdatePassword(w http.ResponseWriter, r *http.Request) {
 
 	err = user.Update(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to update password", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrUpdatePassword, http.StatusInternalServerError)
 		return
 	}
 
 	err = passwordResetToken.Delete(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to delete password reset token", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrDeletePasswordResetToken, http.StatusInternalServerError)
 		return
 	}
 

@@ -78,7 +78,10 @@ func ShopifyOAuth(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = existingStore.Activate(ctx)
+		existingStore, err = models.UpdateStore(ctx, models.UpdateStoreInput{
+			ID:     existingStore.ID,
+			Active: util.BoolPointer(true),
+		})
 		if err != nil {
 
 			models.SystemError{
@@ -453,31 +456,34 @@ func ShopifyAppUninstalledWebhook(w http.ResponseWriter, r *http.Request) {
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
-		util.ErrorResponse(w, "invalid shop name", http.StatusBadRequest)
+		util.ErrResponse(w, ErrInvalidShopifyShopName, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
-		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
+		util.ErrResponse(w, ErrNoStoreWithShopifyShopName, http.StatusInternalServerError)
 		return
 	}
 
 	err = store.DeleteAccessToken(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to delete access token", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrDeleteShopifyAccessToken, http.StatusInternalServerError)
 		return
 	}
 
 	err = store.DeleteShopifyLocations(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to delete shopify locations", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrDeleteShopifyLocations, http.StatusInternalServerError)
 		return
 	}
 
-	err = store.Deactivate(ctx)
+	_, err = models.UpdateStore(ctx, models.UpdateStoreInput{
+		ID:     store.ID,
+		Active: util.BoolPointer(false),
+	})
 	if err != nil {
-		util.ErrorResponse(w, "failed to deactivate store", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrShopifyDeactivateStore, http.StatusInternalServerError)
 		return
 	}
 
@@ -489,37 +495,37 @@ func ShopifyOrderCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
-		util.ErrorResponse(w, "invalid shop name", http.StatusBadRequest)
+		util.ErrResponse(w, ErrInvalidShopifyShopName, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
-		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
+		util.ErrResponse(w, ErrNoStoreWithShopifyShopName, http.StatusInternalServerError)
 		return
 	}
 
 	orderID, errors := shopify.ParseAndValidateOrderCreateRequest(r)
 	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		util.ErrResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
 	order, err := shopify.RetrieveOrder(store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *orderID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to retrieve order", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrRetrieveShopifyGraphqlOrder, http.StatusInternalServerError)
 		return
 	}
 
 	gqlOrder, err := shopify.ConvertGetOrderById_OrderToShopifyModelOrder(*order)
 	if err != nil {
-		util.ErrorResponse(w, "failed to convert order", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrConvertShopifyGraphqlOrder, http.StatusInternalServerError)
 		return
 	}
 
 	err = tasks.SyncShopifyGraphqlOrder(ctx, store.ID, store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), gqlOrder)
 	if err != nil {
-		util.ErrorResponse(w, "failed to sync order", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrShopifySyncGraphqlOrder, http.StatusInternalServerError)
 		return
 	}
 
@@ -531,37 +537,37 @@ func ShopifyOrderUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
-		util.ErrorResponse(w, "invalid shop name", http.StatusBadRequest)
+		util.ErrResponse(w, ErrInvalidShopifyShopName, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
-		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
+		util.ErrResponse(w, ErrNoStoreWithShopifyShopName, http.StatusInternalServerError)
 		return
 	}
 
 	orderID, errors := shopify.ParseAndValidateOrderCreateRequest(r)
 	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		util.ErrResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
 	order, err := shopify.RetrieveOrder(store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *orderID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to retrieve order", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrRetrieveShopifyGraphqlOrder, http.StatusInternalServerError)
 		return
 	}
 
 	gqlOrder, err := shopify.ConvertGetOrderById_OrderToShopifyModelOrder(*order)
 	if err != nil {
-		util.ErrorResponse(w, "failed to convert order", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrConvertShopifyGraphqlOrder, http.StatusInternalServerError)
 		return
 	}
 
 	err = tasks.SyncShopifyGraphqlOrder(ctx, store.ID, store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), gqlOrder)
 	if err != nil {
-		util.ErrorResponse(w, "failed to sync order", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrShopifySyncGraphqlOrder, http.StatusInternalServerError)
 		return
 	}
 
@@ -573,13 +579,13 @@ func ShopifyProductCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
-		util.ErrorResponse(w, "invalid shop name", http.StatusBadRequest)
+		util.ErrResponse(w, ErrInvalidShopifyShopName, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
-		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
+		util.ErrResponse(w, ErrInvalidShopifyShopName, http.StatusInternalServerError)
 		return
 	}
 
@@ -590,13 +596,13 @@ func ShopifyProductCreatedWebhook(w http.ResponseWriter, r *http.Request) {
 
 	productID, errors := shopify.ParseAndValidateProductCreateRequest(r)
 	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		util.ErrResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
 	productVariants, err := shopify.RetrieveProductVariantsByProductID(store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *productID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to retrieve product", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrRetrieveShopifyGraphqlProduct, http.StatusInternalServerError)
 		return
 	}
 
@@ -629,13 +635,13 @@ func ShopifyProductUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 
 	shopName := r.Header.Get("X-Shopify-Shop-Domain")
 	if shopName == "" {
-		util.ErrorResponse(w, "invalid shop name", http.StatusBadRequest)
+		util.ErrResponse(w, ErrInvalidShopifyShopName, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetShopifyStoreByShopName(ctx, shopName)
 	if err != nil {
-		util.ErrorResponse(w, fmt.Sprintf("No store with the ShopName %s exists", shopName), http.StatusInternalServerError)
+		util.ErrResponse(w, ErrNoStoreWithShopifyShopName, http.StatusInternalServerError)
 		return
 	}
 
@@ -646,13 +652,13 @@ func ShopifyProductUpdatedWebhook(w http.ResponseWriter, r *http.Request) {
 
 	productID, errors := shopify.ParseAndValidateProductCreateRequest(r)
 	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		util.ErrResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
 	productVariants, err := shopify.RetrieveProductVariantsByProductID(store.ShopifyShopName(ctx), store.ShopifyAccessToken(ctx), *productID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to retrieve product", http.StatusInternalServerError)
+		util.ErrResponse(w, ErrRetrieveShopifyGraphqlProduct, http.StatusInternalServerError)
 		return
 	}
 

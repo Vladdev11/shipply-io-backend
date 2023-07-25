@@ -17,7 +17,7 @@ func CreatePackage(ctx context.Context, p ShipengineModels.Package) (*Shipengine
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", "/v1/packages", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "/packages", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}

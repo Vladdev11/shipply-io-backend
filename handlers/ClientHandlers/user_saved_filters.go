@@ -22,7 +22,7 @@ func UserSavedFilterCreate(w http.ResponseWriter, r *http.Request) {
 
 	table, err := util.GetStringFromPath(r, "table")
 	if err != nil {
-		util.ErrorResponse(w, "failed to get table from path", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 

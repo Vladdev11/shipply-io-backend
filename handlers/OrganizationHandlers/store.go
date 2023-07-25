@@ -7,31 +7,21 @@ import (
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
+	"github.com/shipply-io/shipply-io-backend/validation"
 )
 
 func GetStore(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
+	getStoreRequestData, err := validation.ParseRequestToGetStoreRequestData(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
-		return
-	}
-
-	store, err := models.GetStoreByID(ctx, storeID)
+	store, err := models.GetStoreByID(ctx, getStoreRequestData.StoreID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return
@@ -51,19 +41,9 @@ func GetStore(w http.ResponseWriter, r *http.Request) {
 func ListStores(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
+	// TODO clean and refactor request and query
 	request := models.StoreListRequest{}
 	request.OrganizationID = user.Organization.ID
 	errors := request.ParseAndValidateRequest(r)
@@ -89,26 +69,15 @@ func ListStores(w http.ResponseWriter, r *http.Request) {
 
 func ActivateStore(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
+	activateStoreRequestData, err := validation.ParseRequestToActivateStoreRequestData(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
-		return
-	}
-
-	store, err := models.GetStoreByID(ctx, storeID)
+	store, err := models.GetStoreByID(ctx, activateStoreRequestData.StoreID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return
@@ -119,9 +88,12 @@ func ActivateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = store.Activate(ctx)
+	_, err = models.UpdateStore(ctx, models.UpdateStoreInput{
+		ID:     store.ID,
+		Active: util.BoolPointer(true),
+	})
 	if err != nil {
-		util.ErrorResponse(w, "failed to activate store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -130,26 +102,15 @@ func ActivateStore(w http.ResponseWriter, r *http.Request) {
 
 func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
+	deactivateStoreRequestData, err := validation.ParseRequestToDeactivateStoreRequestData(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
-		return
-	}
-
-	store, err := models.GetStoreByID(ctx, storeID)
+	store, err := models.GetStoreByID(ctx, deactivateStoreRequestData.StoreID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return
@@ -160,9 +121,12 @@ func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = store.Deactivate(ctx)
+	_, err = models.UpdateStore(ctx, models.UpdateStoreInput{
+		ID:     store.ID,
+		Active: util.BoolPointer(false),
+	})
 	if err != nil {
-		util.ErrorResponse(w, "failed to deactivate store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -170,27 +134,17 @@ func DeactivateStore(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateStore(w http.ResponseWriter, r *http.Request) {
+
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
+	updateStoreRequestData, err := validation.ParseRequestToUpdateStoreRequestData(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "invalid store id", http.StatusBadRequest)
-		return
-	}
-
-	store, err := models.GetStoreByID(ctx, storeID)
+	store, err := models.GetStoreByID(ctx, updateStoreRequestData.StoreID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to find store", http.StatusBadRequest)
 		return
@@ -201,20 +155,20 @@ func UpdateStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request := &models.StoreUpdateRequest{}
-	errors := request.ParseAndValidateRequest(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
-		return
-	}
-
-	err = store.UpdateWithRequest(ctx, request)
+	store, err = models.UpdateStore(ctx, models.UpdateStoreInput{
+		ID:   store.ID,
+		Name: updateStoreRequestData.Name,
+	})
 	if err != nil {
-		util.ErrorResponse(w, "failed to update store", http.StatusInternalServerError)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	store.GetMarketplace()
+	err = store.GetMarketplace()
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
+		return
+	}
 
 	response := responses.GenerateUpdateStoreResponse(*store)
 	util.JSONResponse(w, response, http.StatusOK)
@@ -223,26 +177,15 @@ func UpdateStore(w http.ResponseWriter, r *http.Request) {
 
 func DeleteStore(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
+	deleteStoreRequestData, err := validation.ParseRequestToDeleteStoreRequestData(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	storeID, err := util.GetIntFromPath(r, "id")
-	if err != nil {
-		util.ErrorResponse(w, "Invalid store id", http.StatusBadRequest)
-		return
-	}
-
-	store, err := models.GetStoreByID(ctx, storeID)
+	store, err := models.GetStoreByID(ctx, deleteStoreRequestData.StoreID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get store", http.StatusBadRequest)
 		return

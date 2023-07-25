@@ -2,9 +2,11 @@ package ClientHandlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
@@ -13,36 +15,36 @@ func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	productAliasCreateReq := models.ProductAliasCreateRequest{}
-	errors := productAliasCreateReq.ParseAndValidateRequest(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+	err = productAliasCreateReq.ParseAndValidateRequest(r)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	product, err := models.GetProductByID(ctx, productAliasCreateReq.ProductID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if product.ClientID != user.Client.ID {
-		util.ErrorResponse(w, "product does not belong to client", http.StatusBadRequest)
+		util.ErrResponse(w, ErrProductDoesNotBelongToClient, http.StatusBadRequest)
 		return
 	}
 
-	if !models.IsProductAliasBarcodeUnique(ctx, user.Client.ID, productAliasCreateReq.Barcode) {
-		util.ErrorResponse(w, "barcode already exists", http.StatusBadRequest)
+	if err = models.EnsureProductAliasBarcodeUnique(ctx, user.Client.ID, productAliasCreateReq.Barcode); err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -53,7 +55,7 @@ func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = productAlias.Create(ctx); err != nil {
-		util.ErrorResponse(w, "failed to create product alias", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -61,154 +63,155 @@ func ProductAliasCreate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func ProductAliasUpdateByBarcode(w http.ResponseWriter, r *http.Request) {
+func UpdateProductAliasByBarcode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	barcode, err := util.GetStringFromPath(r, "barcode")
 	if err != nil {
-		util.ErrorResponse(w, "invalid barcode", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	request := &models.ProductAliasUpdateRequest{}
 	if err := json.NewDecoder(r.Body).Decode(request); err != nil {
-		util.ErrorResponse(w, "invalid json", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	productAlias, err := models.GetProductAliasByBarcode(ctx, barcode)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find product alias", http.StatusNotFound)
+		util.ErrResponse(w, err, http.StatusNotFound)
 		return
 	}
 
 	product, err := models.GetProductByID(ctx, productAlias.ProductID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get associated product", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if product.ClientID != user.Client.ID {
-		util.ErrorResponse(w, "product does not belong to client", http.StatusBadRequest)
+		util.ErrResponse(w, ErrProductDoesNotBelongToClient, http.StatusBadRequest)
 		return
 	}
 
 	if request.ProductID != 0 {
 		productNew, err := models.GetProductByID(ctx, request.ProductID)
 		if err != nil {
-			util.ErrorResponse(w, "failed to get new associated product", http.StatusBadRequest)
+			util.ErrResponse(w, fmt.Errorf("%w (updated product)", err), http.StatusBadRequest)
 			return
 		}
 
 		if productNew.ClientID != user.Client.ID {
-			util.ErrorResponse(w, "product does not belong to client", http.StatusBadRequest)
+			util.ErrResponse(w, fmt.Errorf("new %w", ErrProductDoesNotBelongToClient), http.StatusBadRequest)
 			return
 		}
 	}
 
 	if err := productAlias.UpdateWithRequest(ctx, request); err != nil {
-		util.ErrorResponse(w, "failed to update product alias", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	util.JSONResponse(w, productAlias, http.StatusOK)
 }
 
-func ProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
+func GetProductAliasGetByBarcode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	barcode, err := util.GetStringFromPath(r, "barcode")
 	if err != nil {
-		util.ErrorResponse(w, "invalid barcode", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	productAlias, err := models.GetProductAliasByBarcode(ctx, barcode)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find product alias", http.StatusNotFound)
+		util.ErrResponse(w, err, http.StatusNotFound)
 		return
 	}
 
 	product, err := models.GetProductByID(ctx, productAlias.ProductID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get associated product", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if product.ClientID != user.Client.ID {
-		util.ErrorResponse(w, "product does not belong to client", http.StatusBadRequest)
+		util.ErrResponse(w, ErrProductDoesNotBelongToClient, http.StatusBadRequest)
 		return
 	}
 
-	util.JSONResponse(w, productAlias, http.StatusOK)
+	response := responses.GenerateGetProductAliasGetByBarcodeResponse(*productAlias)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func ProductAliasDeleteByBarcode(w http.ResponseWriter, r *http.Request) {
+func DeleteProductAliasByBarcode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	barcode, err := util.GetStringFromPath(r, "barcode")
 	if err != nil {
-		util.ErrorResponse(w, "invalid barcode", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	productAlias, err := models.GetProductAliasByBarcode(ctx, barcode)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find product alias", http.StatusNotFound)
+		util.ErrResponse(w, err, http.StatusNotFound)
 		return
 	}
 
 	product, err := models.GetProductByID(ctx, productAlias.ProductID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get associated product", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if product.ClientID != user.Client.ID {
-		util.ErrorResponse(w, "product does not belong to client", http.StatusBadRequest)
+		util.ErrResponse(w, ErrProductDoesNotBelongToClient, http.StatusBadRequest)
 		return
 	}
 
 	if err := productAlias.Delete(ctx); err != nil {
-		util.ErrorResponse(w, "failed to delete product alias", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	util.SuccessResponse(w, http.StatusOK)
 }

@@ -62,7 +62,7 @@ func (S3 *S3Config) UploadAttachment(file multipart.File, uuid string, extension
 
 	_, err := S3.PutObject(putObjectInput)
 	if err != nil {
-		return err
+		return ErrUploadError{Err: err, UploadType: "attachment to s3"}
 	}
 
 	return nil
@@ -79,7 +79,7 @@ func (S3 *S3Config) UploadFileToCDN(file multipart.File, uuid string, extension 
 
 	_, err := S3.PutObject(putObjectInput)
 	if err != nil {
-		return err
+		return ErrUploadError{Err: err, UploadType: "file to s3"}
 	}
 
 	return nil

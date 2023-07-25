@@ -318,7 +318,9 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 
 	//unmarshal the carriers
 	var shippingMethodCarriers []models.ShippingMethodCarrier
-	err = json.Unmarshal(shippingMethod.Carriers, &shippingMethodCarriers)
+	if err = json.Unmarshal(shippingMethod.Carriers, &shippingMethodCarriers); err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
+	}
 
 	carrierConnections, err := models.GetCarrierConnectionsByClientID(ctx, client.ID, user.Organization.ID)
 	if err != nil {

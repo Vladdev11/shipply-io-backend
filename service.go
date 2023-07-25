@@ -182,13 +182,12 @@ func main() {
 	protected.HandleFunc("/purchase-order/{id}/delete", handlers.DeletePurchaseOrder).Methods(http.MethodDelete)
 	//**  END PURCHASE ORDER ROUTES **//
 
-	// TODO - Brennan update to new response structure
 	//**  PURCHASE ORDER ITEM ROUTES **//
-	protected.HandleFunc("/purchase-order/{id}/items/bulk-update", handlers.PurchaseOrderItemUpdateBulk).Methods(http.MethodPatch)
-	protected.HandleFunc("/purchase-order/{id}/item/create", handlers.PurchaseOrderItemCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/purchase-order/{id}/item/{item_id}", handlers.PurchaseOrderItemGet).Methods(http.MethodGet)
-	protected.HandleFunc("/purchase-order/{id}/item/{item_id}/update", handlers.PurchaseOrderItemUpdate).Methods(http.MethodPatch)
-	protected.HandleFunc("/purchase-order/{id}/item/{item_id}/delete", handlers.PurchaseOrderItemDelete).Methods(http.MethodDelete)
+	protected.HandleFunc("/purchase-order/{id}/items/bulk-update", handlers.UpdatePurchaseOrderItemBulk).Methods(http.MethodPatch)
+	protected.HandleFunc("/purchase-order/{id}/item/create", handlers.CreatePurchaseOrderItem).Methods(http.MethodPost)
+	protected.HandleFunc("/purchase-order/{id}/item/{item_id}", handlers.GetPurchaseOrderItem).Methods(http.MethodGet)
+	protected.HandleFunc("/purchase-order/{id}/item/{item_id}/update", handlers.UpdatePurchaseOrderItem).Methods(http.MethodPatch)
+	protected.HandleFunc("/purchase-order/{id}/item/{item_id}/delete", handlers.DeletePurchaseOrderItem).Methods(http.MethodDelete)
 	//** END PURCHASE ORDER ITEM ROUTES **//
 
 	//**  PURCHASE ORDER STATUS ROUTES **//
@@ -198,9 +197,8 @@ func main() {
 	protected.HandleFunc("/purchase-order-status/{id}/delete", handlers.PurchaseOrderStatusDelete).Methods(http.MethodDelete)
 	//** END PURCHASE ORDER STATUS ROUTES **//
 
-	// TODO - Brennan update to new response structure
 	//**  PURCHASE ORDER NOTE ROUTES **//
-	protected.HandleFunc("/purchase-order/{id}/notes/create", handlers.PurchaseOrderHistoryCreate).Methods(http.MethodPost)
+	protected.HandleFunc("/purchase-order/{id}/notes/create", handlers.CreatePurchaseOrderHistory).Methods(http.MethodPost)
 	//** END PURCHASE ORDER NOTE ROUTES **//
 
 	//** PURCHASE ORDER ATTACHMENT ROUTES **//
@@ -243,12 +241,11 @@ func main() {
 	protected.HandleFunc("/product/{id}/update-image-order", handlers.UpdateProductImageOrder).Methods(http.MethodPatch)
 	//** END PRODUCT ROUTES **//
 
-	// TODO - Brennan update to new response structure
 	//** PRODUCT ALIAS ROUTES **//
 	protected.HandleFunc("/product-aliases", handlers.ProductAliasCreate).Methods(http.MethodPost)
-	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasGetByBarcode).Methods(http.MethodGet)
-	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasUpdateByBarcode).Methods(http.MethodPatch)
-	protected.HandleFunc("/product-aliases/{barcode}", handlers.ProductAliasDeleteByBarcode).Methods(http.MethodDelete)
+	protected.HandleFunc("/product-aliases/{barcode}", handlers.GetProductAliasGetByBarcode).Methods(http.MethodGet)
+	protected.HandleFunc("/product-aliases/{barcode}", handlers.UpdateProductAliasByBarcode).Methods(http.MethodPatch)
+	protected.HandleFunc("/product-aliases/{barcode}", handlers.DeleteProductAliasByBarcode).Methods(http.MethodDelete)
 	//** END PRODUCT ALIAS ROUTES **//
 
 	//** VENDOR ROUTES **//
@@ -299,16 +296,14 @@ func main() {
 	protected.HandleFunc("/box/{id}/delete", handlers.DeleteBox).Methods(http.MethodDelete)
 	//** END BOX ROUTES **//
 
-	// TODO - Brennan update to new response structure
 	//** CARRIER ROUTES **//
 	protected.HandleFunc("/carriers/list", handlers.ListCarriers).Methods(http.MethodGet)
-	protected.HandleFunc("/carrier/{carrier_id}/connect", handlers.CreateCarrierConnection).Methods(http.MethodPost)
 	//** END CARRIER ROUTES **//
 
-	// TODO - Brennan update to new response structure
 	//** CARRIER CONNECTION ROUTES **//
 	protected.HandleFunc("/carrier-connections/list", handlers.ListCarrierConnections).Methods(http.MethodGet)
 	protected.HandleFunc("/carrier-connection/{carrier_connection_id}", handlers.GetCarrierConnection).Methods(http.MethodGet)
+	protected.HandleFunc("/carrier/{carrier_id}/connect", handlers.CreateCarrierConnection).Methods(http.MethodPost)
 	// protected.HandleFunc("/carrier-connection/{carrier_connection_id}/update", handlers.UpdateCarrierConnection).Methods(http.MethodPatch)
 	protected.HandleFunc("/carrier-connection/{carrier_connection_id}/disconnect", handlers.DisconnectCarrierConnection).Methods(http.MethodDelete)
 	//** END CARRIER CONNECTION ROUTES **//

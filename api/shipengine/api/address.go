@@ -24,7 +24,7 @@ func ValidateAddress(ctx context.Context, addresses []ShipengineModels.Address) 
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", "/v1/addresses/validate", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "/addresses/validate", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -77,7 +77,7 @@ func ParseAddress(ctx context.Context, toParse ShipengineModels.AddressParseRequ
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("PUT", "/v1/addresses/recognize", bytes.NewBuffer(body))
+	req, err := http.NewRequest("PUT", "/addresses/recognize", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}

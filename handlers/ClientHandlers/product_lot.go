@@ -18,30 +18,30 @@ func ProductLotListByProduct(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
 	productID, err := util.GetIntFromPath(r, "product_id")
 	if err != nil {
-		util.ErrorResponse(w, "failed to get shipping method id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	product, err := models.GetProductByID(ctx, productID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get product", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if product.ClientID != user.Client.ID {
-		util.ErrorResponse(w, "product does not belong to client", http.StatusBadRequest)
+		util.ErrResponse(w, ErrProductDoesNotBelongToClient, http.StatusBadRequest)
 		return
 	}
 
 	err = product.GetProductLots(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get product lots", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 

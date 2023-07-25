@@ -248,7 +248,7 @@ func DeletePurchaseOrder(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
+func CreatePurchaseOrderHistory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -257,7 +257,10 @@ func PurchaseOrderHistoryCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = user.GetOrganization(ctx)
+	if err = user.GetOrganization(ctx); err != nil {
+		util.ErrResponse(w, err, http.StatusUnauthorized)
+		return
+	}
 
 	request := &models.PurchaseOrderHistoryCreateRequest{}
 	errors := request.ParseAndValidateRequest(r)

@@ -11,7 +11,7 @@ import (
 func ConnectCarrier(ctx context.Context, carrier interface{}, carrierName string) (*ShipengineModels.CarrierConnectResponse, error) {
 
 	if carrier == nil {
-		return nil, fmt.Errorf("carrier information is empty")
+		return nil, ErrEmptyCarrierInformation
 	}
 
 	carrierConnect := ShipengineModels.CarrierConnect{
@@ -45,7 +45,7 @@ func DeleteCarrier(ctx context.Context, carrierName string, carrierId string) er
 	}
 
 	if errorResponse != nil {
-		return fmt.Errorf("error deleting carrier: %v", errorResponse.Errors[0].Message)
+		return fmt.Errorf("%e:%v", ErrDeleteCarrierFailed, errorResponse.Errors[0].Message)
 	}
 
 	return nil

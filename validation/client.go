@@ -1,9 +1,31 @@
 package validation
 
 import (
+	"errors"
 	"mime/multipart"
 	"net/http"
 )
+
+/* -------------------------------- GetClient ------------------------------- */
+
+// GetClientRequestData represents the formatted and validated data for the GetClient endpoint
+type GetClientRequestData struct {
+	ClientID int
+}
+
+// ParseRequestToGetClientRequestData parses the request body to GetClientRequestData
+func ParseRequestToGetClientRequestData(r *http.Request) (*GetClientRequestData, error) {
+
+	var err error
+	var getClientRequestData GetClientRequestData
+
+	getClientRequestData.ClientID, err = validateIntPathParameter(r, "client_id", 1)
+	if err != nil {
+		return nil, err
+	}
+
+	return &getClientRequestData, nil
+}
 
 /* ------------------------------ CreateClient ------------------------------ */
 
@@ -13,24 +35,23 @@ type CreateClientRequestData struct {
 }
 
 // ParseRequestToCreateClientRequestData parses the request body to CreateClientRequestData
-func ParseRequestToCreateClientRequestData(r *http.Request) (*CreateClientRequestData, []string) {
+func ParseRequestToCreateClientRequestData(r *http.Request) (*CreateClientRequestData, error) {
 
-	createClientRequestData := CreateClientRequestData{}
-	errors := []string{}
+	var errs []error
+	var createClientRequestData CreateClientRequestData
 
 	rawData, err := ParseJSONRequestBody(r)
 	if err != nil {
-		errors = append(errors, err.Error())
-		return nil, errors
+		return nil, err
 	}
 
 	createClientRequestData.Name, err = validateRequiredStringField(rawData["name"], "name", 1, 255)
 	if err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
-	if len(errors) > 0 {
-		return nil, errors
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 
 	return &createClientRequestData, nil
@@ -40,28 +61,33 @@ func ParseRequestToCreateClientRequestData(r *http.Request) (*CreateClientReques
 
 // UpdateClientRequestData represents the formatted and validated data for the UpdateClient endpoint
 type UpdateClientRequestData struct {
-	Name *string `json:"name"`
+	ClientID int
+	Name     *string `json:"name"`
 }
 
 // ParseRequestToUpdateClientRequestData parses the request body to UpdateClientRequestData
-func ParseRequestToUpdateClientRequestData(r *http.Request) (*UpdateClientRequestData, []string) {
+func ParseRequestToUpdateClientRequestData(r *http.Request) (*UpdateClientRequestData, error) {
 
-	updateClientRequestData := UpdateClientRequestData{}
-	errors := []string{}
+	var errs []error
+	var updateClientRequestData UpdateClientRequestData
 
 	rawData, err := ParseJSONRequestBody(r)
 	if err != nil {
-		errors = append(errors, err.Error())
-		return nil, errors
+		return nil, err
+	}
+
+	updateClientRequestData.ClientID, err = validateIntPathParameter(r, "client_id", 1)
+	if err != nil {
+		errs = append(errs, err)
 	}
 
 	updateClientRequestData.Name, err = validateOptionalStringField(rawData["name"], "name", 1, 255)
 	if err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err)
 	}
 
-	if len(errors) > 0 {
-		return nil, errors
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 
 	return &updateClientRequestData, nil
@@ -71,35 +97,41 @@ func ParseRequestToUpdateClientRequestData(r *http.Request) (*UpdateClientReques
 
 // ClientUpdateAvatarRequestData represents the formatted and validated data for the ClientUpdateAvatar endpoint
 type ClientUpdateAvatarRequestData struct {
+	ClientID int
+
 	Image    multipart.File `json:"image"`
 	FileType string         `json:"file_type"`
 	FileName string         `json:"file_name"`
 }
 
 // ParseRequestToClientUpdateAvatarRequestData parses the request body to ClientUpdateAvatarRequestData
-func ParseRequestToClientUpdateAvatarRequestData(r *http.Request) (*ClientUpdateAvatarRequestData, []string) {
+func ParseRequestToClientUpdateAvatarRequestData(r *http.Request) (*ClientUpdateAvatarRequestData, error) {
 
-	errors := []string{}
+	var err error
+	var errs []error
+	var clientUpdateAvatarRequestData ClientUpdateAvatarRequestData
+
+	clientUpdateAvatarRequestData.ClientID, err = validateIntPathParameter(r, "client_id", 1)
+	if err != nil {
+		errs = append(errs, err)
+	}
 
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		errors = append(errors, err.Error())
-		return nil, errors
+		return nil, err
 	}
 
 	multipartImageData, err := ParseMultipartImage(r, "file")
-	if err != nil && err != http.ErrMissingFile {
-		errors = append(errors, err.Error())
-		return nil, errors
+	if err != nil {
+		errs = append(errs, err)
 	}
 
-	if multipartImageData == nil {
-		errors = append(errors, "file is required")
-		return nil, errors
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 
-	return &ClientUpdateAvatarRequestData{
-		Image:    multipartImageData.FileData,
-		FileType: multipartImageData.FileType,
-		FileName: multipartImageData.FileName,
-	}, nil
+	clientUpdateAvatarRequestData.Image = multipartImageData.FileData
+	clientUpdateAvatarRequestData.FileType = multipartImageData.FileType
+	clientUpdateAvatarRequestData.FileName = multipartImageData.FileName
+
+	return &clientUpdateAvatarRequestData, nil
 }

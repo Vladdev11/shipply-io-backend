@@ -26,7 +26,7 @@ func GetProductImageByID(ctx context.Context, ID int) (*ProductImage, error) {
 	productImage := ProductImage{}
 	err := util.DBFromContext(ctx).Model(&ProductImage{}).Where("id = ?", ID).First(&productImage).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "product image", Err: err}
 	}
 	return &productImage, nil
 }
@@ -48,7 +48,7 @@ func CreateProductImage(ctx context.Context, input CreateProductImageInput) (*Pr
 
 	err := util.DBFromContext(ctx).Model(&ProductImage{}).Create(&productImage).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrCreateFailed{Object: "product image", Err: err}
 	}
 
 	return &productImage, nil
@@ -67,7 +67,7 @@ func UpdateProductImage(ctx context.Context, input UpdateProductImageInput) (*Pr
 
 	err := util.DBFromContext(ctx).Model(&ProductImage{}).Where("id = ?", input.ID).Updates(&productImage).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrUpdateFailed{Object: "product image", Err: err}
 	}
 
 	return &productImage, nil

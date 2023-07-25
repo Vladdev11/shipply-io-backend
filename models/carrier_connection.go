@@ -3,12 +3,25 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/shipply-io/shipply-io-backend/util"
 	"gorm.io/gorm"
+)
+
+var (
+	//ErrEmptyCarrierNickname
+	ErrEmptyCarrierNickname = errors.New("carrier nickname is empty")
+	//ErrUnmarshalCarrierOptions
+	ErrUnmarshalCarrierOptions = errors.New("failed to unmarshal carrier options")
+	//ErrUnmarshalCarrierPackageTypes
+	ErrUnmarshalCarrierPackageTypes = errors.New("failed to unmarshal carrier package types")
+	//ErrUnmarshalCarrierServices
+	ErrUnmarshalCarrierServices = errors.New("failed to unmarshal carrier services")
 )
 
 type CarrierConnection struct {
@@ -109,7 +122,7 @@ func (cc *CarrierConnection) SaveCarrierOptions(ctx context.Context, carrierOpti
 	//save only the carrier options field in the database
 	err = util.DBFromContext(ctx).Model(cc).Update("carrier_options", cc.CarrierOptions).Error
 	if err != nil {
-		return err
+		return ErrUpdateFailed{Err: err, Object: fmt.Sprintf("carrier connection options")}
 	}
 	return nil
 }
@@ -118,7 +131,7 @@ func (cc *CarrierConnection) GetCarrier(ctx context.Context) error {
 	var carrier Carrier
 	err := util.DBFromContext(ctx).First(&carrier, cc.CarrierID).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Object: "carrier", Err: err}
 	}
 	cc.Carrier = carrier
 	return nil
@@ -160,15 +173,15 @@ func GetCarrierConnectionByID(ctx context.Context, id int) (*CarrierConnection, 
 
 	err := util.DBFromContext(ctx).Preload("Carrier").First(&carrierConnection, id).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Err: err, Object: fmt.Sprintf("carrier connection #%d", id)}
 	}
 
 	return &carrierConnection, nil
 }
 
-func CreateCarrierConnection(carrier *Carrier, r *http.Request) (*CarrierConnect, []string) {
+func CreateCarrierConnection(carrier *Carrier, r *http.Request) (*CarrierConnect, error) {
 
-	var errs []string
+	var err error
 	var carrierConnect CarrierConnect
 
 	//TODO make sure exisitng account number does not already exist so we don't get duplicate accounts
@@ -176,34 +189,34 @@ func CreateCarrierConnection(carrier *Carrier, r *http.Request) (*CarrierConnect
 	switch carrier.ShipEngineID {
 	case "asendia":
 		carrierConnect = &CarrierConnectAsendia{}
-		errs = carrierConnect.ParseAndValidateRequest(r)
+		err = carrierConnect.ParseAndValidateRequest(r)
 	case "endicia":
 		carrierConnect = &CarrierConnectEndicia{}
-		errs = carrierConnect.ParseAndValidateRequest(r)
+		err = carrierConnect.ParseAndValidateRequest(r)
 	case "dhl_ecommerce":
 		carrierConnect = &CarrierConnectDHLeCommerce{}
-		errs = carrierConnect.ParseAndValidateRequest(r)
+		err = carrierConnect.ParseAndValidateRequest(r)
 	case "dhl_express":
 		carrierConnect = &CarrierConnectDHLExpress{}
-		errs = carrierConnect.ParseAndValidateRequest(r)
+		err = carrierConnect.ParseAndValidateRequest(r)
 	case "ontrac":
 		carrierConnect = &CarrierConnectOnTrac{}
-		errs = carrierConnect.ParseAndValidateRequest(r)
+		err = carrierConnect.ParseAndValidateRequest(r)
 	case "stamps_com":
 		carrierConnect = &CarrierConnectStampsCom{}
-		errs = carrierConnect.ParseAndValidateRequest(r)
+		err = carrierConnect.ParseAndValidateRequest(r)
 	case "ups":
 		carrierConnect = &CarrierConnectUPS{}
-		errs = carrierConnect.ParseAndValidateRequest(r)
+		err = carrierConnect.ParseAndValidateRequest(r)
 	case "fedex":
 		carrierConnect = &CarrierConnectFedexUSCA{}
-		errs = carrierConnect.ParseAndValidateRequest(r)
+		err = carrierConnect.ParseAndValidateRequest(r)
 	default:
-		return nil, []string{"carrier not supported"}
+		return nil, ErrCarrierNotSupported
 	}
 
-	if len(errs) > 0 {
-		return nil, errs
+	if err != nil {
+		return nil, err
 	}
 
 	return &carrierConnect, nil
@@ -211,9 +224,8 @@ func CreateCarrierConnection(carrier *Carrier, r *http.Request) (*CarrierConnect
 }
 
 func (cc *CarrierConnection) Create(ctx context.Context) error {
-	err := util.DBFromContext(ctx).Create(cc).Error
-	if err != nil {
-		return err
+	if err := util.DBFromContext(ctx).Create(cc).Error; err != nil {
+		return ErrCreateFailed{Err: err, Object: fmt.Sprintf("carrier connection")}
 	}
 
 	return nil
@@ -233,14 +245,14 @@ func (cc *CarrierConnection) Update(ctx context.Context) error {
 func (cc *CarrierConnection) Delete(ctx context.Context) error {
 	err := util.DBFromContext(ctx).Delete(cc).Error
 	if err != nil {
-		return err
+		return ErrDeleteFailed{Err: err, Object: fmt.Sprintf("carrier connection #%d", cc.ID)}
 	}
 
 	return nil
 }
 
 type CarrierConnect interface {
-	ParseAndValidateRequest(r *http.Request) []string
+	ParseAndValidateRequest(r *http.Request) error
 	GetNickname() (string, error)
 }
 
@@ -251,13 +263,13 @@ type CarrierConnectAsendia struct {
 	AccountNumber int    `json:"account_number"`
 }
 
-func (ccar *CarrierConnectAsendia) ParseAndValidateRequest(r *http.Request) []string {
+func (ccar *CarrierConnectAsendia) ParseAndValidateRequest(r *http.Request) error {
 
-	errs := []string{}
+	var errs []error
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return []string{"invalid JSON"}
+		return ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -268,43 +280,43 @@ func (ccar *CarrierConnectAsendia) ParseAndValidateRequest(r *http.Request) []st
 	}{}
 
 	if err := json.Unmarshal(body, &aux); err != nil {
-		errs = append(errs, "invalid json")
+		return ErrInvalidJSON
 	}
 
 	if aux.Nickname != nil {
 		if err := json.Unmarshal(aux.Nickname, &ccar.Nickname); err != nil {
-			errs = append(errs, "nickname must be string")
+			errs = append(errs, ErrInvalidFieldType{"nickname", "string"})
 		}
 	} else {
-		errs = append(errs, "nickname is required")
+		errs = append(errs, ErrRequiredField{"nickname"})
 	}
 
 	if aux.FTPUsername != nil {
 		if err := json.Unmarshal(aux.FTPUsername, &ccar.FTPUsername); err != nil {
-			errs = append(errs, "ftp_username must be string")
+			errs = append(errs, ErrInvalidFieldType{"ftp_username", "string"})
 		}
 	} else {
-		errs = append(errs, "ftp_username is required")
+		errs = append(errs, ErrRequiredField{"ftp_username"})
 	}
 
 	if aux.FTPPassword != nil {
 		if err := json.Unmarshal(aux.FTPPassword, &ccar.FTPPassword); err != nil {
-			errs = append(errs, "ftp_password must be string")
+			errs = append(errs, ErrInvalidFieldType{"ftp_password", "string"})
 		}
 	} else {
-		errs = append(errs, "ftp_password is required")
+		errs = append(errs, ErrRequiredField{"ftp_password"})
 	}
 
 	if aux.AccountNumber != nil {
 		if err := json.Unmarshal(aux.AccountNumber, &ccar.AccountNumber); err != nil {
-			errs = append(errs, "account_number must be int")
+			errs = append(errs, ErrInvalidFieldType{"account_number", "int"})
 		}
 	} else {
-		errs = append(errs, "account_number is required")
+		errs = append(errs, ErrRequiredField{"account_number"})
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -312,6 +324,9 @@ func (ccar *CarrierConnectAsendia) ParseAndValidateRequest(r *http.Request) []st
 }
 
 func (ccar *CarrierConnectAsendia) GetNickname() (string, error) {
+	if ccar.Nickname == "" {
+		return "", ErrEmptyCarrierNickname
+	}
 	return ccar.Nickname, nil
 }
 
@@ -321,13 +336,13 @@ type CarrierConnectEndicia struct {
 	Passphrase string `json:"passphrase"`
 }
 
-func (cceu *CarrierConnectEndicia) ParseAndValidateRequest(r *http.Request) []string {
+func (cceu *CarrierConnectEndicia) ParseAndValidateRequest(r *http.Request) error {
 
-	errs := []string{}
+	var errs []error
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return []string{"invalid JSON"}
+		return ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -337,35 +352,35 @@ func (cceu *CarrierConnectEndicia) ParseAndValidateRequest(r *http.Request) []st
 	}{}
 
 	if err := json.Unmarshal(body, &aux); err != nil {
-		errs = append(errs, "invalid json")
+		return ErrInvalidJSON
 	}
 
 	if aux.Nickname != nil {
 		if err := json.Unmarshal(aux.Nickname, &cceu.Nickname); err != nil {
-			errs = append(errs, "nickname must be string")
+			errs = append(errs, ErrInvalidFieldType{"nickname", "string"})
 		}
 	} else {
-		errs = append(errs, "nickname is required")
+		errs = append(errs, ErrRequiredField{"nickname"})
 	}
 
 	if aux.Account != nil {
 		if err := json.Unmarshal(aux.Account, &cceu.Account); err != nil {
-			errs = append(errs, "account must be string")
+			errs = append(errs, ErrInvalidFieldType{"account", "string"})
 		}
 	} else {
-		errs = append(errs, "account is required")
+		errs = append(errs, ErrRequiredField{"account"})
 	}
 
 	if aux.Passphrase != nil {
 		if err := json.Unmarshal(aux.Passphrase, &cceu.Passphrase); err != nil {
-			errs = append(errs, "passphrase must be string")
+			errs = append(errs, ErrInvalidFieldType{"passphrase", "string"})
 		}
 	} else {
-		errs = append(errs, "passphrase is required")
+		errs = append(errs, ErrRequiredField{"passphrase"})
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -373,6 +388,9 @@ func (cceu *CarrierConnectEndicia) ParseAndValidateRequest(r *http.Request) []st
 }
 
 func (cceu *CarrierConnectEndicia) GetNickname() (string, error) {
+	if cceu.Nickname == "" {
+		return "", ErrEmptyCarrierNickname
+	}
 	return cceu.Nickname, nil
 }
 
@@ -385,13 +403,13 @@ type CarrierConnectDHLeCommerce struct {
 	SoldTo             string `json:"sold_to"`
 }
 
-func (ccdhl *CarrierConnectDHLeCommerce) ParseAndValidateRequest(r *http.Request) []string {
+func (ccdhl *CarrierConnectDHLeCommerce) ParseAndValidateRequest(r *http.Request) error {
 
-	errs := []string{}
+	var errs []error
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return []string{"invalid JSON"}
+		return ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -404,59 +422,59 @@ func (ccdhl *CarrierConnectDHLeCommerce) ParseAndValidateRequest(r *http.Request
 	}{}
 
 	if err := json.Unmarshal(body, &aux); err != nil {
-		errs = append(errs, "invalid json")
+		return ErrInvalidJSON
 	}
 
 	if aux.Nickname != nil {
 		if err := json.Unmarshal(aux.Nickname, &ccdhl.Nickname); err != nil {
-			errs = append(errs, "nickname must be string")
+			errs = append(errs, ErrInvalidFieldType{"nickname", "string"})
 		}
 	} else {
-		errs = append(errs, "nickname is required")
+		errs = append(errs, ErrRequiredField{"nickname"})
 	}
 
 	if aux.ClientID != nil {
 		if err := json.Unmarshal(aux.ClientID, &ccdhl.ClientID); err != nil {
-			errs = append(errs, "client_id must be string")
+			errs = append(errs, ErrInvalidFieldType{"client_id", "string"})
 		}
 	} else {
-		errs = append(errs, "client_id is required")
+		errs = append(errs, ErrRequiredField{"client_id"})
 	}
 
 	if aux.APISecret != nil {
 		if err := json.Unmarshal(aux.APISecret, &ccdhl.APISecret); err != nil {
-			errs = append(errs, "api_secret must be string")
+			errs = append(errs, ErrInvalidFieldType{"api_secret", "string"})
 		}
 	} else {
-		errs = append(errs, "api_secret is required")
+		errs = append(errs, ErrRequiredField{"api_secret"})
 	}
 
 	if aux.PickupNumber != nil {
 		if err := json.Unmarshal(aux.PickupNumber, &ccdhl.PickupNumber); err != nil {
-			errs = append(errs, "pickup_number must be string")
+			errs = append(errs, ErrInvalidFieldType{"pickup_number", "string"})
 		}
 	} else {
-		errs = append(errs, "pickup_number is required")
+		errs = append(errs, ErrRequiredField{"pickup_number"})
 	}
 
 	if aux.DistributionCenter != nil {
 		if err := json.Unmarshal(aux.DistributionCenter, &ccdhl.DistributionCenter); err != nil {
-			errs = append(errs, "distribution_center must be string")
+			errs = append(errs, ErrInvalidFieldType{"distribution_center", "string"})
 		}
 	} else {
-		errs = append(errs, "distribution_center is required")
+		errs = append(errs, ErrRequiredField{"distribution_center"})
 	}
 
 	if aux.SoldTo != nil {
 		if err := json.Unmarshal(aux.SoldTo, &ccdhl.SoldTo); err != nil {
-			errs = append(errs, "sold_to must be string")
+			errs = append(errs, ErrInvalidFieldType{"sold_to", "string"})
 		}
 	} else {
-		errs = append(errs, "sold_to is required")
+		errs = append(errs, ErrRequiredField{"sold_to"})
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -464,6 +482,9 @@ func (ccdhl *CarrierConnectDHLeCommerce) ParseAndValidateRequest(r *http.Request
 }
 
 func (ccdhl *CarrierConnectDHLeCommerce) GetNickname() (string, error) {
+	if ccdhl.Nickname == "" {
+		return "", ErrEmptyCarrierNickname
+	}
 	return ccdhl.Nickname, nil
 }
 
@@ -475,13 +496,13 @@ type CarrierConnectDHLExpress struct {
 	CountryCode   string `json:"country_code,omitempty"`
 }
 
-func (ccde *CarrierConnectDHLExpress) ParseAndValidateRequest(r *http.Request) []string {
+func (ccde *CarrierConnectDHLExpress) ParseAndValidateRequest(r *http.Request) error {
 
-	errs := []string{}
+	var errs []error
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return []string{"invalid JSON"}
+		return ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -493,45 +514,45 @@ func (ccde *CarrierConnectDHLExpress) ParseAndValidateRequest(r *http.Request) [
 	}{}
 
 	if err := json.Unmarshal(body, &aux); err != nil {
-		errs = append(errs, "invalid json")
+		return ErrInvalidJSON
 	}
 
 	if aux.Nickname != nil {
 		if err := json.Unmarshal(aux.Nickname, &ccde.Nickname); err != nil {
-			errs = append(errs, "nickname must be string")
+			errs = append(errs, ErrInvalidFieldType{"nickname", "string"})
 		}
 	} else {
-		errs = append(errs, "nickname is required")
+		errs = append(errs, ErrRequiredField{"nickname"})
 	}
 
 	if aux.AccountNumber != nil {
 		if err := json.Unmarshal(aux.AccountNumber, &ccde.AccountNumber); err != nil {
-			errs = append(errs, "account_number must be string")
+			errs = append(errs, ErrInvalidFieldType{"account_number", "string"})
 		}
 	} else {
-		errs = append(errs, "account_number is required")
+		errs = append(errs, ErrRequiredField{"account_number"})
 	}
 
 	if aux.SiteID != nil {
 		if err := json.Unmarshal(aux.SiteID, &ccde.SiteID); err != nil {
-			errs = append(errs, "site_id must be string")
+			errs = append(errs, ErrInvalidFieldType{"site_id", "string"})
 		}
 	}
 
 	if aux.Password != nil {
 		if err := json.Unmarshal(aux.Password, &ccde.Password); err != nil {
-			errs = append(errs, "password must be string")
+			errs = append(errs, ErrInvalidFieldType{"password", "string"})
 		}
 	}
 
 	if aux.CountryCode != nil {
 		if err := json.Unmarshal(aux.CountryCode, &ccde.CountryCode); err != nil {
-			errs = append(errs, "country_code must be string")
+			errs = append(errs, ErrInvalidFieldType{"country_code", "string"})
 		}
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -539,6 +560,9 @@ func (ccde *CarrierConnectDHLExpress) ParseAndValidateRequest(r *http.Request) [
 }
 
 func (ccde *CarrierConnectDHLExpress) GetNickname() (string, error) {
+	if ccde.Nickname == "" {
+		return "", ErrEmptyCarrierNickname
+	}
 	return ccde.Nickname, nil
 }
 
@@ -548,13 +572,13 @@ type CarrierConnectOnTrac struct {
 	Password      string `json:"password"`
 }
 
-func (ccot *CarrierConnectOnTrac) ParseAndValidateRequest(r *http.Request) []string {
+func (ccot *CarrierConnectOnTrac) ParseAndValidateRequest(r *http.Request) error {
 
-	errs := []string{}
+	var errs []error
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return []string{"invalid JSON"}
+		return ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -564,35 +588,35 @@ func (ccot *CarrierConnectOnTrac) ParseAndValidateRequest(r *http.Request) []str
 	}{}
 
 	if err := json.Unmarshal(body, &aux); err != nil {
-		errs = append(errs, "invalid json")
+		return ErrInvalidJSON
 	}
 
 	if aux.Nickname != nil {
 		if err := json.Unmarshal(aux.Nickname, &ccot.Nickname); err != nil {
-			errs = append(errs, "nickname must be string")
+			errs = append(errs, ErrInvalidFieldType{"nickname", "string"})
 		}
 	} else {
-		errs = append(errs, "nickname is required")
+		errs = append(errs, ErrRequiredField{"nickname"})
 	}
 
 	if aux.AccountNumber != nil {
 		if err := json.Unmarshal(aux.AccountNumber, &ccot.AccountNumber); err != nil {
-			errs = append(errs, "account_number must be int")
+			errs = append(errs, ErrInvalidFieldType{"account_number", "int"})
 		}
 	} else {
-		errs = append(errs, "account_number is required")
+		errs = append(errs, ErrRequiredField{"account_number"})
 	}
 
 	if aux.Password != nil {
 		if err := json.Unmarshal(aux.Password, &ccot.Password); err != nil {
-			errs = append(errs, "password must be string")
+			errs = append(errs, ErrInvalidFieldType{"password", "string"})
 		}
 	} else {
-		errs = append(errs, "password is required")
+		errs = append(errs, ErrRequiredField{"password"})
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -600,6 +624,9 @@ func (ccot *CarrierConnectOnTrac) ParseAndValidateRequest(r *http.Request) []str
 }
 
 func (ccot *CarrierConnectOnTrac) GetNickname() (string, error) {
+	if ccot.Nickname == "" {
+		return "", ErrEmptyCarrierNickname
+	}
 	return ccot.Nickname, nil
 }
 
@@ -609,13 +636,13 @@ type CarrierConnectStampsCom struct {
 	Password string `json:"password"`
 }
 
-func (ccsc *CarrierConnectStampsCom) ParseAndValidateRequest(r *http.Request) []string {
+func (ccsc *CarrierConnectStampsCom) ParseAndValidateRequest(r *http.Request) error {
 
-	errs := []string{}
+	var errs []error
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return []string{"invalid JSON"}
+		return ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -625,35 +652,35 @@ func (ccsc *CarrierConnectStampsCom) ParseAndValidateRequest(r *http.Request) []
 	}{}
 
 	if err := json.Unmarshal(body, &aux); err != nil {
-		errs = append(errs, "invalid json")
+		return ErrInvalidJSON
 	}
 
 	if aux.Nickname != nil {
 		if err := json.Unmarshal(aux.Nickname, &ccsc.Nickname); err != nil {
-			errs = append(errs, "nickname must be string")
+			errs = append(errs, ErrInvalidFieldType{"nickname", "string"})
 		}
 	} else {
-		errs = append(errs, "nickname is required")
+		errs = append(errs, ErrRequiredField{"nickname"})
 	}
 
 	if aux.Username != nil {
 		if err := json.Unmarshal(aux.Username, &ccsc.Username); err != nil {
-			errs = append(errs, "username must be string")
+			errs = append(errs, ErrInvalidFieldType{"username", "string"})
 		}
 	} else {
-		errs = append(errs, "username is required")
+		errs = append(errs, ErrRequiredField{"username"})
 	}
 
 	if aux.Password != nil {
 		if err := json.Unmarshal(aux.Password, &ccsc.Password); err != nil {
-			errs = append(errs, "password must be string")
+			errs = append(errs, ErrInvalidFieldType{"password", "string"})
 		}
 	} else {
-		errs = append(errs, "password is required")
+		errs = append(errs, ErrRequiredField{"password"})
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -661,6 +688,9 @@ func (ccsc *CarrierConnectStampsCom) ParseAndValidateRequest(r *http.Request) []
 }
 
 func (ccsc *CarrierConnectStampsCom) GetNickname() (string, error) {
+	if ccsc.Nickname == "" {
+		return "", ErrEmptyCarrierNickname
+	}
 	return ccsc.Nickname, nil
 }
 
@@ -717,13 +747,13 @@ type CarrierConnectUPSInvoice struct {
 	InvoiceDate   string  `json:"invoice_date"`
 }
 
-func (ccups *CarrierConnectUPS) ParseAndValidateRequest(r *http.Request) []string {
+func (ccups *CarrierConnectUPS) ParseAndValidateRequest(r *http.Request) error {
 
-	errs := []string{}
+	var errs []error
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return []string{"invalid JSON"}
+		return ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -751,167 +781,167 @@ func (ccups *CarrierConnectUPS) ParseAndValidateRequest(r *http.Request) []strin
 	}{}
 
 	if err := json.Unmarshal(body, &aux); err != nil {
-		errs = append(errs, "invalid json")
+		return ErrInvalidJSON
 	}
 
 	if aux.Nickname != nil {
 		if err := json.Unmarshal(aux.Nickname, &ccups.Nickname); err != nil {
-			errs = append(errs, "nickname must be string")
+			errs = append(errs, ErrInvalidFieldType{"nickname", "string"})
 		}
 	} else {
-		errs = append(errs, "nickname is required")
+		errs = append(errs, ErrRequiredField{"nickname"})
 	}
 
 	if aux.AccountNumber != nil {
 		if err := json.Unmarshal(aux.AccountNumber, &ccups.AccountNumber); err != nil {
-			errs = append(errs, "account_number must be string")
+			errs = append(errs, ErrInvalidFieldType{"account_number", "string"})
 		}
 	} else {
-		errs = append(errs, "account_number is required")
+		errs = append(errs, ErrRequiredField{"account_number"})
 	}
 
 	if aux.AccountCountryCode != nil {
 		if err := json.Unmarshal(aux.AccountCountryCode, &ccups.AccountCountryCode); err != nil {
-			errs = append(errs, "account_country_code must be string")
+			errs = append(errs, ErrInvalidFieldType{"account_country_code", "string"})
 		}
 	} else {
-		errs = append(errs, "account_country_code is required")
+		errs = append(errs, ErrRequiredField{"account_country_code"})
 	}
 
 	if aux.AccountPostalCode != nil {
 		if err := json.Unmarshal(aux.AccountPostalCode, &ccups.AccountPostalCode); err != nil {
-			errs = append(errs, "account_postal_code must be string")
+			errs = append(errs, ErrInvalidFieldType{"account_postal_code", "string"})
 		}
 	} else {
-		errs = append(errs, "account_postal_code is required")
+		errs = append(errs, ErrRequiredField{"account_postal_code"})
 	}
 
 	if aux.Title != nil {
 		if err := json.Unmarshal(aux.Title, &ccups.Title); err != nil {
-			errs = append(errs, "title must be string")
+			errs = append(errs, ErrInvalidFieldType{"title", "string"})
 		}
 	} else {
-		errs = append(errs, "title is required")
+		errs = append(errs, ErrRequiredField{"title"})
 	}
 
 	if aux.FirstName != nil {
 		if err := json.Unmarshal(aux.FirstName, &ccups.FirstName); err != nil {
-			errs = append(errs, "first_name must be string")
+			errs = append(errs, ErrInvalidFieldType{"first_name", "string"})
 		}
 	} else {
-		errs = append(errs, "first_name is required")
+		errs = append(errs, ErrRequiredField{"first_name"})
 	}
 
 	if aux.LastName != nil {
 		if err := json.Unmarshal(aux.LastName, &ccups.LastName); err != nil {
-			errs = append(errs, "last_name must be string")
+			errs = append(errs, ErrInvalidFieldType{"last_name", "string"})
 		}
 	} else {
-		errs = append(errs, "last_name is required")
+		errs = append(errs, ErrRequiredField{"last_name"})
 	}
 
 	if aux.Address1 != nil {
 		if err := json.Unmarshal(aux.Address1, &ccups.Address1); err != nil {
-			errs = append(errs, "address1 must be string")
+			errs = append(errs, ErrInvalidFieldType{"address1", "string"})
 		}
 	} else {
-		errs = append(errs, "address1 is required")
+		errs = append(errs, ErrRequiredField{"address1"})
 	}
 
 	if aux.City != nil {
 		if err := json.Unmarshal(aux.City, &ccups.City); err != nil {
-			errs = append(errs, "city must be string")
+			errs = append(errs, ErrInvalidFieldType{"city", "string"})
 		}
 	} else {
-		errs = append(errs, "city is required")
+		errs = append(errs, ErrRequiredField{"city"})
 	}
 
 	if aux.State != nil {
 		if err := json.Unmarshal(aux.State, &ccups.State); err != nil {
-			errs = append(errs, "state must be string")
+			errs = append(errs, ErrInvalidFieldType{"state", "string"})
 		}
 	} else {
-		errs = append(errs, "state is required")
+		errs = append(errs, ErrRequiredField{"state"})
 	}
 	if aux.PostalCode != nil {
 		if err := json.Unmarshal(aux.PostalCode, &ccups.PostalCode); err != nil {
-			errs = append(errs, "postal_code must be string")
+			errs = append(errs, ErrInvalidFieldType{"postal_code", "string"})
 		}
 	} else {
-		errs = append(errs, "postal_code is required")
+		errs = append(errs, ErrRequiredField{"postal_code"})
 	}
 
 	if aux.CountryCode != nil {
 		if err := json.Unmarshal(aux.CountryCode, &ccups.CountryCode); err != nil {
-			errs = append(errs, "country_code must be string")
+			errs = append(errs, ErrInvalidFieldType{"country_code", "string"})
 		}
 	} else {
-		errs = append(errs, "country_code is required")
+		errs = append(errs, ErrRequiredField{"country_code"})
 	}
 
 	if aux.Email != nil {
 		if err := json.Unmarshal(aux.Email, &ccups.Email); err != nil {
-			errs = append(errs, "email must be string")
+			errs = append(errs, ErrInvalidFieldType{"email", "string"})
 		}
 	} else {
-		errs = append(errs, "email is required")
+		errs = append(errs, ErrRequiredField{"email"})
 	}
 
 	if aux.Phone != nil {
 		if err := json.Unmarshal(aux.Phone, &ccups.Phone); err != nil {
-			errs = append(errs, "phone must be string")
+			errs = append(errs, ErrInvalidFieldType{"phone", "string"})
 		}
 	} else {
-		errs = append(errs, "phone is required")
+		errs = append(errs, ErrRequiredField{"phone"})
 	}
 
 	if aux.AgreeToTechAgreement != nil {
 		if err := json.Unmarshal(aux.AgreeToTechAgreement, &ccups.AgreeToTechAgreement); err != nil {
-			errs = append(errs, "agree_to_technology_agreement must be bool")
+			errs = append(errs, ErrInvalidFieldType{"agree_to_technology_agreement", "bool"})
 		}
 	} else {
-		errs = append(errs, "agree_to_technology_agreement is required")
+		errs = append(errs, ErrRequiredField{"agree_to_technology_agreement"})
 	}
 
 	// Parse and validate optional fields
 	if aux.Company != nil {
 		if err := json.Unmarshal(aux.Company, &ccups.Company); err != nil {
-			errs = append(errs, "company must be string")
+			errs = append(errs, ErrInvalidFieldType{"company", "string"})
 		}
 	}
 
 	if aux.Address2 != nil {
 		if err := json.Unmarshal(aux.Address2, &ccups.Address2); err != nil {
-			errs = append(errs, "address2 must be string")
+			errs = append(errs, ErrInvalidFieldType{"address2", "string"})
 		}
 	}
 
 	if aux.InvoiceControlID != nil {
 		if err := json.Unmarshal(aux.InvoiceControlID, &ccups.Invoice.ControlID); err != nil {
-			errs = append(errs, "invoice_control_id must be string")
+			errs = append(errs, ErrInvalidFieldType{"invoice_control_id", "string"})
 		}
 	}
 
 	if aux.InvoiceNumber != nil {
 		if err := json.Unmarshal(aux.InvoiceNumber, &ccups.Invoice.InvoiceNumber); err != nil {
-			errs = append(errs, "invoice_control_number must be string")
+			errs = append(errs, ErrInvalidFieldType{"invoice_number", "string"})
 		}
 	}
 
 	if aux.InvoiceAmount != nil {
 		if err := json.Unmarshal(aux.InvoiceAmount, &ccups.Invoice.InvoiceAmount); err != nil {
-			errs = append(errs, "invoice_control_amount must be string")
+			errs = append(errs, ErrInvalidFieldType{"invoice_amount", "float64"})
 		}
 	}
 
 	if aux.InvoiceDate != nil {
 		if err := json.Unmarshal(aux.InvoiceDate, &ccups.Invoice.InvoiceDate); err != nil {
-			errs = append(errs, "invoice_control_type must be string")
+			errs = append(errs, ErrInvalidFieldType{"invoice_date", "string"})
 		}
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -919,6 +949,9 @@ func (ccups *CarrierConnectUPS) ParseAndValidateRequest(r *http.Request) []strin
 }
 
 func (ccsc *CarrierConnectUPS) GetNickname() (string, error) {
+	if ccsc.Nickname == "" {
+		return "", ErrEmptyCarrierNickname
+	}
 	return ccsc.Nickname, nil
 }
 
@@ -939,7 +972,7 @@ func (cc *CarrierConnection) GetCarrierServices() ([]CarrierService, error) {
 	//parse cc.CarrierServices into a slice of carrier services
 	err := json.Unmarshal(cc.CarrierServices, &carrierServices)
 	if err != nil {
-		return nil, err
+		return nil, ErrUnmarshalCarrierServices
 	}
 
 	return carrierServices, nil
@@ -951,7 +984,7 @@ func (cc *CarrierConnection) GetCarrierOptions() ([]CarrierOption, error) {
 	//parse cc.CarrierOptions into a slice of carrier options
 	err := json.Unmarshal(cc.CarrierOptions, &carrierOptions)
 	if err != nil {
-		return nil, err
+		return nil, ErrUnmarshalCarrierOptions
 	}
 
 	return carrierOptions, nil
@@ -1003,7 +1036,7 @@ func GetCarrierConnectionsByClientID(ctx context.Context, clientID int, orgID in
 
 	err := util.DBFromContext(ctx).Where("owner_id = ? AND owner_type = ?", clientID, 2).Or("owner_id = ? AND owner_type = ?", orgID, 1).Find(&carrierConnections).Error
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "carrier_connection by client", Err: err}
 	}
 
 	return carrierConnections, nil
@@ -1017,7 +1050,7 @@ func GetCheapestCarrierConnection(ctx context.Context) (*CarrierConnection, erro
 	err := util.DBFromContext(ctx).Where("id = 1000").Find(&carrierConnections).Error
 
 	if err != nil {
-		return nil, err
+		return nil, ErrQueryFailed{Object: "cheapest carrier_connection", Err: err}
 	}
 
 	return &carrierConnections, nil
@@ -1041,13 +1074,13 @@ type CarrierConnectFedexUSCA struct {
 	AgreeToEula   bool   `json:"agree_to_eula"`
 }
 
-func (ccfusca *CarrierConnectFedexUSCA) ParseAndValidateRequest(r *http.Request) []string {
+func (ccfusca *CarrierConnectFedexUSCA) ParseAndValidateRequest(r *http.Request) error {
 
-	errs := []string{}
+	var errs []error
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return []string{"invalid JSON"}
+		return ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -1068,121 +1101,121 @@ func (ccfusca *CarrierConnectFedexUSCA) ParseAndValidateRequest(r *http.Request)
 	}{}
 
 	if err := json.Unmarshal(body, &aux); err != nil {
-		errs = append(errs, "invalid json")
+		return ErrInvalidJSON
 	}
 
 	if aux.Nickname != nil {
 		if err := json.Unmarshal(aux.Nickname, &ccfusca.Nickname); err != nil {
-			errs = append(errs, "nickname must be string")
+			errs = append(errs, ErrInvalidFieldType{"nickname", "string"})
 		}
 	} else {
-		errs = append(errs, "nickname is required")
+		errs = append(errs, ErrRequiredField{"nickname"})
 	}
 
 	if aux.AccountNumber != nil {
 		if err := json.Unmarshal(aux.AccountNumber, &ccfusca.AccountNumber); err != nil {
-			errs = append(errs, "account_number must be string")
+			errs = append(errs, ErrInvalidFieldType{"account_number", "string"})
 		}
 	} else {
-		errs = append(errs, "account_number is required")
+		errs = append(errs, ErrRequiredField{"account_number"})
 	}
 
 	if aux.Company != nil {
 		if err := json.Unmarshal(aux.Company, &ccfusca.Company); err != nil {
-			errs = append(errs, "company must be string")
+			errs = append(errs, ErrInvalidFieldType{"company", "string"})
 		}
 	} else {
-		errs = append(errs, "company is required")
+		errs = append(errs, ErrRequiredField{"company"})
 	}
 
 	if aux.FirstName != nil {
 		if err := json.Unmarshal(aux.FirstName, &ccfusca.FirstName); err != nil {
-			errs = append(errs, "first_name must be string")
+			errs = append(errs, ErrInvalidFieldType{"first_name", "string"})
 		}
 	} else {
-		errs = append(errs, "first_name is required")
+		errs = append(errs, ErrRequiredField{"first_name"})
 	}
 
 	if aux.LastName != nil {
 		if err := json.Unmarshal(aux.LastName, &ccfusca.LastName); err != nil {
-			errs = append(errs, "last_name must be string")
+			errs = append(errs, ErrInvalidFieldType{"last_name", "string"})
 		}
 	} else {
-		errs = append(errs, "last_name is required")
+		errs = append(errs, ErrRequiredField{"last_name"})
 	}
 
 	if aux.Phone != nil {
 		if err := json.Unmarshal(aux.Phone, &ccfusca.Phone); err != nil {
-			errs = append(errs, "phone must be string")
+			errs = append(errs, ErrInvalidFieldType{"phone", "string"})
 		}
 	} else {
-		errs = append(errs, "phone is required")
+		errs = append(errs, ErrRequiredField{"phone"})
 	}
 
 	if aux.Address1 != nil {
 		if err := json.Unmarshal(aux.Address1, &ccfusca.Address1); err != nil {
-			errs = append(errs, "address1 must be string")
+			errs = append(errs, ErrInvalidFieldType{"address1", "string"})
 		}
 	} else {
-		errs = append(errs, "address1 is required")
+		errs = append(errs, ErrRequiredField{"address1"})
 	}
 
 	if aux.Address2 != nil {
 		if err := json.Unmarshal(aux.Address2, &ccfusca.Address2); err != nil {
-			errs = append(errs, "address2 must be string")
+			errs = append(errs, ErrInvalidFieldType{"address2", "string"})
 		}
 	}
 
 	if aux.City != nil {
 		if err := json.Unmarshal(aux.City, &ccfusca.City); err != nil {
-			errs = append(errs, "city must be string")
+			errs = append(errs, ErrInvalidFieldType{"city", "string"})
 		}
 	} else {
-		errs = append(errs, "city is required")
+		errs = append(errs, ErrRequiredField{"city"})
 	}
 
 	if aux.State != nil {
 		if err := json.Unmarshal(aux.State, &ccfusca.State); err != nil {
-			errs = append(errs, "state must be string")
+			errs = append(errs, ErrInvalidFieldType{"state", "string"})
 		}
 	} else {
-		errs = append(errs, "state is required")
+		errs = append(errs, ErrRequiredField{"state"})
 	}
 
 	if aux.PostalCode != nil {
 		if err := json.Unmarshal(aux.PostalCode, &ccfusca.PostalCode); err != nil {
-			errs = append(errs, "postal_code must be string")
+			errs = append(errs, ErrInvalidFieldType{"postal_code", "string"})
 		}
 	} else {
-		errs = append(errs, "postal_code is required")
+		errs = append(errs, ErrRequiredField{"postal_code"})
 	}
 
 	if aux.CountryCode != nil {
 		if err := json.Unmarshal(aux.CountryCode, &ccfusca.CountryCode); err != nil {
-			errs = append(errs, "country_code must be string")
+			errs = append(errs, ErrInvalidFieldType{"country_code", "string"})
 		}
 	} else {
-		errs = append(errs, "country_code is required")
+		errs = append(errs, ErrRequiredField{"country_code"})
 	}
 
 	if aux.Email != nil {
 		if err := json.Unmarshal(aux.Email, &ccfusca.Email); err != nil {
-			errs = append(errs, "email must be string")
+			errs = append(errs, ErrInvalidFieldType{"email", "string"})
 		}
 	} else {
-		errs = append(errs, "email is required")
+		errs = append(errs, ErrRequiredField{"email"})
 	}
 
 	if aux.AgreeToEula != nil {
 		if err := json.Unmarshal(aux.AgreeToEula, &ccfusca.AgreeToEula); err != nil {
-			errs = append(errs, "agree_to_eula must be boolean")
+			errs = append(errs, ErrInvalidFieldType{"agree_to_eula", "bool"})
 		}
 	} else {
-		errs = append(errs, "agree_to_eula is required")
+		errs = append(errs, ErrRequiredField{"agree_to_eula"})
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -1190,5 +1223,8 @@ func (ccfusca *CarrierConnectFedexUSCA) ParseAndValidateRequest(r *http.Request)
 }
 
 func (ccfusca *CarrierConnectFedexUSCA) GetNickname() (string, error) {
+	if ccfusca.Nickname == "" {
+		return "", ErrEmptyCarrierNickname
+	}
 	return ccfusca.Nickname, nil
 }

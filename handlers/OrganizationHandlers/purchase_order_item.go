@@ -1,16 +1,18 @@
 package OrganizationHandlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/api"
 	"github.com/shipply-io/shipply-io-backend/models"
+	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/tasks"
 	"github.com/shipply-io/shipply-io-backend/util"
 )
 
-func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
+func CreatePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -72,11 +74,10 @@ func PurchaseOrderItemCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, purchaseOrderItemJson, http.StatusCreated)
+	util.SuccessResponse(w, http.StatusOK)
 }
 
-func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
+func GetPurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -131,12 +132,12 @@ func PurchaseOrderItemGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, purchaseOrderItemJson, http.StatusOK)
+	response := responses.GenerateGetPurchaseOrderItemResponse(ctx, *purchaseOrderItem)
+	util.JSONResponse(w, response, http.StatusOK)
 
 }
 
-func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdatePurchaseOrderItemBulk(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -216,7 +217,7 @@ func PurchaseOrderItemBulkUpdate(w http.ResponseWriter, r *http.Request) {
 	util.SuccessResponse(w, http.StatusOK)
 }
 
-func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
+func UpdatePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -286,11 +287,11 @@ func PurchaseOrderItemUpdate(w http.ResponseWriter, r *http.Request) {
 
 	go tasks.AllocateInventoryByProduct(ctx, purchaseOrderItem.ProductID)
 
-	purchaseOrderItemJson := purchaseOrderItem.ConvertToReturnJSON(ctx)
-	util.JSONResponse(w, purchaseOrderItemJson, http.StatusOK)
+	response := responses.GenerateUpdatePurchaseOrderItemResponse(ctx, *purchaseOrderItem)
+	util.JSONResponse(w, response, http.StatusOK)
 }
 
-func PurchaseOrderItemDelete(w http.ResponseWriter, r *http.Request) {
+func DeletePurchaseOrderItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	user, err := models.GetRequestingUser(r)
@@ -416,63 +417,64 @@ func PurchaseOrderItemReceive(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if batchReceiveRequest.Quantity > 0 {
-			err = models.CreateInventory(ctx, purchaseOrderItem.ProductID, batchReceiveRequest.Quantity, batchReceiveRequest.LocationID, false, 0)
-			if err != nil {
-				util.ErrorResponse(w, "failed to create inventory", http.StatusBadRequest)
-				return
-			}
+		err = models.ContextWithTx(ctx, func(ctx context.Context) error {
+			if batchReceiveRequest.Quantity > 0 {
+				err = models.CreateInventory(ctx, purchaseOrderItem.ProductID, batchReceiveRequest.Quantity, batchReceiveRequest.LocationID, false, 0)
+				if err != nil {
+					return err
+				}
 
-			err = product.UpdateProductInventoryLevels(ctx)
-			if err != nil {
-				util.ErrorResponse(w, "failed to update product inventory levels", http.StatusBadRequest)
-				return
-			}
+				err = product.UpdateProductInventoryLevels(ctx)
+				if err != nil {
+					return err
+				}
 
-			//create inventory audit log
-			inventoryAuditLog := models.InventoryAuditLog{
-				ProductID:  purchaseOrderItem.ProductID,
-				LocationID: batchReceiveRequest.LocationID,
-				Delta:      batchReceiveRequest.Quantity,
-				Note:       "received inventory",
-				ChangedBy:  user.ID,
-			}
+				//create inventory audit log
+				inventoryAuditLog := models.InventoryAuditLog{
+					ProductID:  purchaseOrderItem.ProductID,
+					LocationID: batchReceiveRequest.LocationID,
+					Delta:      batchReceiveRequest.Quantity,
+					Note:       "received inventory",
+					ChangedBy:  user.ID,
+				}
 
-			err = inventoryAuditLog.Create(ctx)
-			if err != nil {
-				util.ErrorResponse(w, "failed to create inventory audit log", http.StatusBadRequest)
-				return
-			}
+				err = inventoryAuditLog.Create(ctx)
+				if err != nil {
+					return err
+				}
 
-		} else if batchReceiveRequest.Quantity < 0 {
+			} else if batchReceiveRequest.Quantity < 0 {
 
-			//use negative batchReceiveRequest.Quantity to make postive, which is what RemoveInventory expects
-			err = models.RemoveInventory(ctx, purchaseOrderItem.ProductID, -batchReceiveRequest.Quantity, batchReceiveRequest.LocationID, false)
-			if err != nil {
-				util.ErrorResponse(w, "failed to remove inventory", http.StatusBadRequest)
-				return
-			}
+				//use negative batchReceiveRequest.Quantity to make postive, which is what RemoveInventory expects
+				err = models.RemoveInventory(ctx, purchaseOrderItem.ProductID, -batchReceiveRequest.Quantity, batchReceiveRequest.LocationID, false)
+				if err != nil {
+					return err
+				}
 
-			err = product.UpdateProductInventoryLevels(ctx)
-			if err != nil {
-				util.ErrorResponse(w, "failed to update product inventory levels", http.StatusBadRequest)
-				return
-			}
+				err = product.UpdateProductInventoryLevels(ctx)
+				if err != nil {
+					return err
+				}
 
-			//create inventory audit log
-			inventoryAuditLog := models.InventoryAuditLog{
-				ProductID:  purchaseOrderItem.ProductID,
-				LocationID: batchReceiveRequest.LocationID,
-				Delta:      batchReceiveRequest.Quantity,
-				Note:       "received inventory",
-				ChangedBy:  user.ID,
-			}
+				//create inventory audit log
+				inventoryAuditLog := models.InventoryAuditLog{
+					ProductID:  purchaseOrderItem.ProductID,
+					LocationID: batchReceiveRequest.LocationID,
+					Delta:      batchReceiveRequest.Quantity,
+					Note:       "received inventory",
+					ChangedBy:  user.ID,
+				}
 
-			err = inventoryAuditLog.Create(ctx)
-			if err != nil {
-				util.ErrorResponse(w, "failed to create inventory audit log", http.StatusBadRequest)
-				return
+				err = inventoryAuditLog.Create(ctx)
+				if err != nil {
+					return err
+				}
 			}
+			return nil
+		})
+		if err != nil {
+			util.ErrResponse(w, err, http.StatusInternalServerError)
+			return
 		}
 
 		//update allocated inventory
@@ -495,7 +497,7 @@ func PurchaseOrderItemReceive(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	util.JSONResponse(w, purchaseOrderJSON, http.StatusOK)
+	util.SuccessResponse(w, http.StatusOK)
 
 }
 
@@ -624,35 +626,35 @@ func PurchaseOrderItemReject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = models.CreateInventory(ctx, purchaseOrderItem.ProductID, request.Data.Quantity, request.Data.LocationID, true, poir.ID)
-	if err != nil {
-		util.ErrorResponse(w, "failed to create inventory", http.StatusBadRequest)
-		return
-	}
+	err = models.ContextWithTx(ctx, func(ctx context.Context) error {
+		err = models.CreateInventory(ctx, purchaseOrderItem.ProductID, request.Data.Quantity, request.Data.LocationID, true, poir.ID)
+		if err != nil {
+			return err
+		}
 
-	err = product.UpdateProductInventoryLevels(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to update product inventory levels", http.StatusBadRequest)
-		return
-	}
+		err = product.UpdateProductInventoryLevels(ctx)
+		if err != nil {
+			return err
+		}
 
-	//create inventory audit log
-	inventoryAuditLog := models.InventoryAuditLog{
-		ProductID:  purchaseOrderItem.ProductID,
-		LocationID: request.Data.LocationID,
-		Delta:      request.Data.Quantity,
-		Note:       "received damaged inventory",
-		ChangedBy:  user.ID,
-	}
+		//create inventory audit log
+		inventoryAuditLog := models.InventoryAuditLog{
+			ProductID:  purchaseOrderItem.ProductID,
+			LocationID: request.Data.LocationID,
+			Delta:      request.Data.Quantity,
+			Note:       "received damaged inventory",
+			ChangedBy:  user.ID,
+		}
 
-	err = inventoryAuditLog.Create(ctx)
+		err = inventoryAuditLog.Create(ctx)
+		return err
+	})
 	if err != nil {
-		util.ErrorResponse(w, "failed to create inventory audit log", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	util.SuccessResponse(w, http.StatusOK)
-
 }
 
 func PurchaseOrderItemUpdateIPAInfo(w http.ResponseWriter, r *http.Request) {

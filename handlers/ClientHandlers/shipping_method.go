@@ -2,10 +2,20 @@ package ClientHandlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/util"
+)
+
+var (
+	//ErrUserDoesNotHaveAccessToShippingMethod is returned when a user does not have access to a shipping method
+	ErrUserDoesNotHaveAccessToShippingMethod = errors.New("user does not have access to this shipping method")
+	//ErrJSONUnmarshalShippingMethodCarriers is returned when there is an error unmarshaling the shipping method carriers
+	ErrJSONUnmarshalShippingMethodCarriers = errors.New("failed to unmarshal shipping method carriers")
+	//ErrShippingMethodDoesNotBelongToClient is returned when a user tries to access a shipping method that does not belong to their client
+	ErrShippingMethodDoesNotBelongToClient = errors.New("shipping method does not belong to client")
 )
 
 func ListShippingMethods(w http.ResponseWriter, r *http.Request) {
@@ -19,13 +29,13 @@ func ListShippingMethods(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find organization", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	err = user.Client.GetOrganization(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find organization", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -40,7 +50,7 @@ func ListShippingMethods(w http.ResponseWriter, r *http.Request) {
 
 	shippingMethods, err := user.Client.Organization.GetShippingMethods(ctx, request)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find shipping methods", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -65,48 +75,48 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find organization", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	shippingMethodID, err := util.GetIntFromPath(r, "shipping_method_id")
 	if err != nil {
-		util.ErrorResponse(w, "failed to get shipping method id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	shippingMethod, err := models.GetShippingMethodByID(ctx, shippingMethodID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find shipping method", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetStoreByID(ctx, shippingMethod.StoreID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	client, err := models.GetClientByID(ctx, store.ClientID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find client", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if client.ID != user.Client.ID {
-		util.ErrorResponse(w, "user does not have access to this shipping method", http.StatusBadRequest)
+		util.ErrResponse(w, ErrUserDoesNotHaveAccessToShippingMethod, http.StatusBadRequest)
 		return
 	}
 
 	carrierConnections, err := models.GetCarrierConnectionsByClientID(ctx, client.ID, user.Organization.ID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find carrier connections", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	cheapestCarrier, err := models.GetCheapestCarrierConnection(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find carrier connections", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -120,7 +130,7 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 
 	baseCarriers, err := models.GetCarriers(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find carriers", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -166,7 +176,7 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 		//get a var that holds the shipping method carriers
 		json.Unmarshal(shippingMethod.Carriers, &shippingMethodCarriers)
 		if shippingMethodCarriers == nil {
-			util.ErrorResponse(w, "failed to unmarshal shipping method carriers", http.StatusBadRequest)
+			util.ErrResponse(w, ErrJSONUnmarshalShippingMethodCarriers, http.StatusBadRequest)
 			return
 		}
 
@@ -188,7 +198,7 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 				//get the carrier services
 				carrierServices, err := carrier.GetCarrierServices()
 				if err != nil {
-					util.ErrorResponse(w, "failed to find carrier services", http.StatusBadRequest)
+					util.ErrResponse(w, err, http.StatusBadRequest)
 					return
 				}
 
@@ -219,7 +229,7 @@ func GetShippingMethod(w http.ResponseWriter, r *http.Request) {
 
 				carrierConnectionCarrierServices, err := carrier.GetCarrierServices()
 				if err != nil {
-					util.ErrorResponse(w, "failed to find carrier services", http.StatusBadRequest)
+					util.ErrResponse(w, err, http.StatusBadRequest)
 					return
 				}
 
@@ -271,36 +281,36 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find organization", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	shippingMethodID, err := util.GetIntFromPath(r, "shipping_method_id")
 	if err != nil {
-		util.ErrorResponse(w, "failed to get shipping method id", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	shippingMethod, err := models.GetShippingMethodByID(ctx, shippingMethodID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find shipping method", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	store, err := models.GetStoreByID(ctx, shippingMethod.StoreID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find store", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	client, err := models.GetClientByID(ctx, store.ClientID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find client", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if client.ID != user.Client.ID {
-		util.ErrorResponse(w, "shipping method does not belong to this organization", http.StatusBadRequest)
+		util.ErrResponse(w, ErrShippingMethodDoesNotBelongToClient, http.StatusBadRequest)
 		return
 	}
 
@@ -321,7 +331,7 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 
 	err = shippingMethod.Update(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to update shipping method", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -331,13 +341,13 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 
 	carrierConnections, err := models.GetCarrierConnectionsByClientID(ctx, client.ID, user.Organization.ID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find carrier connections", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	cheapestCarrier, err := models.GetCheapestCarrierConnection(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find carrier connections", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -351,7 +361,7 @@ func UpdateShippingMethod(w http.ResponseWriter, r *http.Request) {
 
 	baseCarriers, err := models.GetCarriers(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find carriers", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 

@@ -56,9 +56,25 @@ func AuthMiddleware(secret string) func(http.Handler) http.Handler {
 				util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
 				return
 			}
-			// add the user to the context
+			// TODO clean this once all handlers are updated to new user context version
+			// add the user to the context (old version -- remove once possible)
 			ctx = context.WithValue(r.Context(), "user", user)
 
+			// add the user to the context
+			if user.IsClientRole() {
+				err = user.GetClient(ctx)
+				if err != nil {
+					util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
+					return
+				}
+			} else {
+				err = user.GetOrganization(ctx)
+				if err != nil {
+					util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
+					return
+				}
+			}
+			ctx = models.ContextWithUser(ctx, &user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

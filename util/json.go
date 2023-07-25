@@ -2,15 +2,21 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strings"
+)
+
+var (
+	//ErrMarshalFailed
+	ErrMarshalFailed = errors.New("failed to marshal object")
 )
 
 func ConvertToJSONRawMessage(object interface{}) (json.RawMessage, error) {
 
 	data, err := json.Marshal(object)
 	if err != nil {
-		return nil, err
+		return nil, ErrMarshalFailed
 	}
 
 	return json.RawMessage(data), nil

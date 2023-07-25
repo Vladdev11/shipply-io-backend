@@ -10,6 +10,15 @@ import (
 	"time"
 )
 
+var (
+	//ErrInvalidJSON
+	ErrInvalidJSON = errors.New("failed to parse json")
+	//ErrInvalidShopifyGraphqlOrderID
+	ErrInvalidShopifyGraphqlOrderID = errors.New("invalid graphql shopify order id")
+	//ErrInvalidShopifyGraphqlProductID
+	ErrInvalidShopifyGraphqlProductID = errors.New("invalid graphql shopify product id")
+)
+
 // GraphQLResponse represents a generic GraphQL response
 type GraphQLResponse struct {
 	NetworkErrors interface{}    `json:"networkErrors"`

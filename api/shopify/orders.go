@@ -106,16 +106,15 @@ type OrderCreateWebhookRequest struct {
 	AdminGraphqlAPIID string `json:"admin_graphql_api_id"`
 }
 
-func ParseAndValidateOrderCreateRequest(r *http.Request) (*string, []string) {
+func ParseAndValidateOrderCreateRequest(r *http.Request) (*string, error) {
+
+	var errs []error
 
 	var orderID string
 
-	var errs []string
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		errs = append(errs, "failed to read body")
-		return nil, errs
+		return nil, ErrInvalidJSON
 	}
 
 	aux := &struct {
@@ -124,17 +123,17 @@ func ParseAndValidateOrderCreateRequest(r *http.Request) (*string, []string) {
 
 	err = json.Unmarshal(body, aux)
 	if err != nil {
-		return nil, []string{"invalid json"}
+		return nil, ErrInvalidJSON
 	}
 
 	if aux.AdminGraphqlAPIID != nil {
 		if err := json.Unmarshal(aux.AdminGraphqlAPIID, &orderID); err != nil {
-			errs = append(errs, "invalid order id")
+			errs = append(errs, ErrInvalidShopifyGraphqlOrderID)
 		}
 	}
 
 	if len(errs) > 0 {
-		return nil, errs
+		return nil, errors.Join(errs...)
 	}
 
 	return &orderID, nil

@@ -111,7 +111,7 @@ func (pon *PurchaseOrderHistoryCreateRequest) ParseAndValidateRequest(r *http.Re
 func (pon *PurchaseOrderHistory) Create(ctx context.Context) error {
 	err := util.DBFromContext(ctx).Save(pon).Error
 	if err != nil {
-		return err
+		return ErrQueryFailed{Object: "purchase order history", Err: err}
 	}
 	return nil
 }

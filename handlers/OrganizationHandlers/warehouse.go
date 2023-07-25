@@ -35,6 +35,10 @@ func ListWarehouses(w http.ResponseWriter, r *http.Request) {
 
 	request.OrganizationID = user.Organization.ID
 	warehouses, total, count, err := user.Organization.GetWarehouses(ctx, request)
+	if err != nil {
+		util.ErrResponse(w, err, http.StatusBadRequest)
+		return
+	}
 
 	response := responses.GenerateListWarehousesResponse(warehouses, total, count)
 	util.JSONResponse(w, response, http.StatusOK)

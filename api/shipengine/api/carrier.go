@@ -18,7 +18,7 @@ func ConnectCarrier(ctx context.Context, carrier ShipengineModels.CarrierConnect
 		return nil, nil, err
 	}
 
-	req, err := http.NewRequest("POST", "/v1/connections/carriers/"+carrierName, bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", "/connections/carriers/"+carrierName, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -62,7 +62,7 @@ func ConnectCarrier(ctx context.Context, carrier ShipengineModels.CarrierConnect
 
 func DeleteCarrier(ctx context.Context, carrierName string, carrierId string) (bool, *ShipengineModels.ShipengineError, error) {
 
-	req, err := http.NewRequest("DELETE", "/v1/connections/carriers/"+carrierName+"/"+carrierId, nil)
+	req, err := http.NewRequest("DELETE", "/connections/carriers/"+carrierName+"/"+carrierId, nil)
 	if err != nil {
 		return false, nil, err
 	}
@@ -99,7 +99,7 @@ func DeleteCarrier(ctx context.Context, carrierName string, carrierId string) (b
 
 func GetCarrierConnectionOptions(ctx context.Context, carrier_id string) (*ShipengineModels.CarrierOptionsResponse, *ShipengineModels.ShipengineError, error) {
 
-	req, err := http.NewRequest("GET", "/v1/carriers/"+carrier_id+"/options", nil)
+	req, err := http.NewRequest("GET", "/carriers/"+carrier_id+"/options", nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -142,7 +142,7 @@ func GetCarrierConnectionOptions(ctx context.Context, carrier_id string) (*Shipe
 
 func GetCarrierConnectionPackageTypes(ctx context.Context, carrier_id string) (*ShipengineModels.CarrierPackageTypesResponse, *ShipengineModels.ShipengineError, error) {
 
-	req, err := http.NewRequest("GET", "/v1/carriers/"+carrier_id+"/packages", nil)
+	req, err := http.NewRequest("GET", "/carriers/"+carrier_id+"/packages", nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -185,7 +185,7 @@ func GetCarrierConnectionPackageTypes(ctx context.Context, carrier_id string) (*
 
 func GetCarrierConnectionServices(ctx context.Context, carrier_id string) (*ShipengineModels.CarrierServicesResponse, *ShipengineModels.ShipengineError, error) {
 
-	req, err := http.NewRequest("GET", "/v1/carriers/"+carrier_id+"/services", nil)
+	req, err := http.NewRequest("GET", "/carriers/"+carrier_id+"/services", nil)
 	if err != nil {
 		return nil, nil, err
 	}

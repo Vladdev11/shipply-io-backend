@@ -58,7 +58,7 @@ func GetVendor(w http.ResponseWriter, r *http.Request) {
 		util.ErrorResponse(w, "failed to get vendor id", http.StatusBadRequest)
 		return
 	}
-
+  
 	vendor, err := models.GetVendorByID(ctx, vendorID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get vendor", http.StatusBadRequest)

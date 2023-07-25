@@ -1,6 +1,7 @@
 package ClientHandlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -9,6 +10,17 @@ import (
 	"github.com/shipply-io/shipply-io-backend/models"
 	"github.com/shipply-io/shipply-io-backend/responses"
 	"github.com/shipply-io/shipply-io-backend/util"
+)
+
+var (
+	//ErrUserDoesNotHaveAccessToUser is returned when a user does not have access to a user
+	ErrUserDoesNotHaveAccessToUser = errors.New("user does not have access to user")
+	//ErrCannotDeleteSelf is returned when a user tries to delete themselves
+	ErrCannotDeleteSelf = errors.New("cannot delete self")
+	//ErrCannotChangeOwnAdminStatus is returned when a user tries to change their own admin status
+	ErrCannotChangeOwnAdminStatus = errors.New("cannot change own admin status")
+	//ErrOldPasswordIncorrect is returned when a user tries to change their password and the old password is incorrect
+	ErrOldPasswordIncorrect = errors.New("old password is incorrect")
 )
 
 func GetUserSelf(w http.ResponseWriter, r *http.Request) {
@@ -22,13 +34,13 @@ func GetUserSelf(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	err = user.Client.GetOrganization(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -48,18 +60,19 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := util.GetIntFromPath(r, "id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid user ID", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	user, err := models.GetUserByID(ctx, userID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
+	//If the user is not the requesting user, they must be an admin
 	if requestingUser.OwnerID != user.OwnerID || (user.Role != util.ClientAdminInt && user.Role != util.ClientUserInt) {
-		util.ErrorResponse(w, "user does not belong to this client", http.StatusForbidden)
+		util.ErrResponse(w, ErrUserDoesNotHaveAccessToUser, http.StatusForbidden)
 		return
 	}
 
@@ -87,7 +100,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	//generate password and salt
 	hashedPassword, salt, err := models.GenerateUserPasswordAndSalt(request.Password)
 	if err != nil {
-		util.ErrorResponse(w, "failed to generate password and salt", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -108,7 +121,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	err = user.Create(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to create user", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -128,24 +141,24 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	userID, err := util.GetIntFromPath(r, "user_id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid user ID", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	userForUpdate, err := models.GetUserByID(ctx, userID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if userForUpdate.OwnerID != user.OwnerID || (userForUpdate.Role != util.ClientAdminInt && userForUpdate.Role != util.ClientUserInt) {
-		util.ErrorResponse(w, "user does not belong to this client", http.StatusForbidden)
+		util.ErrResponse(w, ErrUserDoesNotHaveAccessToUser, http.StatusForbidden)
 		return
 	}
 
@@ -169,7 +182,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 			userForUpdate.Role = util.ClientAdminInt
 		} else {
 			if userForUpdate.ID == user.ID {
-				util.ErrorResponse(w, "cannot change your own admin status", http.StatusBadRequest)
+				util.ErrResponse(w, ErrCannotChangeOwnAdminStatus, http.StatusBadRequest)
 				return
 			}
 			userForUpdate.Role = util.ClientUserInt
@@ -194,35 +207,35 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
 	userID, err := util.GetIntFromPath(r, "user_id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid user ID", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	userForDeletion, err := models.GetUserByID(ctx, userID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if userForDeletion.ID == user.ID {
-		util.ErrorResponse(w, "cannot delete self", http.StatusBadRequest)
+		util.ErrResponse(w, ErrCannotDeleteSelf, http.StatusBadRequest)
 		return
 	}
 
 	if userForDeletion.OwnerID != user.OwnerID || (userForDeletion.Role != util.ClientAdminInt && userForDeletion.Role != util.ClientUserInt) {
-		util.ErrorResponse(w, "user does not belong to this client", http.StatusForbidden)
+		util.ErrResponse(w, ErrUserDoesNotHaveAccessToUser, http.StatusForbidden)
 		return
 	}
 
 	err = userForDeletion.Delete(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to delete user", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -242,7 +255,7 @@ func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -254,14 +267,14 @@ func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !models.ComparePassword(request.OldPassword, user.Salt, user.Password) {
-		util.ErrorResponse(w, "old password is incorrect", http.StatusBadRequest)
+		util.ErrResponse(w, ErrOldPasswordIncorrect, http.StatusBadRequest)
 		return
 	}
 
 	//generate password and salt
 	hashedPassword, salt, err := models.GenerateUserPasswordAndSalt(request.Password)
 	if err != nil {
-		util.ErrorResponse(w, "failed to generate password and salt", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -270,7 +283,7 @@ func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 
 	err = user.Update(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to update user", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -290,24 +303,24 @@ func UpdateUserAvatar(w http.ResponseWriter, r *http.Request) {
 
 	err = user.GetClient(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
+		util.ErrResponse(w, ErrGetClient, http.StatusUnauthorized)
 		return
 	}
 
 	userID, err := util.GetIntFromPath(r, "user_id")
 	if err != nil {
-		util.ErrorResponse(w, "invalid user ID", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	userForAvatarUpdate, err := models.GetUserByID(ctx, userID)
 	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if userForAvatarUpdate.OwnerID != user.OwnerID || (userForAvatarUpdate.Role != util.ClientAdminInt && userForAvatarUpdate.Role != util.ClientUserInt) {
-		util.ErrorResponse(w, "user does not belong to this client", http.StatusForbidden)
+		util.ErrResponse(w, ErrUserDoesNotHaveAccessToUser, http.StatusForbidden)
 		return
 	}
 
@@ -324,7 +337,7 @@ func UpdateUserAvatar(w http.ResponseWriter, r *http.Request) {
 
 		err = api.S3FromContext(ctx).UploadFileToCDN(request.File, fileUUID.String(), fileExtension, request.FileType)
 		if err != nil {
-			util.ErrorResponse(w, "failed to upload attachment to s3", http.StatusInternalServerError)
+			util.ErrResponse(w, err, http.StatusInternalServerError)
 			return
 		}
 
@@ -333,7 +346,7 @@ func UpdateUserAvatar(w http.ResponseWriter, r *http.Request) {
 
 	err = userForAvatarUpdate.Update(ctx)
 	if err != nil {
-		util.ErrorResponse(w, "failed to update user", http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
