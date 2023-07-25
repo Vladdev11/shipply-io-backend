@@ -259,11 +259,7 @@ func UserSavedFilterDelete(w http.ResponseWriter, r *http.Request) {
 
 func SearchProducts(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -282,11 +278,7 @@ func SearchProducts(w http.ResponseWriter, r *http.Request) {
 
 func ListProducts(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -305,11 +297,7 @@ func ListProducts(w http.ResponseWriter, r *http.Request) {
 
 func GetProduct(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -328,11 +316,7 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 
 func GetProductOrders(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -351,11 +335,7 @@ func GetProductOrders(w http.ResponseWriter, r *http.Request) {
 
 func GetProductInventory(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -374,11 +354,7 @@ func GetProductInventory(w http.ResponseWriter, r *http.Request) {
 
 func GetProductBundles(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusUnauthorized)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -397,11 +373,7 @@ func GetProductBundles(w http.ResponseWriter, r *http.Request) {
 
 func GetProductBundleComponents(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to find user", http.StatusBadRequest)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -419,11 +391,7 @@ func GetProductBundleComponents(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetProductStores(w http.ResponseWriter, r *http.Request) {
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusBadRequest)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -431,9 +399,9 @@ func GetProductStores(w http.ResponseWriter, r *http.Request) {
 	case util.OrganizationUser:
 		OrganizationHandlers.GetProductStores(w, r)
 	case util.ClientAdmin:
-		// ClientHandlers.GetProductStores(w, r)
+		ClientHandlers.GetProductStores(w, r)
 	case util.ClientUser:
-		// ClientHandlers.GetProductStores(w, r)
+		ClientHandlers.GetProductStores(w, r)
 	default:
 		util.ErrResponse(w, ErrInvalidUserType, http.StatusUnauthorized)
 	}
@@ -441,11 +409,7 @@ func GetProductStores(w http.ResponseWriter, r *http.Request) {
 
 func CreateProduct(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusBadRequest)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -463,11 +427,7 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -485,11 +445,8 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func AddProductImage(w http.ResponseWriter, r *http.Request) {
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -506,11 +463,8 @@ func AddProductImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteProductImage(w http.ResponseWriter, r *http.Request) {
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:
@@ -528,11 +482,7 @@ func DeleteProductImage(w http.ResponseWriter, r *http.Request) {
 
 func UpdateProductImageOrder(w http.ResponseWriter, r *http.Request) {
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	user := models.UserFromContext(r.Context())
 
 	switch user.GetRole() {
 	case util.OrganizationAdmin:

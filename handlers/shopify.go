@@ -78,7 +78,10 @@ func ShopifyOAuth(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = existingStore.Activate(ctx)
+		existingStore, err = models.UpdateStore(ctx, models.UpdateStoreInput{
+			ID:     existingStore.ID,
+			Active: util.BoolPointer(true),
+		})
 		if err != nil {
 
 			models.SystemError{
@@ -475,7 +478,10 @@ func ShopifyAppUninstalledWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = store.Deactivate(ctx)
+	_, err = models.UpdateStore(ctx, models.UpdateStoreInput{
+		ID:     store.ID,
+		Active: util.BoolPointer(false),
+	})
 	if err != nil {
 		util.ErrResponse(w, ErrShopifyDeactivateStore, http.StatusInternalServerError)
 		return

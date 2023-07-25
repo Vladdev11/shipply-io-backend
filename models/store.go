@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -19,6 +18,8 @@ var (
 	//ErrInvalidShopifyCredentialsJSON is returned when the shopify credentials json is invalid
 	ErrInvalidShopifyCredentialsJSON = errors.New("invalid shopify credentials json")
 )
+
+/* ---------------------------- Main Store Model ---------------------------- */
 
 type Store struct {
 	ID             int
@@ -37,6 +38,40 @@ type Store struct {
 	Client      Client
 }
 
+/* ------------------------------- Update Store ------------------------------ */
+
+type UpdateStoreInput struct {
+	ID     int     `json:"id"`
+	Name   *string `json:"name"`
+	Active *bool   `json:"active"`
+}
+
+func UpdateStore(ctx context.Context, input UpdateStoreInput) (*Store, error) {
+
+	var store Store
+	err := util.DBFromContext(ctx).First(&store, input.ID).Error
+	if err != nil {
+		return nil, err
+	}
+
+	if input.Name != nil {
+		store.Name = *input.Name
+	}
+
+	if input.Active != nil {
+		store.Active = *input.Active
+	}
+
+	err = util.DBFromContext(ctx).Save(&store).Error
+	if err != nil {
+		return nil, ErrUpdateFailed{Object: "store", Err: err}
+	}
+
+	return &store, nil
+
+}
+
+/* ----------------------------- End of new code ---------------------------- */
 type StoreReturnJSON struct {
 	ID          int                   `json:"id"`
 	ClientID    int                   `json:"client_id"`
@@ -49,11 +84,6 @@ type StoreReturnJSON struct {
 type StoreListRequest struct {
 	ClientID       *int `json:"client_id"`
 	OrganizationID int  `json:"organization_id"`
-}
-
-type StoreUpdateRequest struct {
-	Name string `json:"name"`
-	// TODO add settings
 }
 
 func (s *Store) GetMarketplace() error {
@@ -107,52 +137,6 @@ func (slr *StoreListRequest) ParseAndValidateRequest(r *http.Request) []string {
 
 	if len(errors) > 0 {
 		return errors
-	}
-
-	return nil
-}
-
-func (s *StoreUpdateRequest) ParseAndValidateRequest(r *http.Request) []string {
-
-	var errs []string
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return []string{"invalid JSON"}
-	}
-
-	aux := &struct {
-		Name json.RawMessage `json:"name"`
-	}{}
-
-	if err := json.Unmarshal(body, aux); err != nil {
-		return []string{"invalid JSON"}
-	}
-
-	if aux.Name != nil {
-		if err := json.Unmarshal(aux.Name, &s.Name); err != nil {
-			errs = append(errs, "name must be a string")
-		} else if len(s.Name) > 255 {
-			errs = append(errs, "name must be less than 255 characters")
-		}
-	}
-
-	if len(errs) > 0 {
-		return errs
-	}
-
-	return nil
-
-}
-
-func (s *Store) UpdateWithRequest(ctx context.Context, request *StoreUpdateRequest) error {
-
-	if request.Name != "" {
-		s.Name = request.Name
-	}
-
-	if err := util.DBFromContext(ctx).Save(s).Error; err != nil {
-		return err
 	}
 
 	return nil

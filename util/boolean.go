@@ -12,3 +12,7 @@ func BooleanToYesNo(value bool) string {
 func YesNoToBoolean(value string) bool {
 	return strings.ToLower(value) == "yes"
 }
+
+func BoolPointer(b bool) *bool {
+	return &b
+}

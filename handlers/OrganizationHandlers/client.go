@@ -14,14 +14,8 @@ import (
 
 func ListClients(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
 	clients, err := models.GetClientsByOrganizationID(ctx, user.Organization.ID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get clients", http.StatusUnauthorized)
@@ -35,32 +29,21 @@ func ListClients(w http.ResponseWriter, r *http.Request) {
 func GetClient(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
+	getClientRequestData, err := validation.ParseRequestToGetClientRequestData(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	clientID, err := util.GetIntFromPath(r, "client_id")
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client id", http.StatusBadRequest)
-		return
-	}
-
-	client, err := models.GetClientByID(ctx, clientID)
+	client, err := models.GetClientByID(ctx, getClientRequestData.ClientID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
 	}
 
-	if client.OrganizationID != user.Organization.ID {
+	if !user.Organization.IsClientOwner(ctx, client.ID) {
 		util.ErrorResponse(w, "client does not belong to organization", http.StatusUnauthorized)
 		return
 	}
@@ -72,22 +55,11 @@ func GetClient(w http.ResponseWriter, r *http.Request) {
 func CreateClient(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
+	createClientRequestData, err := validation.ParseRequestToCreateClientRequestData(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
-		return
-	}
-
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	createClientRequestData, errors := validation.ParseRequestToCreateClientRequestData(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -112,39 +84,22 @@ func CreateClient(w http.ResponseWriter, r *http.Request) {
 func UpdateClient(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
+	updateClientRequestData, err := validation.ParseRequestToUpdateClientRequestData(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	clientID, err := util.GetIntFromPath(r, "client_id")
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client id", http.StatusBadRequest)
-		return
-	}
-
-	client, err := models.GetClientByID(ctx, clientID)
+	client, err := models.GetClientByID(ctx, updateClientRequestData.ClientID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
 	}
 
-	if client.OrganizationID != user.Organization.ID {
+	if !user.Organization.IsClientOwner(ctx, client.ID) {
 		util.ErrorResponse(w, "client does not belong to organization", http.StatusUnauthorized)
-		return
-	}
-
-	updateClientRequestData, errors := validation.ParseRequestToUpdateClientRequestData(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 
@@ -165,26 +120,15 @@ func UpdateClient(w http.ResponseWriter, r *http.Request) {
 
 func UpdateClientAvatar(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	user := models.UserFromContext(ctx)
 
-	user, err := models.GetRequestingUser(r)
+	clientUpdateAvatarRequestData, err := validation.ParseRequestToClientUpdateAvatarRequestData(r)
 	if err != nil {
-		util.ErrorResponse(w, "failed to get user", http.StatusUnauthorized)
+		util.ErrResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
-	err = user.GetOrganization(ctx)
-	if err != nil {
-		util.ErrorResponse(w, "failed to get organization", http.StatusUnauthorized)
-		return
-	}
-
-	clientID, err := util.GetIntFromPath(r, "client_id")
-	if err != nil {
-		util.ErrorResponse(w, "failed to get client id", http.StatusBadRequest)
-		return
-	}
-
-	client, err := models.GetClientByID(ctx, clientID)
+	client, err := models.GetClientByID(ctx, clientUpdateAvatarRequestData.ClientID)
 	if err != nil {
 		util.ErrorResponse(w, "failed to get client", http.StatusUnauthorized)
 		return
@@ -192,12 +136,6 @@ func UpdateClientAvatar(w http.ResponseWriter, r *http.Request) {
 
 	if client.OrganizationID != user.Organization.ID {
 		util.ErrorResponse(w, "client does not belong to organization", http.StatusUnauthorized)
-		return
-	}
-
-	clientUpdateAvatarRequestData, errors := validation.ParseRequestToClientUpdateAvatarRequestData(r)
-	if errors != nil {
-		util.ErrorsResponse(w, errors, http.StatusBadRequest)
 		return
 	}
 

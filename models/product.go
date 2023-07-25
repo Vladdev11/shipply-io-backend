@@ -182,7 +182,7 @@ func UpdateProduct(ctx context.Context, input UpdateProductInput) (*Product, err
 	}
 
 	if err := util.DBFromContext(ctx).Save(&product).Error; err != nil {
-		return nil, ErrCreateFailed{Err: err, Object: "product"}
+		return nil, ErrUpdateFailed{Err: err, Object: "product"}
 	}
 
 	return &product, nil
